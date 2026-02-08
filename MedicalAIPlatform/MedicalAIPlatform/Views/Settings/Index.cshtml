@@ -1,0 +1,361 @@
+@model MedicalAIPlatform.Models.SettingsViewModel
+@{
+    ViewData["Title"] = "Settings";
+    Layout = "_DoctorLayout"; 
+}
+
+<link rel="stylesheet" href="~/css/settings.css" asp-append-version="true" />
+
+<div class="settings-content">
+    
+    <!-- Title -->
+    <div class="settings-header">
+        <span data-i18n="settings_title">Settings & Help</span>
+    </div>
+
+    <!-- Profile Info -->
+    <div class="profile-section">
+        <div class="profile-avatar-wrapper">
+            <img src="https://ui-avatars.com/api/?name=@Model.FullName&background=random&color=fff&size=128" alt="Profile" class="profile-avatar" />
+            <div class="verified-badge">
+                <i class="bi bi-check" style="font-size: 16px;"></i>
+            </div>
+        </div>
+        <h2 class="profile-name">@Model.FullName</h2>
+        <div class="profile-role">@Model.Specialization</div>
+    </div>
+
+    <!-- Profile Management Card -->
+    <h4 class="section-label" data-i18n="settings_profile_management">Profile Management</h4>
+    <div class="settings-card profile-details-card">
+        <div class="detail-label" data-i18n="settings_full_name">Full Name</div>
+        <div class="detail-value">@(string.IsNullOrEmpty(Model.FullName) ? "Dr. Guest" : Model.FullName)</div>
+        
+        <div class="detail-label" data-i18n="settings_id">ID</div>
+        <div class="detail-value">@(string.IsNullOrEmpty(Model.UserId) ? "Unknown" : Model.UserId.Substring(0, Math.Min(8, Model.UserId.Length)) + "...")</div>
+
+        <div class="detail-label" data-i18n="settings_email">Email</div>
+        <div class="detail-value">@Model.Email</div>
+    </div>
+
+    <!-- System Preferences -->
+    <h4 class="section-label" data-i18n="settings_system_preferences">System Preferences</h4>
+    
+    <!-- Dark Mode -->
+    <div class="settings-card pref-card" id="darkModeCard">
+        <div class="pref-icon-label">
+            <i class="bi bi-moon-fill pref-icon"></i>
+            <div class="pref-text">
+                <h5 data-i18n="settings_dark_mode">Dark Mode</h5>
+                <p data-i18n="settings_dark_mode_desc">Adjust interface brightness</p>
+            </div>
+        </div>
+        <div class="form-check form-switch m-0">
+            <input class="form-check-input settings-toggle" type="checkbox" role="switch" id="darkModeSwitch" checked="@Model.IsDarkMode">
+        </div>
+    </div>
+
+    <!-- Language -->
+    <div class="settings-card pref-card" id="languageCard">
+            <div class="pref-icon-label">
+            <i class="bi bi-globe pref-icon"></i>
+            <div class="pref-text">
+                <h5 data-i18n="settings_language">Language</h5>
+                <p id="currentLanguageDisplay">@(Model.Language == "ar" ? "Arabic" : "English (US)")</p>
+            </div>
+        </div>
+        <!-- Simple Arrow for now -->
+        <i class="bi bi-chevron-right" style="color:white; opacity:0.5;"></i>
+    </div>
+
+    <!-- Logout Button -->
+    <a asp-controller="Account" asp-action="Logout" class="btn-logout-large">
+        <i class="bi bi-box-arrow-right"></i>
+        <span data-i18n="settings_logout">Log Out</span>
+    </a>
+
+</div>
+
+<!-- Language Selection Modal -->
+<div id="languageModal" class="language-modal" style="display: none;">
+    <div class="language-modal-content">
+        <h3 class="language-modal-title" data-i18n="settings_choose_language">Choose your Language</h3>
+        <p class="language-modal-subtitle" data-i18n="settings_choose_language_ar">اختر اللغة المفضلة</p>
+        <div class="language-options">
+            <button class="language-option" data-lang="en" onclick="selectLanguage('en')">
+                <span class="language-name">English</span>
+            </button>
+            <button class="language-option" data-lang="ar" onclick="selectLanguage('ar')">
+                <span class="language-name">العربية</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Add settings-page class immediately
+        if (document.body) {
+            document.body.classList.add('settings-page');
+        } else {
+            document.addEventListener('DOMContentLoaded', function() {
+                document.body.classList.add('settings-page');
+            });
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // Ensure settings-page class is set
+            document.body.classList.add('settings-page');
+            const darkModeSwitch = document.getElementById('darkModeSwitch');
+            const dataLanguage = '@Model.Language'; // 'en' or 'ar'
+            const dataIsDarkMode = @Model.IsDarkMode.ToString().ToLower();
+
+            // Wait a bit for global functions to load, then initialize
+            function initializeSettings() {
+                // Check localStorage first (user preference takes priority)
+                const savedTheme = localStorage.getItem('theme');
+                const prefs = localStorage.getItem('medicalAiPrefs') ? JSON.parse(localStorage.getItem('medicalAiPrefs')) : null;
+                let themeToApply = dataIsDarkMode;
+                
+                if (savedTheme === 'dark' || savedTheme === 'light') {
+                    themeToApply = savedTheme === 'dark';
+                } else if (prefs && typeof prefs.isDarkMode === 'boolean') {
+                    themeToApply = prefs.isDarkMode;
+                }
+                
+                // Init State - Use global setTheme function
+                if (typeof window.setTheme === 'function') {
+                    window.setTheme(themeToApply);
+                } else {
+                    // Fallback if global function not loaded yet
+                    document.documentElement.setAttribute("data-theme", themeToApply ? "dark" : "light");
+                    document.documentElement.classList.toggle("light-mode-global", !themeToApply);
+                    document.body.classList.toggle("light-mode", !themeToApply);
+                    document.body.classList.toggle("dark-mode", themeToApply);
+                    localStorage.setItem("theme", themeToApply ? "dark" : "light");
+                }
+                
+                // Sync toggle state with actual theme
+                if (darkModeSwitch) {
+                    darkModeSwitch.checked = themeToApply;
+                }
+                
+                // Default to English - only apply Arabic if explicitly selected
+                const savedLang = localStorage.getItem('lang') || (localStorage.getItem('medicalAiPrefs') ? JSON.parse(localStorage.getItem('medicalAiPrefs')).language : 'en');
+                const langToApply = (savedLang === 'ar' || dataLanguage === 'ar') ? 'ar' : 'en';
+                
+                if (typeof window.setLanguage === 'function') {
+                    window.setLanguage(langToApply);
+                } else {
+                    applyLanguage(langToApply);
+                }
+            }
+            
+            // Try to initialize immediately
+            initializeSettings();
+            
+            // Also try after a short delay in case scripts are still loading
+            setTimeout(function() {
+                initializeSettings();
+                // Sync toggle one more time after everything loads
+                if (darkModeSwitch) {
+                    const currentTheme = document.documentElement.getAttribute("data-theme");
+                    const isDark = currentTheme === "dark" || localStorage.getItem("theme") === "dark";
+                    darkModeSwitch.checked = isDark;
+                }
+            }, 100);
+
+            // 1. Dark Mode Toggle - Make sure it works properly
+            // Prevent the dark mode card from being clickable (only the toggle should work)
+            const darkModeCard = document.getElementById('darkModeCard');
+            if (darkModeCard) {
+                darkModeCard.style.cursor = 'default';
+                // Prevent clicks on the card itself, but allow clicks on the toggle
+                darkModeCard.addEventListener('click', function(e) {
+                    // If click is NOT on the toggle or its container, prevent it
+                    const toggleContainer = darkModeSwitch?.closest('.form-check');
+                    const isToggleClick = e.target === darkModeSwitch || 
+                                         (toggleContainer && (e.target === toggleContainer || toggleContainer.contains(e.target)));
+                    
+                    if (!isToggleClick) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        return false;
+                    }
+                });
+            }
+            
+            if (darkModeSwitch) {
+                // Sync toggle state with current theme on page load
+                const currentTheme = document.documentElement.getAttribute("data-theme");
+                const isCurrentlyDark = currentTheme === "dark" || 
+                                       document.body.classList.contains("dark-mode") ||
+                                       localStorage.getItem("theme") === "dark";
+                darkModeSwitch.checked = isCurrentlyDark;
+                
+                // Handle toggle change - this is the main event handler
+                darkModeSwitch.addEventListener('change', function(e) {
+                    e.stopPropagation();
+                    const isDarkMode = this.checked;
+                    
+                    console.log('Dark mode toggle changed to:', isDarkMode);
+                    
+                    // Apply theme immediately using global function or fallback
+                    if (typeof window.setTheme === 'function') {
+                        window.setTheme(isDarkMode);
+                    } else {
+                        // Fallback - apply theme directly
+                        document.documentElement.setAttribute("data-theme", isDarkMode ? "dark" : "light");
+                        document.documentElement.classList.toggle("light-mode-global", !isDarkMode);
+                        if (document.body) {
+                            document.body.classList.toggle("light-mode", !isDarkMode);
+                            document.body.classList.toggle("dark-mode", isDarkMode);
+                        }
+                        localStorage.setItem("theme", isDarkMode ? "dark" : "light");
+                        
+                        // Update preferences
+                        const savedLang = localStorage.getItem('lang') || (localStorage.getItem('medicalAiPrefs') ? JSON.parse(localStorage.getItem('medicalAiPrefs')).language : 'en');
+                        const prefs = { isDarkMode: isDarkMode, language: savedLang || langToApply };
+                        localStorage.setItem("medicalAiPrefs", JSON.stringify(prefs));
+                    }
+                    
+                    // Update server settings
+                    updateSettings({ isDarkMode: isDarkMode }).catch(function(err) {
+                        console.log("Settings update failed:", err);
+                    });
+                });
+                
+                // Also handle click event to ensure it works
+                darkModeSwitch.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    // Let the change event handle the actual toggle
+                });
+                
+                // Ensure toggle container clicks work
+                const toggleContainer = darkModeSwitch.closest('.form-check');
+                if (toggleContainer) {
+                    toggleContainer.addEventListener('click', function(e) {
+                        // Allow the click to reach the checkbox
+                        if (e.target !== darkModeSwitch) {
+                            // If clicking the container but not the switch, trigger the switch
+                            darkModeSwitch.click();
+                        }
+                        e.stopPropagation();
+                    });
+                }
+            }
+
+            function applyLanguage(lang) {
+                // Use global translation system
+                if (typeof setLanguage === 'function') {
+                    setLanguage(lang);
+                } else {
+                    // Fallback: set attributes directly
+                    const html = document.documentElement;
+                    html.setAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr');
+                    html.setAttribute('lang', lang);
+                    localStorage.setItem('theme', localStorage.getItem('theme') || 'light');
+                    const prefs = { isDarkMode: dataIsDarkMode, language: lang };
+                    localStorage.setItem('medicalAiPrefs', JSON.stringify(prefs));
+                }
+            }
+
+            // 2. Language Selection - Show Modal
+            const langCard = document.getElementById('languageCard') || document.querySelector('.pref-card:nth-of-type(2)');
+            const languageModal = document.getElementById('languageModal');
+            
+            if(langCard) {
+                langCard.style.cursor = 'pointer';
+                langCard.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    // Show language selection modal
+                    if (languageModal) {
+                        languageModal.style.display = 'flex';
+                        // Highlight current language
+                        const currentLang = document.documentElement.lang || localStorage.getItem('lang') || (localStorage.getItem('medicalAiPrefs') ? JSON.parse(localStorage.getItem('medicalAiPrefs')).language : 'en');
+                        document.querySelectorAll('.language-option').forEach(btn => {
+                            btn.classList.remove('selected');
+                            if (btn.dataset.lang === currentLang) {
+                                btn.classList.add('selected');
+                            }
+                        });
+                    }
+                });
+            }
+            
+            // Close modal when clicking outside
+            if (languageModal) {
+                languageModal.addEventListener('click', function(e) {
+                    if (e.target === languageModal) {
+                        languageModal.style.display = 'none';
+                    }
+                });
+                
+                // Prevent closing when clicking inside modal content
+                const modalContent = languageModal.querySelector('.language-modal-content');
+                if (modalContent) {
+                    modalContent.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                    });
+                }
+            }
+            
+            // Global language selection function
+            window.selectLanguage = function(lang) {
+                // Use global setLanguage function
+                if (typeof window.setLanguage === 'function') {
+                    window.setLanguage(lang);
+                } else {
+                    applyLanguage(lang);
+                }
+                
+                // Update language display in settings
+                const langDisplay = document.getElementById('currentLanguageDisplay');
+                if (langDisplay) {
+                    const translations = window.I18N && window.I18N[lang];
+                    if (translations) {
+                        langDisplay.textContent = lang === 'ar' ? translations.settings_language_arabic : translations.settings_language_english;
+                    } else {
+                        langDisplay.textContent = lang === 'ar' ? 'Arabic' : 'English (US)';
+                    }
+                }
+                
+                // Update server settings
+                updateSettings({ language: lang }).catch(() => {
+                    // Ignore errors - client-side update is sufficient
+                });
+                
+                // Close modal
+                if (languageModal) {
+                    languageModal.style.display = 'none';
+                }
+                
+                // Update selected state
+                document.querySelectorAll('.language-option').forEach(btn => {
+                    btn.classList.remove('selected');
+                    if (btn.dataset.lang === lang) {
+                        btn.classList.add('selected');
+                    }
+                });
+            };
+
+            function updateSettings(data) {
+                const payload = {
+                    isDarkMode: darkModeSwitch.checked,
+                    language: '@Model.Language', // Logic: If we are calling this from Language toggle, data.language overrides this.
+                    ...data
+                };
+
+                return fetch('/Settings/UpdateSettings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value
+                    },
+                    body: JSON.stringify(payload)
+                });
+            }
+        });
+    </script>
+}

@@ -1,0 +1,115 @@
+@{
+    ViewData["Title"] = "X-Ray Analysis";
+    Layout = "_DoctorLayout";
+}
+@using MedicalAIPlatform.Services
+@inject AnalyticsStateService StateService
+
+<link rel="stylesheet" href="~/css/analytics.css" asp-append-version="true" />
+
+<div class="analytics-container">
+    <div class="analytics-overlay">
+        <!-- Doctor Information Header -->
+        <div class="patient-header">
+            <button class="back-button" onclick="window.location.href='@Url.Action("Index", "Analytics")'">
+                <i class="bi bi-arrow-left"></i>
+            </button>
+            <div class="patient-info">
+                <div class="patient-name">@(ViewBag.DoctorName ?? "Doctor")</div>
+            </div>
+        </div>
+
+        <!-- Diagnostic Command Center Title -->
+        <div class="command-center-title">
+            <h1 data-i18n="analytics_diagnostic_command_center">Diagnostic Command Center</h1>
+            <p data-i18n="analytics_multi_modal_system">Multi-modal AI Analysis System</p>
+        </div>
+
+        @if (StateService.CurrentResults != null && StateService.CurrentResults.ContainsKey("CheXNet"))
+        {
+            var result = StateService.CurrentResults["CheXNet"];
+            
+            <div class="results-card">
+                <h2 class="findings-title" data-i18n="analytics_findings_reports">Findings Reports</h2>
+                <a class="model-link" href="#">X-Ray-CheXNet:CheXNet</a>
+
+                <div class="row">
+                    <div class="col-lg-6">
+                        <div class="mb-3">
+                            <span class="small fw-bold text-slate-500">Pathology Probabilities</span>
+                            <span class="small text-muted float-end">Confidence Index</span>
+                        </div>
+                        <ul class="pathology-list">
+                            @foreach (var item in result.Probabilities.OrderByDescending(kv => kv.Value))
+                            {
+                                var percentage = item.Value * 100;
+                                <li class="pathology-item">
+                                    <div class="pathology-label">
+                                        <span class="pathology-name">@item.Key</span>
+                                        <span class="pathology-percentage">@percentage.ToString("F0")%</span>
+                                    </div>
+                                    <div class="pathology-bar">
+                                        <div class="pathology-bar-fill" style="width: @percentage%"></div>
+                                    </div>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+
+                    <div class="col-lg-6">
+                        @if (!string.IsNullOrEmpty(StateService.XRayImageDataUrl))
+                        {
+                            <div class="xray-display">
+                                <img src="@StateService.XRayImageDataUrl" class="xray-image" alt="Chest X-Ray" />
+                                @if (!string.IsNullOrEmpty(result.Heatmap.DataUrl))
+                                {
+                                    <img src="@result.Heatmap.DataUrl" 
+                                         class="heatmap-overlay-img" 
+                                         id="heatmapOverlay"
+                                         style="opacity: 0.5" 
+                                         alt="Heatmap" />
+                                }
+                            </div>
+                            <div class="heatmap-control">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <label class="small fw-bold" data-i18n="analytics_heatmap_opacity">Heatmap Opacity</label>
+                                    <span class="badge bg-light text-dark" id="opacityValue">50%</span>
+                                </div>
+                                <input type="range" 
+                                       class="heatmap-slider" 
+                                       id="heatmapSlider"
+                                       min="0" 
+                                       max="100" 
+                                       value="50"
+                                       oninput="updateHeatmapOpacity(this.value)" />
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="results-card">
+                <p>No X-Ray analysis results available. Please go back and analyze an X-Ray image.</p>
+                <button class="action-btn btn-xray" onclick="window.location.href='@Url.Action("Index", "Analytics")'" data-i18n="analytics_go_back">Go Back</button>
+            </div>
+        }
+    </div>
+
+</div>
+
+@section Scripts {
+    <script>
+        function updateHeatmapOpacity(value) {
+            const overlay = document.getElementById('heatmapOverlay');
+            const valueSpan = document.getElementById('opacityValue');
+            if (overlay) {
+                overlay.style.opacity = value / 100;
+            }
+            if (valueSpan) {
+                valueSpan.textContent = value + '%';
+            }
+        }
+    </script>
+}

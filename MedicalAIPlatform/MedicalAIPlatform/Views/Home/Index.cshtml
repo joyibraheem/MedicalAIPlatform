@@ -1,0 +1,231 @@
+@using Microsoft.AspNetCore.Identity
+@inject SignInManager<MedicalAIPlatform.Models.ApplicationUser> SignInManager
+@inject UserManager<MedicalAIPlatform.Models.ApplicationUser> UserManager
+@{
+    ViewData["Title"] = "Multimodal-Medical-AI";
+    var isAuthenticated = SignInManager.IsSignedIn(User);
+}
+
+@* 
+    STRICT PALETTE RESTORATION
+    - Colors: Reverted exactly to user specification (#1D4581, #127FEC, etc).
+    - Design: Kept professional layout, typography, and "beautiful" structure.
+    - Shadows/Gradients: Adjusted to work within the strict palette.
+*@
+</div>
+
+<link rel="stylesheet" href="~/css/landing.css" asp-append-version="true" />
+
+<script>
+    // Initialize dark mode and language for landing page
+    (function() {
+        // Initialize theme
+        const savedTheme = localStorage.getItem('theme');
+        const prefs = localStorage.getItem('medicalAiPrefs') ? JSON.parse(localStorage.getItem('medicalAiPrefs')) : null;
+        let isDarkMode = true; // Default to dark
+        if (savedTheme === 'light' || savedTheme === 'dark') {
+            isDarkMode = savedTheme === 'dark';
+        } else if (prefs && typeof prefs.isDarkMode === 'boolean') {
+            isDarkMode = prefs.isDarkMode;
+        }
+        document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
+        
+        // Initialize language
+        const savedLang = localStorage.getItem('lang') || (prefs ? prefs.language : null) || 'en';
+        document.documentElement.setAttribute('lang', savedLang);
+        document.documentElement.setAttribute('dir', savedLang === 'ar' ? 'rtl' : 'ltr');
+        
+        // Apply language translations when i18n.js loads
+        if (typeof window.setLanguage === 'function') {
+            window.setLanguage(savedLang);
+        }
+    })();
+</script>
+
+@* --- NAVBAR --- *@
+<div class="nav-custom">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center">
+            <a href="/" class="brand-logo">
+                 <img src="~/images/chest-icon.png" alt="ChestAI" style="width: 28px; height: 28px; margin-right: 8px;" />
+            Multimodal-Medical-AI
+        </a>
+        <div class="d-flex align-items-center">
+            @if (!isAuthenticated)
+            {
+                <a asp-controller="Account" asp-action="Login" class="btn-nav btn-nav-signin">Sign In</a>
+                <a asp-controller="Account" asp-action="Register" class="btn-nav btn-nav-signup">Sign Up</a>
+            }
+            else
+            {
+                <a asp-controller="Dashboard" asp-action="Index" class="btn-nav btn-nav-signup">Dashboard</a>
+            }
+        </div>
+    </div>
+</div>
+</div>
+
+@* --- HERO --- *@
+<div class="hero-section">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-7">
+                <div class="hero-content">
+                    <span class="hero-badge" data-i18n="home_ai_powered_diagnostics">AI-POWERED DIAGNOSTICS</span>
+                    <h1 class="hero-title" data-i18n="home_ai_powered_title">AI-Powered Chest Analysis</h1>
+                    <p class="hero-text" data-i18n="home_ai_powered_desc">
+                        An intelligent system that supports doctors by analyzing chest X-ray and CT scan images and highlighting areas of interest using explainable AI.
+                    </p>
+                    <div class="d-flex flex-wrap">
+                        <a asp-controller="Account" asp-action="Register" class="btn-hero btn-hero-start" data-i18n="home_get_started">Get Started</a>
+                        <button class="btn-hero btn-hero-demo" data-i18n="home_view_demo">View Demo</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* --- FEATURES --- *@
+<div class="features-section">
+    <div class="container">
+        <div class="row justify-content-center section-head">
+            <div class="col-12 text-center">
+                <h2 class="section-header-title" data-i18n="home_key_features">Key Features</h2>
+                <p class="section-header-desc mx-auto" data-i18n="home_features_desc">
+                    Clinical precision, high-speed processing, and absolute data privacy.
+                </p>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <!-- Accuracy -->
+            <div class="col-md-4 d-flex">
+                <div class="feature-card w-100">
+                    <div class="feature-icon-box">
+                         <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-bullseye" viewBox="0 0 16 16">
+                            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                            <path d="M8 13A5 5 0 1 1 8 3a5 5 0 0 1 0 10zm0 1A6 6 0 1 0 8 2a6 6 0 0 0 0 12z"/>
+                            <path d="M8 11a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm0 1a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/>
+                            <path d="M9.5 8a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z"/>
+                        </svg>
+                    </div>
+                    <h3 class="feature-title">Accuracy</h3>
+                    <p class="feature-text">Deep-learning models trained on 1M+ high-resolution clinical scans for unparalleled precision.</p>
+                </div>
+            </div>
+            
+             <!-- Speed -->
+            <div class="col-md-4 d-flex">
+                <div class="feature-card w-100">
+                    <div class="feature-icon-box">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-speedometer2" viewBox="0 0 16 16">
+                             <path d="M8 4a.5.5 0 0 1 .5.5V6a.5.5 0 0 1-1 0V4.5A.5.5 0 0 1 8 4zM3.732 5.732a.5.5 0 0 1 .707 0l.915.914a.5.5 0 1 1-.708.708l-.914-.915a.5.5 0 0 1 0-.707zM2 10a.5.5 0 0 1 .5-.5h1.586a.5.5 0 0 1 0 1H2.5A.5.5 0 0 1 2 10zm9.5 0a.5.5 0 0 1 .5-.5h1.5a.5.5 0 0 1 0 1H12a.5.5 0 0 1-.5-.5zm.754-4.246a.389.389 0 0 0-.527-.02L7.547 9.31a.91.91 0 1 0 1.302 1.258l3.434-4.297a.389.389 0 0 0-.029-.518z"/>
+                             <path fill-rule="evenodd" d="M0 10a8 8 0 1 1 15.528 4.093l-1.552-4.656a6.5 6.5 0 1 0-8.956 0l-1.552 4.656A8 8 0 0 1 0 10z"/>
+                         </svg>
+                    </div>
+                    <h3 class="feature-title">Speed</h3>
+                    <p class="feature-text">Instant cloud analysis results delivered in seconds for critical emergency decision-making.</p>
+                </div>
+            </div>
+
+            <!-- Security -->
+             <div class="col-md-4 d-flex">
+                <div class="feature-card w-100">
+                    <div class="feature-icon-box">
+                         <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-shield-check" viewBox="0 0 16 16">
+                             <path d="M5.338 1.59a61.44 61.44 0 0 0-2.837.856.481.481 0 0 0-.328.39c-.554 4.157.726 7.19 2.253 9.188a10.725 10.725 0 0 0 2.287 2.233c.346.244.652.42.893.533.12.057.218.095.293.118a.55.55 0 0 0 .101.025.615.615 0 0 0 .1-.025c.076-.023.174-.061.294-.118.24-.113.547-.29.893-.533a10.726 10.726 0 0 0 2.287-2.233c1.527-1.997 2.807-5.031 2.253-9.188a.48.48 0 0 0-.328-.39c-.651-.23-4.95-1.446-4.95-1.446A6.035 6.035 0 0 0 5.337 1.6zm9.167 1.619c.444 3.75-1.127 6.472-2.316 8.35a9.721 9.721 0 0 1-2.036 1.966c-.66.44-1.28.775-1.613.926-.333-.151-.953-.486-1.613-.926a9.721 9.721 0 0 1-2.036-1.966C3.766 9.652 2.195 6.93 2.639 3.18l4.42-1.291 4.444 1.32z"/>
+                            <path fill-rule="evenodd" d="M10.854 5.146a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7.5 7.793l2.646-2.647a.5.5 0 0 1 .708 0z"/>
+                         </svg>
+                    </div>
+                    <h3 class="feature-title">Security</h3>
+                    <p class="feature-text">HIPAA-compliant end-to-end data encryption ensuring total patient privacy and compliance.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* --- HOW IT WORKS --- *@
+<div class="how-it-works-section">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="hiw-title">HOW IT WORKS</h2>
+            <span class="hiw-subtitle">Seamless Integration in 3 Steps</span>
+        </div>
+        
+        <div class="row justify-content-center">
+            <div class="col-lg-9">
+                <div class="step-list">
+                    <!-- Step 1 -->
+                    <div class="step-item">
+                        <div class="step-icon-wrapper">
+                            <div class="step-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" fill="currentColor" class="bi bi-cloud-upload" viewBox="0 0 16 16">
+                                    <path fill-rule="evenodd" d="M4.406 1.342A5.53 5.53 0 0 1 8 0c2.69 0 4.923 2 5.166 4.579C14.758 4.804 16 6.137 16 7.773 16 9.569 14.502 11 12.687 11H10a.5.5 0 0 1 0-1h2.688C13.979 10 15 8.988 15 7.773c0-1.216-1.02-2.228-2.313-2.228h-.5v-.5C12.188 2.825 10.328 1 8 1a4.53 4.53 0 0 0-2.941 1.1c-.757.652-1.153 1.438-1.153 2.055v.448l-.445.049C2.064 4.805 1 5.952 1 7.318 1 8.785 2.23 10 3.781 10H6a.5.5 0 0 1 0 1H3.781C1.708 11 0 9.366 0 7.318c0-1.763 1.266-3.223 2.942-3.593.143-.863.698-1.723 1.464-2.383z"/>
+                                    <path fill-rule="evenodd" d="M7.646 4.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 5.707V14.5a.5.5 0 0 1-1 0V5.707L5.354 7.854a.5.5 0 1 1-.708-.708l3-3z"/>
+                                </svg>
+                            </div>
+                            <div class="step-line"></div>
+                        </div>
+                        <div class="step-content">
+                            <h4 class="step-title">Upload Scan</h4>
+                            <p class="step-desc">Securely upload DICOM or standard imaging formats directly from your workstation.</p>
+                        </div>
+                    </div>
+                    
+                     <!-- Step 2 -->
+                    <div class="step-item">
+                        <div class="step-icon-wrapper">
+                            <div class="step-icon">
+                                 <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" fill="currentColor" class="bi bi-cpu" viewBox="0 0 16 16">
+                                   <path d="M5 0a.5.5 0 0 1 .5.5V2h1V.5a.5.5 0 0 1 1 0V2h1V.5a.5.5 0 0 1 1 0V2h1V.5a.5.5 0 0 1 1 0V2h1V.5a.5.5 0 0 1 1 0V2h1V.5a.5.5 0 0 1 1 0V2A2.5 2.5 0 0 1 14 4.5h1.5a.5.5 0 0 1 0 1H14v1h1.5a.5.5 0 0 1 0 1H14v1h1.5a.5.5 0 0 1 0 1H14v1h1.5a.5.5 0 0 1 0 1H14a2.5 2.5 0 0 1-2.5 2.5v1.5a.5.5 0 0 1-1 0V14h-1v1.5a.5.5 0 0 1-1 0V14h-1v1.5a.5.5 0 0 1-1 0V14h-1v1.5a.5.5 0 0 1-1 0V14A2.5 2.5 0 0 1 2 11.5H.5a.5.5 0 0 1 0-1H2v-1H.5a.5.5 0 0 1 0-1H2v-1H.5a.5.5 0 0 1 0-1H2A2.5 2.5 0 0 1 4.5 2V.5A.5.5 0 0 1 5 0zm-.5 3A1.5 1.5 0 0 0 3 4.5v7A1.5 1.5 0 0 0 4.5 13h7a1.5 1.5 0 0 0 1.5-1.5v-7A1.5 1.5 0 0 0 11.5 3h-7zM5 6.5A1.5 1.5 0 0 1 6.5 5h3A1.5 1.5 0 0 1 11 6.5v3A1.5 1.5 0 0 1 9.5 11h-3A1.5 1.5 0 0 1 5 9.5v-3z"/>
+                               </svg>
+                            </div>
+                            <div class="step-line"></div>
+                        </div>
+                        <div class="step-content">
+                            <h4 class="step-title">AI Analysis</h4>
+                            <p class="step-desc">Advanced deep-learning neural networks process the image, highlighting potential anomalies.</p>
+                        </div>
+                    </div>
+
+                    <!-- Step 3 -->
+                    <div class="step-item last-step">
+                        <div class="step-icon-wrapper">
+                            <div class="step-icon">
+                                 <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" fill="currentColor" class="bi bi-file-earmark-medical" viewBox="0 0 16 16">
+                                    <path d="M7.5 5.5a.5.5 0 0 0-1 0v.634l-.549-.317a.5.5 0 1 0-.5.866L6 7l-.549.317a.5.5 0 1 0 .5.866l.549-.317V8.5a.5.5 0 1 0 1 0v-.634l.549.317a.5.5 0 0 0 .5-.866L8 7l.549-.317a.5.5 0 0 0-.5-.866l-.549.317V5.5zm-2 4.5a.5.5 0 0 0 0 1h5a.5.5 0 0 0 0-1h-5zm0 2a.5.5 0 0 0 0 1h5a.5.5 0 0 0 0-1h-5z"/>
+                                    <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5v2z"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="step-content">
+                            <h4 class="step-title">Expert Review</h4>
+                            <p class="step-desc">Clinicians receive a detailed report for final validation and patient consultation.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* --- FOOTER --- *@
+<div class="footer-custom">
+    <div class="container">
+        <div class="footer-brand">
+             <img src="~/images/chest-icon.png" alt="ChestAI" style="width: 28px; height: 28px; margin-right: 8px;" />
+            Multimodal-Medical-AI
+        </div>
+        <div class="footer-copy">© 2026 MedAI Solutions. All rights reserved</div>
+        <div class="footer-links">
+            <a href="#">Privacy</a>
+            <a href="#">Terms</a>
+            <a href="#">Contact</a>
+        </div>
+    </div>
+</div>
+
+@* End of document cleanup *@
+<div class="container container-restorer">

@@ -1,0 +1,117 @@
+@{
+    ViewData["Title"] = "Analytics";
+    Layout = "_DoctorLayout";
+}
+
+<link rel="stylesheet" href="~/css/analytics.css" asp-append-version="true" />
+
+<div class="analytics-container">
+    <div class="analytics-overlay">
+        <!-- Doctor Information Header -->
+        <div class="patient-header">
+            <button class="back-button" onclick="window.history.back()">
+                <i class="bi bi-arrow-left"></i>
+            </button>
+            <div class="patient-info">
+                <div class="patient-name">@(ViewBag.DoctorName ?? "Doctor")</div>
+            </div>
+        </div>
+
+        <!-- Diagnostic Command Center Title -->
+        <div class="command-center-title">
+            <h1 data-i18n="analytics_diagnostic_command_center">Diagnostic Command Center</h1>
+            <p data-i18n="analytics_multi_modal_system">Multi-modal AI Analysis System</p>
+        </div>
+
+        <!-- Case Input Section -->
+        <div class="case-input-card">
+            <h2 class="section-title">
+                <span class="section-icon"></span><span data-i18n="analytics_case_input">Case Input</span>
+            </h2>
+            
+            <!-- 1. Radiology Scan (X-Ray) -->
+            <div class="input-section">
+                <label class="input-label" data-i18n="analytics_radiology_scan">Radiology Scan (X-Ray)</label>
+                <label class="upload-zone" for="xrayFileInput">
+                    <i class="bi bi-cloud-arrow-up upload-icon"></i>
+                    <div class="upload-text" id="xrayFileName" data-i18n="analytics_upload_chest_xray">Upload Chest X-Ray</div>
+                    <div class="upload-hint" data-i18n="analytics_dicom_supported">DICOM, PNG or JPG Supported</div>
+                    <input type="file" id="xrayFileInput" accept="image/png,image/jpeg,image/dicom" class="d-none" />
+                </label>
+                <div id="xrayPreview" class="file-preview" style="display: none;">
+                    <img id="xrayPreviewImg" src="" alt="X-Ray Preview" />
+                    <button class="remove-file" onclick="clearXRay()">
+                        <i class="bi bi-x"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 2. Clinical Presentation -->
+            <div class="input-section">
+                <label class="input-label" data-i18n="analytics_clinical_presentation">Clinical Presentation</label>
+                <textarea class="clinical-textarea" 
+                          id="clinicalText"
+                          data-i18n="analytics_clinical_placeholder"
+                          placeholder="Enter Patient symptoms, history, or specific complaints for BioBERT analysis...."
+                          rows="4"></textarea>
+            </div>
+
+            <!-- 3. CT Scan -->
+            <div class="input-section">
+                <label class="input-label" data-i18n="analytics_ct_scan">CT Scan-ChestAI</label>
+                <label class="upload-zone" for="ctFileInput">
+                    <i class="bi bi-cloud-arrow-up upload-icon"></i>
+                    <div class="upload-text" id="ctFileName" data-i18n="analytics_upload_ct">Upload CT Scan</div>
+                    <div class="upload-hint" data-i18n="analytics_png_jpg_supported">PNG or JPG Supported</div>
+                    <input type="file" id="ctFileInput" accept="image/png,image/jpeg" class="d-none" />
+                </label>
+                <div id="ctPreview" class="file-preview" style="display: none;">
+                    <img id="ctPreviewImg" src="" alt="CT Preview" />
+                    <button class="remove-file" onclick="clearCT()">
+                        <i class="bi bi-x"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+                <div class="button-row">
+                    <button class="action-btn btn-xray" id="btnXRay" onclick="analyzeXRay()" data-i18n="analytics_btn_xray">X-Ray</button>
+                    <button class="action-btn btn-text" id="btnText" onclick="analyzeText()" data-i18n="analytics_btn_text">Text</button>
+                    <button class="action-btn btn-ct" id="btnCT" onclick="analyzeCT()" data-i18n="analytics_btn_ct">CT</button>
+                </div>
+                <button class="combined-btn" id="btnCombined" onclick="analyzeCombined()" data-i18n="analytics_btn_combined">Combined Results</button>
+            </div>
+
+            <!-- Download All Files Section -->
+            <div class="download-section">
+                <h3 class="download-title" data-i18n="analytics_download_files">Download Files</h3>
+                <div class="download-buttons">
+                    <button class="download-btn" id="btnDownloadXRay" onclick="downloadXRay()" style="display: none;" data-i18n="analytics_download_xray">
+                        <i class="bi bi-download"></i> <span>Download X-Ray</span>
+                    </button>
+                    <button class="download-btn" id="btnDownloadText" onclick="downloadText()" style="display: none;" data-i18n="analytics_download_text">
+                        <i class="bi bi-download"></i> <span>Download Text</span>
+                    </button>
+                    <button class="download-btn" id="btnDownloadCT" onclick="downloadCT()" style="display: none;" data-i18n="analytics_download_ct">
+                        <i class="bi bi-download"></i> <span>Download CT</span>
+                    </button>
+                    <button class="download-btn download-all" id="btnDownloadAll" onclick="downloadAll()" style="display: none;" data-i18n="analytics_download_all">
+                        <i class="bi bi-download"></i> <span>Download All Files</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<div id="errorAlert" class="alert alert-danger" style="display: none; position: fixed; top: 100px; right: 20px; z-index: 1000; max-width: 400px;">
+    <strong>Error:</strong> <span id="errorMessage"></span>
+</div>
+
+@Html.AntiForgeryToken()
+
+@section Scripts {
+    <script src="~/js/analytics.js" asp-append-version="true"></script>
+}

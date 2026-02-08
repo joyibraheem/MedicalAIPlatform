@@ -1,0 +1,123 @@
+@model MedicalAIPlatform.Models.LoginViewModel
+@{
+    ViewData["Title"] = "Secure Access";
+    Layout = null; /* Disable default layout to have full control over the page structure */
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>
+        (function () {
+            const theme = localStorage.getItem("theme");
+            document.documentElement.setAttribute(
+                "data-theme",
+                theme === "dark" ? "dark" : "light"
+            );
+        })();
+    </script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - MedicalAIPlatform</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/auth.css" asp-append-version="true" />
+    <style>
+        #darkOverlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.75);
+            z-index: 9998;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.25s ease;
+        }
+
+        html[data-theme="dark"] #darkOverlay {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div id="darkOverlay"></div>
+
+    <div class="auth-card">
+        
+        <div class="auth-header">
+            <div class="auth-icon-circle">
+                <img src="~/images/chest-icon.png" alt="ChestAI" style="width: 40px; height: 40px;" />
+            </div>
+            
+            <h1 class="auth-title-large">Welcome Back</h1>
+            <p class="auth-subtitle-small">Chest Cancer Detection & Management Portal</p>
+        </div>
+
+        <!-- Role Tabs (Visual for now) -->
+
+
+        <form asp-action="Login" method="post">
+            <input type="hidden" asp-for="ReturnUrl" />
+            <div asp-validation-summary="ModelOnly" class="text-danger small mb-2"></div>
+
+            <!-- Email -->
+            <div class="form-group">
+                <label asp-for="Email" class="auth-label">Email</label>
+                <div class="input-wrapper">
+                    <span class="form-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-envelope" viewBox="0 0 16 16">
+                            <path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V4Zm2-1a1 1 0 0 0-1 1v.217l7 4.2 7-4.2V4a1 1 0 0 0-1-1H2Zm13 2.383-4.708 2.825L15 11.105V5.383Zm-.034 6.876-5.64-3.471L8 9.583l-1.326-.795-5.64 3.47A1 1 0 0 0 2 13h12a1 1 0 0 0 .966-.741ZM1 11.105l4.708-2.897L1 5.383v5.722Z"/>
+                        </svg>
+                    </span>
+                    <input asp-for="Email" class="form-control-custom" placeholder="Enter your Email" />
+                </div>
+                <span asp-validation-for="Email" class="text-danger small"></span>
+            </div>
+
+            <!-- Password -->
+            <div class="form-group">
+                <label asp-for="Password" class="auth-label">Password</label>
+                <div class="input-wrapper">
+                    <span class="form-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-lock" viewBox="0 0 16 16">
+                            <path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2zM5 8h6a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/>
+                        </svg>
+                    </span>
+                    <input asp-for="Password" type="password" class="form-control-custom" placeholder="Enter your Password" />
+                </div>
+                <span asp-validation-for="Password" class="text-danger small"></span>
+            </div>
+
+
+            <a asp-action="ForgotPassword" class="forgot-password">forget password ?</a>
+
+            <button type="submit" class="btn-auth btn-primary-auth">Sign In</button>
+        </form>
+
+        <div class="auth-footer">
+            Don't have an account? <a asp-action="Register">Sign up</a>
+        </div>
+
+        <!-- Google Login -->
+        <hr style="margin: 20px 0; opacity: 0.2; border-color: white;">
+        
+        <form asp-action="ExternalLogin" method="post" asp-route-returnUrl="@Model.ReturnUrl">
+            <button type="submit" name="provider" value="Google" class="btn-auth btn-google">
+                <svg width="18" height="18" viewBox="0 0 18 18">
+                    <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/>
+                    <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/>
+                    <path fill="#FBBC05" d="M3.964 10.712c-.18-.54-.282-1.117-.282-1.712 0-.595.102-1.172.282-1.712V4.956H.957C.347 6.173 0 7.55 0 9c0 1.45.348 2.827.957 4.044l3.007-2.332z"/>
+                    <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.956L3.964 7.288C4.672 5.163 6.656 3.58 9 3.58z"/>
+                </svg>
+                Continue with Google
+            </button>
+        </form>
+
+    </div>
+
+    @section Scripts {
+        <partial name="_ValidationScriptsPartial" />
+    }
+    
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

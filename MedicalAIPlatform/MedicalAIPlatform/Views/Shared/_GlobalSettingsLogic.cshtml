@@ -1,0 +1,99 @@
+@using Microsoft.AspNetCore.Identity
+@using MedicalAIPlatform.Models
+@inject UserManager<ApplicationUser> UserManager
+
+@{
+    bool isDarkMode = true; // Default to Dark
+    // Default language is ALWAYS English - only change if user explicitly selected Arabic
+    string language = "en";
+
+    if (User.Identity?.IsAuthenticated ?? false)
+    {
+        var user = await UserManager.GetUserAsync(User);
+        if (user != null)
+        {
+            isDarkMode = user.IsDarkMode;
+            // Only use Arabic if explicitly set
+            if (user.Language == "ar")
+            {
+                language = "ar";
+            }
+        }
+    }
+    else
+    {
+        // Fallback to Cookies - but default to English
+        if (Context.Request.Cookies.TryGetValue("Settings_DarkMode", out string cookieMode))
+        {
+            bool.TryParse(cookieMode, out isDarkMode);
+        }
+        if (Context.Request.Cookies.TryGetValue("Settings_Language", out string cookieLang) && cookieLang == "ar")
+        {
+            language = "ar";
+        }
+    }
+}
+
+<script>
+    (function() {
+        var isDarkMode = @isDarkMode.ToString().ToLower();
+        var language = '@language';
+
+        var html = document.documentElement;
+        
+        // Check localStorage first (client-side preference takes priority)
+        var savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'dark' || savedTheme === 'light') {
+            isDarkMode = savedTheme === 'dark';
+        }
+        
+        // Set theme immediately to prevent flash
+        html.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
+        if (!isDarkMode) {
+            html.classList.add('light-mode-global');
+        } else {
+            html.classList.remove('light-mode-global');
+        }
+        
+        // Set Language - Check localStorage first
+        var savedLang = localStorage.getItem('lang') || localStorage.getItem('medicalAiPrefs') ? 
+            (JSON.parse(localStorage.getItem('medicalAiPrefs') || '{}').language || 'en') : 'en';
+        
+        // Use saved language if available, otherwise use server value
+        var langToUse = savedLang !== 'en' && savedLang !== 'ar' ? 
+            (language === 'ar' ? 'ar' : 'en') : 
+            (savedLang === 'ar' ? 'ar' : 'en');
+        
+        html.setAttribute('dir', langToUse === 'ar' ? 'rtl' : 'ltr');
+        html.setAttribute('lang', langToUse);
+        
+        // Apply body classes when body is ready
+        if (document.body) {
+            document.body.classList.toggle('light-mode', !isDarkMode);
+            document.body.classList.toggle('dark-mode', isDarkMode);
+        } else {
+            // Wait for body
+            document.addEventListener('DOMContentLoaded', function() {
+                document.body.classList.toggle('light-mode', !isDarkMode);
+                document.body.classList.toggle('dark-mode', isDarkMode);
+            });
+        }
+    })();
+</script>
+
+<!-- Add style to map html class to body if body not ready -->
+<style>
+    html.light-mode-global body {
+        background-color: #f0f2f5 !important;
+        background-image: none !important;
+        color: #333 !important;
+    }
+    /* Re-apply the site.css light-mode logic */
+    html.light-mode-global body .glass-container,
+    html.light-mode-global body .settings-glass-container,
+    html.light-mode-global body .auth-card {
+        background: rgba(255, 255, 255, 0.85) !important;
+        color: #1f2937;
+    }
+    /* Add more helper overrides if site.css isn't enough */
+</style>

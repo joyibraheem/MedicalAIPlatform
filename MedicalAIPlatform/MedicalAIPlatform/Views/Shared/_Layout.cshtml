@@ -1,0 +1,146 @@
+@using Microsoft.AspNetCore.Identity
+@inject SignInManager<MedicalAIPlatform.Models.ApplicationUser> SignInManager
+@inject UserManager<MedicalAIPlatform.Models.ApplicationUser> UserManager
+@{
+    var isAuthenticated = SignInManager.IsSignedIn(User);
+    var currentUser = isAuthenticated ? await UserManager.GetUserAsync(User) : null;
+    var isDarkMode = currentUser?.IsDarkMode ?? false;
+    // Default language is ALWAYS English - client-side JavaScript will apply saved preference
+    var language = "en";
+    var themeClass = isDarkMode ? "dark-mode" : "light-mode";
+    var dir = "ltr";
+}
+<!DOCTYPE html>
+<html lang="@language" dir="@dir">
+<head>
+    <script>
+        (function () {
+            // Initialize theme immediately to prevent flash
+            const savedTheme = localStorage.getItem("theme");
+            const prefs = localStorage.getItem("medicalAiPrefs") ? JSON.parse(localStorage.getItem("medicalAiPrefs")) : null;
+            
+            let isDarkMode = true; // Default to dark
+            if (savedTheme === "light" || savedTheme === "dark") {
+                isDarkMode = savedTheme === "dark";
+            } else if (prefs && typeof prefs.isDarkMode === "boolean") {
+                isDarkMode = prefs.isDarkMode;
+            }
+            
+            // Apply theme immediately
+            document.documentElement.setAttribute("data-theme", isDarkMode ? "dark" : "light");
+            document.documentElement.classList.toggle("light-mode-global", !isDarkMode);
+            
+            // Initialize language
+            const savedLang = localStorage.getItem("lang") || (prefs ? prefs.language : null) || "en";
+            document.documentElement.setAttribute("lang", savedLang);
+            document.documentElement.setAttribute("dir", savedLang === "ar" ? "rtl" : "ltr");
+        })();
+    </script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - MedicalAIPlatform</title>
+    <partial name="_GlobalSettingsLogic" />
+    <script type="importmap"></script>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/MedicalAIPlatform.styles.css" asp-append-version="true" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <style>
+        #darkOverlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.75);
+            z-index: 9998;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.25s ease;
+        }
+
+        html[data-theme="dark"] #darkOverlay {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="@themeClass">
+    <div id="darkOverlay"></div>
+    <header>
+        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
+            <div class="container-fluid">
+                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index" data-i18n="brand_title">MedicalAIPlatform</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
+                        aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
+                    <ul class="navbar-nav flex-grow-1">
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-area="" asp-controller="FollowUp" asp-action="Index">Follow up</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-primary fw-bold" asp-area="" asp-controller="PatientCalendar" asp-action="Index">Calendar</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Dashboard" asp-action="Index">Analytics</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">AI Assistant</a>
+                        </li>
+                        @if (User.IsInRole("Admin"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-danger" asp-area="" asp-controller="Dashboard" asp-action="Index">Admin (Unified)</a>
+                            </li>
+                        }
+                    </ul>
+                    <ul class="navbar-nav">
+                        @if (User.Identity?.IsAuthenticated ?? false)
+                        {
+                            <li class="nav-item">
+                                <span class="navbar-text me-2" data-i18n="nav_hello">
+                                    Hello, @User.Identity?.Name
+                                </span>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link btn btn-link text-dark" asp-controller="Account" asp-action="Logout" data-i18n="nav_logout">Logout</a>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-controller="Account" asp-action="Login" data-i18n="nav_login">Sign In</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-controller="Account" asp-action="Register" data-i18n="nav_register">Sign Up</a>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+    <div class="container">
+        <main role="main" class="pb-3">
+            @RenderBody()
+        </main>
+    </div>
+
+    <!-- Floating Settings Button -->
+    <a asp-controller="Settings" asp-action="Index" class="settings-fab">
+        <i class="bi bi-gear-wide-connected"></i>
+    </a>
+
+    <footer class="border-top footer text-muted">
+        <div class="container">
+            &copy; 2026 - <span data-i18n="brand_title_footer">MedicalAIPlatform</span> - <a asp-area="" asp-controller="Home" asp-action="Privacy" data-i18n="nav_privacy">Privacy</a>
+        </div>
+    </footer>
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/i18n.js" asp-append-version="true"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

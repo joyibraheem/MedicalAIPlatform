@@ -1,0 +1,113 @@
+@{
+    ViewData["Title"] = "Select Patient";
+    Layout = "_DoctorLayout";
+}
+
+<link rel="stylesheet" href="~/css/analytics.css" asp-append-version="true" />
+
+<div class="analytics-container">
+    <div class="analytics-overlay">
+        <!-- Header -->
+        <div class="patient-header">
+            <button class="back-button" onclick="window.location.href='@Url.Action("Index", "Dashboard")'">
+                <i class="bi bi-arrow-left"></i>
+            </button>
+            <div class="patient-info">
+                <div class="patient-name">Select Patient</div>
+            </div>
+        </div>
+
+        <!-- Title -->
+        <div class="command-center-title">
+            <h1>Select Patient</h1>
+            <p>Choose a patient to view their records and generate results</p>
+        </div>
+
+        <!-- Search Card -->
+        <div class="case-input-card mb-4">
+            <div class="input-section">
+                <label class="input-label">Search Patient</label>
+                <input type="text" id="patientSearchInput" class="form-control" placeholder="Search by name, patient ID, or email..." />
+            </div>
+        </div>
+
+        <!-- Patient List -->
+        <div class="case-input-card">
+            <div id="patientListContainer">
+                <div class="text-center py-5">
+                    <i class="bi bi-search" style="font-size: 3rem; color: #6c757d;"></i>
+                    <p class="mt-3">Start typing to search for patients...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const searchInput = document.getElementById('patientSearchInput');
+        let searchTimeout;
+
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            const searchTerm = this.value.trim();
+            
+            if (searchTerm.length < 2) {
+                document.getElementById('patientListContainer').innerHTML = `
+                    <div class="text-center py-5">
+                        <i class="bi bi-search" style="font-size: 3rem; color: #6c757d;"></i>
+                        <p class="mt-3">Start typing to search for patients...</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            searchTimeout = setTimeout(() => {
+                searchPatients(searchTerm);
+            }, 500);
+        });
+
+        function searchPatients(searchTerm) {
+            fetch('@Url.Action("Index")?searchTerm=' + encodeURIComponent(searchTerm))
+                .then(response => response.text())
+                .then(html => {
+                    // Extract patient list from the response
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const table = doc.querySelector('table tbody');
+                    
+                    if (table && table.children.length > 0) {
+                        let patientListHtml = '<div class="table-responsive"><table class="table table-hover"><thead><tr><th>Profile</th><th>Name</th><th>Patient ID</th><th>Date of Birth</th><th>Actions</th></tr></thead><tbody>';
+                        
+                        Array.from(table.children).forEach(row => {
+                            patientListHtml += row.outerHTML;
+                        });
+                        
+                        patientListHtml += '</tbody></table></div>';
+                        document.getElementById('patientListContainer').innerHTML = patientListHtml;
+                    } else {
+                        document.getElementById('patientListContainer').innerHTML = `
+                            <div class="text-center py-5">
+                                <i class="bi bi-inbox" style="font-size: 3rem; color: #6c757d;"></i>
+                                <p class="mt-3">No patients found matching "${searchTerm}"</p>
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error searching patients:', error);
+                });
+        }
+
+        // Handle Enter key
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const searchTerm = this.value.trim();
+                if (searchTerm.length >= 2) {
+                    searchPatients(searchTerm);
+                }
+            }
+        });
+    </script>
+}

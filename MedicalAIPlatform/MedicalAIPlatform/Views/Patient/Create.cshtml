@@ -1,0 +1,349 @@
+@model MedicalAIPlatform.Models.PatientFormViewModel
+@{
+    ViewData["Title"] = "Add New Patient";
+    Layout = "_DoctorLayout";
+}
+
+<link rel="stylesheet" href="~/css/analytics.css" asp-append-version="true" />
+
+<div class="analytics-container">
+    <div class="analytics-overlay">
+        <!-- Header -->
+        <div class="patient-header">
+            <button class="back-button" onclick="window.location.href='@Url.Action("Index", "Patient")'">
+                <i class="bi bi-arrow-left"></i>
+            </button>
+            <div class="patient-info">
+                <div class="patient-name">Add New Patient</div>
+            </div>
+        </div>
+
+        <!-- Form Card -->
+        <div class="case-input-card" style="max-width: 1200px; margin: 0 auto;">
+            <h2 class="section-title">Patient Information</h2>
+
+            <form asp-action="Create" method="post" enctype="multipart/form-data" id="patientForm">
+                @Html.AntiForgeryToken()
+
+                <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                <!-- Basic Information Section -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="input-section">
+                            <label asp-for="FirstName" class="input-label"></label>
+                            <input asp-for="FirstName" class="form-control" required />
+                            <span asp-validation-for="FirstName" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="input-section">
+                            <label asp-for="LastName" class="input-label"></label>
+                            <input asp-for="LastName" class="form-control" required />
+                            <span asp-validation-for="LastName" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <div class="input-section">
+                            <label asp-for="DateOfBirth" class="input-label"></label>
+                            <input asp-for="DateOfBirth" type="date" class="form-control" required />
+                            <span asp-validation-for="DateOfBirth" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="input-section">
+                            <label asp-for="Gender" class="input-label"></label>
+                            <select asp-for="Gender" class="form-control" required>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                                <option value="Other">Other</option>
+                            </select>
+                            <span asp-validation-for="Gender" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="input-section">
+                            <label asp-for="PatientId" class="input-label"></label>
+                            <input asp-for="PatientId" class="form-control" placeholder="Auto-generated if left empty" />
+                            <span asp-validation-for="PatientId" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="input-section">
+                            <label asp-for="PhoneNumber" class="input-label"></label>
+                            <input asp-for="PhoneNumber" class="form-control" />
+                            <span asp-validation-for="PhoneNumber" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="input-section">
+                            <label asp-for="Email" class="input-label"></label>
+                            <input asp-for="Email" type="email" class="form-control" />
+                            <span asp-validation-for="Email" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="input-section">
+                            <label asp-for="Address" class="input-label"></label>
+                            <input asp-for="Address" class="form-control" />
+                            <span asp-validation-for="Address" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Medical Information Section -->
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="input-section">
+                            <label asp-for="MedicalHistorySummary" class="input-label"></label>
+                            <textarea asp-for="MedicalHistorySummary" class="clinical-textarea" rows="3"></textarea>
+                            <span asp-validation-for="MedicalHistorySummary" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="input-section">
+                            <label asp-for="Allergies" class="input-label"></label>
+                            <input asp-for="Allergies" class="form-control" placeholder="e.g., Penicillin, Latex" />
+                            <span asp-validation-for="Allergies" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="input-section">
+                            <label asp-for="CurrentMedications" class="input-label"></label>
+                            <input asp-for="CurrentMedications" class="form-control" placeholder="e.g., Aspirin 100mg daily" />
+                            <span asp-validation-for="CurrentMedications" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Profile Image Upload -->
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="input-section">
+                            <label asp-for="ProfileImage" class="input-label">Profile Image</label>
+                            <label class="upload-zone" for="profileImageInput">
+                                <i class="bi bi-cloud-arrow-up upload-icon"></i>
+                                <div class="upload-text" id="profileImageName">Upload Profile Image</div>
+                                <div class="upload-hint">PNG or JPG Supported</div>
+                                <input type="file" id="profileImageInput" asp-for="ProfileImage" accept="image/png,image/jpeg" class="d-none" />
+                            </label>
+                            <div id="profileImagePreview" class="file-preview" style="display: none;">
+                                <img id="profileImagePreviewImg" src="" alt="Profile Preview" style="max-width: 200px; max-height: 200px;" />
+                                <button type="button" class="remove-file" onclick="clearProfileImage()">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="my-4" />
+
+                <!-- Visit Information Section -->
+                <h3 class="section-title mt-4 mb-3">Visit Information (Optional)</h3>
+
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="input-section">
+                            <label asp-for="VisitDate" class="input-label"></label>
+                            <input asp-for="VisitDate" type="datetime-local" class="form-control" />
+                            <span asp-validation-for="VisitDate" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="input-section">
+                            <label asp-for="VisitType" class="input-label"></label>
+                            <select asp-for="VisitType" class="form-control">
+                                <option value="">Select Visit Type</option>
+                                <option value="Initial Consultation">Initial Consultation</option>
+                                <option value="Checkup">Checkup</option>
+                                <option value="Follow-up">Follow-up</option>
+                                <option value="Emergency">Emergency</option>
+                                <option value="Consultation">Consultation</option>
+                            </select>
+                            <span asp-validation-for="VisitType" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="input-section">
+                            <label asp-for="ChiefComplaint" class="input-label"></label>
+                            <input asp-for="ChiefComplaint" class="form-control" />
+                            <span asp-validation-for="ChiefComplaint" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="input-section">
+                            <label asp-for="ConditionDescription" class="input-label">Condition Description</label>
+                            <textarea asp-for="ConditionDescription" class="clinical-textarea" rows="4" placeholder="Describe the patient's condition, symptoms, or complaints..."></textarea>
+                            <span asp-validation-for="ConditionDescription" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="input-section">
+                            <label asp-for="ClinicalNotes" class="input-label"></label>
+                            <textarea asp-for="ClinicalNotes" class="clinical-textarea" rows="4"></textarea>
+                            <span asp-validation-for="ClinicalNotes" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="input-section">
+                            <label asp-for="Diagnosis" class="input-label"></label>
+                            <textarea asp-for="Diagnosis" class="clinical-textarea" rows="3"></textarea>
+                            <span asp-validation-for="Diagnosis" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="input-section">
+                            <label asp-for="TreatmentPlan" class="input-label"></label>
+                            <textarea asp-for="TreatmentPlan" class="clinical-textarea" rows="3"></textarea>
+                            <span asp-validation-for="TreatmentPlan" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="my-4" />
+
+                <!-- Scan Uploads Section -->
+                <h3 class="section-title mt-4 mb-3">Medical Scans (Optional)</h3>
+
+                <!-- X-Ray Upload -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="input-section">
+                            <label asp-for="XRayImage" class="input-label">X-Ray Image</label>
+                            <label class="upload-zone" for="xrayFileInput">
+                                <i class="bi bi-cloud-arrow-up upload-icon"></i>
+                                <div class="upload-text" id="xrayFileName">Upload X-Ray</div>
+                                <div class="upload-hint">DICOM, PNG or JPG Supported</div>
+                                <input type="file" id="xrayFileInput" asp-for="XRayImage" accept="image/png,image/jpeg,image/dicom" class="d-none" />
+                            </label>
+                            <div id="xrayPreview" class="file-preview" style="display: none;">
+                                <img id="xrayPreviewImg" src="" alt="X-Ray Preview" />
+                                <button type="button" class="remove-file" onclick="clearXRay()">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CT Scan Upload -->
+                    <div class="col-md-6">
+                        <div class="input-section">
+                            <label asp-for="CTScanImage" class="input-label">CT Scan Image</label>
+                            <label class="upload-zone" for="ctFileInput">
+                                <i class="bi bi-cloud-arrow-up upload-icon"></i>
+                                <div class="upload-text" id="ctFileName">Upload CT Scan</div>
+                                <div class="upload-hint">PNG or JPG Supported</div>
+                                <input type="file" id="ctFileInput" asp-for="CTScanImage" accept="image/png,image/jpeg" class="d-none" />
+                            </label>
+                            <div id="ctPreview" class="file-preview" style="display: none;">
+                                <img id="ctPreviewImg" src="" alt="CT Preview" />
+                                <button type="button" class="remove-file" onclick="clearCT()">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="action-buttons mt-4">
+                    <button type="submit" class="combined-btn">
+                        <i class="bi bi-save"></i> Save Patient
+                    </button>
+                    <a href="@Url.Action("Index")" class="btn btn-secondary ms-3">
+                        <i class="bi bi-x-circle"></i> Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Profile image preview
+        document.getElementById('profileImageInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('profileImagePreviewImg').src = e.target.result;
+                    document.getElementById('profileImagePreview').style.display = 'block';
+                    document.getElementById('profileImageName').textContent = file.name;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        function clearProfileImage() {
+            document.getElementById('profileImageInput').value = '';
+            document.getElementById('profileImagePreview').style.display = 'none';
+            document.getElementById('profileImageName').textContent = 'Upload Profile Image';
+        }
+
+        // X-Ray preview
+        document.getElementById('xrayFileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('xrayPreviewImg').src = e.target.result;
+                    document.getElementById('xrayPreview').style.display = 'block';
+                    document.getElementById('xrayFileName').textContent = file.name;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        function clearXRay() {
+            document.getElementById('xrayFileInput').value = '';
+            document.getElementById('xrayPreview').style.display = 'none';
+            document.getElementById('xrayFileName').textContent = 'Upload X-Ray';
+        }
+
+        // CT preview
+        document.getElementById('ctFileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('ctPreviewImg').src = e.target.result;
+                    document.getElementById('ctPreview').style.display = 'block';
+                    document.getElementById('ctFileName').textContent = file.name;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        function clearCT() {
+            document.getElementById('ctFileInput').value = '';
+            document.getElementById('ctPreview').style.display = 'none';
+            document.getElementById('ctFileName').textContent = 'Upload CT Scan';
+        }
+    </script>
+}

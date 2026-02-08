@@ -1,0 +1,109 @@
+@model MedicalAIPlatform.Models.DashboardViewModel
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<div class="container-fluid">
+    <h1 class="mt-4">Dashboard</h1>
+    <hr />
+
+    @if (Model.IsDoctor || !Model.IsAdmin)
+    {
+        Layout = "_DoctorLayout";
+        
+        <!-- Dashboard Content -->
+        
+        <!-- Page Header (Greeting) -->
+        <div class="dash-header">
+            <div class="user-greeting">
+                <img src="https://ui-avatars.com/api/?name=@Model.UserName&background=random&color=fff" class="user-avatar-small" alt="Profile">
+                <div class="greeting-text">
+                    <h2><span data-i18n="dashboard_good_morning">Good Morning</span> @Model.UserName</h2>
+                    <p data-i18n="dashboard_scan_alerts_today">you have @Model.UrgentPatientAlertsCount scan alerts today</p>
+                </div>
+            </div>
+            <!-- Actions (Notifications only, Settings is floating) -->
+            <div class="header-actions">
+                 <button class="icon-btn" title="Notifications">
+                    <i class="bi bi-bell-fill" style="color:#1e293b;"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Stats Stack -->
+        <div class="stats-stack">
+            <!-- Pending Reports -->
+            <div class="dash-stat-card">
+                <div class="stat-icon-circle bg-icon-blue">
+                    <i class="bi bi-file-earmark-text"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>@Model.PendingAIReportsCount.ToString("00")</h3>
+                    <p data-i18n="dashboard_pending_ai_reports">Pending AI Reports</p>
+                </div>
+            </div>
+
+            <!-- Urgent Alerts -->
+            <div class="dash-stat-card">
+                <div class="stat-icon-circle bg-icon-red">
+                    <i class="bi bi-exclamation-circle"></i>
+                </div>
+                <div class="stat-content">
+                    <h3 class="text-danger-custom">@Model.UrgentPatientAlertsCount.ToString("00")</h3>
+                    <p class="text-danger-custom" data-i18n="dashboard_urgent_patient_alerts">Urgent patient Alerts</p>
+                </div>
+            </div>
+
+            <!-- Upcoming Appointments -->
+            <div class="dash-stat-card">
+                <div class="stat-icon-circle bg-icon-blue">
+                    <i class="bi bi-calendar-event"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>@Model.UpcomingAppointmentsCount.ToString("00")</h3>
+                    <p data-i18n="dashboard_upcoming_appointments">upcoming Appointments</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Upload Card -->
+        <div class="upload-card">
+            <h3 data-i18n="dashboard_upload_new_xray">Upload New X-Ray</h3>
+            <p data-i18n="dashboard_start_new_scan">start a new AI chest scan here</p>
+            <a asp-controller="Analytics" asp-action="Index" class="upload-btn" style="text-decoration:none; display:inline-flex; align-items:center;" data-i18n="dashboard_upload_now">
+                Upload Now <i class="bi bi-arrow-right-short" style="font-size:1.2rem;"></i>
+            </a>
+        </div>
+
+        <!-- Latest Patient Scans -->
+        <div class="latest-scans-section">
+            <div class="scans-header">
+                <h4 data-i18n="dashboard_latest_patient_scans">Latest Patient Scans</h4>
+                <a href="#" class="link-see-all" data-i18n="dashboard_see_all">See All</a>
+            </div>
+
+            @if (Model.LatestScans != null && Model.LatestScans.Any())
+            {
+                @foreach (var scan in Model.LatestScans)
+                {
+                    <div class="scan-list-item">
+                        <div class="scan-user-info">
+                            <img src="https://ui-avatars.com/api/?name=@scan.PatientName&background=random&color=fff" class="scan-avatar" alt="Patient">
+                            <div class="scan-text">
+                                <h5>@scan.PatientName</h5>
+                                <p><span data-i18n="dashboard_scan_id">scan ID:</span> @scan.ScanId</p>
+                            </div>
+                        </div>
+                        <span class="status-pill @(scan.Status == "High Risk" ? "status-high-risk" : "status-normal")">
+                            @scan.Status
+                        </span>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="text-muted text-center" data-i18n="dashboard_no_recent_scans">No recent scans found.</div>
+            }
+        </div>
+    }
+</div>

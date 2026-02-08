@@ -1,0 +1,394 @@
+/* Reference the same font as landing page */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* Hide default layout elements */
+header,
+footer.border-top {
+    display: none !important;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    /* Use the hero-bg-v3.png we just created */
+    background: url('../images/hero-bg-v3.png') no-repeat center center fixed;
+    background-size: cover;
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Reset the main container to allow full width/centering */
+div.container {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+main.pb-3 {
+    padding-bottom: 0 !important;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Glass Card */
+.auth-card {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 40px;
+    width: 100%;
+    max-width: 700px;
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+    color: #fff;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Header Section */
+.auth-header {
+    margin-bottom: 25px;
+}
+
+.auth-header h3 {
+    font-size: 1.2rem;
+    font-weight: 500;
+    margin-bottom: 15px;
+    color: #0f172a;
+    /* Dark text for contrast against light glass, or white? Image looks dark text on top */
+}
+
+/* Looking at image again: 
+   "Medical AI Assistant" is dark text (black/dark blue).
+   "Secure Access" is dark text.
+   The card background is semi-transparent white-ish glass.
+*/
+
+.auth-title {
+    color: #1D4581;
+    /* Primary Blue from landing */
+    font-weight: 600;
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+}
+
+.auth-icon-circle {
+    width: 80px;
+    height: 80px;
+    background: rgba(255, 255, 255, 0.25);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 15px;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.auth-icon-circle svg {
+    width: 40px;
+    height: 40px;
+    color: #1D4581;
+}
+
+.auth-subtitle {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #1D4581;
+    margin-bottom: 5px;
+}
+
+.auth-desc {
+    font-size: 0.9rem;
+    color: #43678E;
+    margin-bottom: 25px;
+    line-height: 1.4;
+}
+
+/* Tabs */
+.auth-tabs {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    padding: 5px;
+    display: flex;
+    margin-bottom: 25px;
+}
+
+.auth-tab {
+    flex: 1;
+    text-align: center;
+    padding: 10px;
+    cursor: pointer;
+    border-radius: 8px;
+    font-weight: 500;
+    color: #1D4581;
+    transition: all 0.3s ease;
+}
+
+.auth-tab.active {
+    background: #fff;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    color: #1D4581;
+    font-weight: 600;
+}
+
+/* Header Typography */
+.auth-title-large {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 8px;
+    letter-spacing: -0.02em;
+}
+
+.auth-subtitle-small {
+    font-size: 0.95rem;
+    color: #64748b;
+    margin-bottom: 32px;
+    line-height: 1.5;
+}
+
+/* Input Wrapper for perfect alignment */
+.input-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+/* Advanced Form Styling */
+.form-group {
+    position: relative;
+    margin-bottom: 24px;
+}
+
+.auth-label {
+    display: block;
+    text-align: left;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #334155;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-left: 4px;
+    transition: color 0.3s;
+}
+
+.form-group:focus-within .auth-label {
+    color: #1D4581;
+}
+
+.form-control-custom {
+    padding: 12px 15px 12px 48px;
+    /* Precise padding for icon */
+    height: 50px;
+    /* Fixed height for robust feel */
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    border-radius: 12px;
+    /* Modern rounded corners */
+    font-size: 0.95rem;
+    font-weight: 500;
+    width: 100%;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    color: #1e293b;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.form-control-custom::placeholder {
+    color: #94a3b8;
+    font-weight: 400;
+}
+
+.form-control-custom:focus {
+    outline: none;
+    background: #ffffff;
+    border-color: #1D4581;
+    box-shadow: 0 0 0 4px rgba(29, 69, 129, 0.1);
+    transform: translateY(-1px);
+}
+
+.form-icon {
+    position: absolute;
+    left: 16px;
+    top: 32px;
+    /* Adjusted based on label height (approx 20px) + margin (8px) + input padding top? No, let's use bottom 0 for absolute positioning relative to input */
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    /* Constrain height */
+    color: #64748b;
+    font-size: 1.1rem;
+    pointer-events: none;
+    transition: all 0.3s ease;
+    z-index: 10;
+}
+
+.form-group:focus-within .form-icon {
+    color: #1D4581;
+    transform: translateY(-50%) scale(1.1);
+}
+
+
+/* Right-aligned icon support */
+.form-icon-right {
+    left: auto;
+    right: 16px;
+}
+
+.form-control-icon-right {
+    padding: 12px 48px 12px 15px !important;
+}
+
+.forgot-password {
+    display: block;
+    text-align: left;
+    font-size: 0.85rem;
+    color: #127FEC;
+    /* Accent blue */
+    margin-bottom: 20px;
+    text-decoration: none;
+    font-weight: 500;
+    margin-left: 4px;
+    /* Align with label text which has margin-left: 4px */
+}
+
+/* Back to Login Link */
+.back-to-login {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: #127FEC;
+    text-decoration: none;
+    font-weight: 500;
+    margin-top: 10px;
+    transition: all 0.2s;
+}
+
+.back-to-login:hover {
+    text-decoration: underline;
+    transform: translateX(-2px);
+}
+
+.forgot-password:hover {
+    text-decoration: underline;
+}
+
+/* Buttons */
+.btn-auth {
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 15px;
+    border: none;
+    transition: all 0.3s;
+}
+
+.btn-primary-auth {
+    background-color: #1D4581;
+    color: #fff;
+    box-shadow: 0 4px 15px rgba(29, 69, 129, 0.3);
+}
+
+.btn-primary-auth:hover {
+    background-color: #163a6e;
+    transform: translateY(-1px);
+    color: #fff;
+}
+
+.btn-google {
+    background-color: rgba(255, 255, 255, 0.6);
+    color: #333;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.btn-google:hover {
+    background-color: rgba(255, 255, 255, 0.9);
+}
+
+.auth-footer {
+    font-size: 0.85rem;
+    color: #43678E;
+    margin-top: 10px;
+}
+
+.auth-footer a {
+    color: #127FEC;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.auth-footer a:hover {
+    text-decoration: underline;
+}
+
+/* Smoother Card Animation */
+.auth-card {
+    animation: slideUpFade 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes slideUpFade {
+    from {
+        opacity: 0;
+        transform: translateY(40px) scale(0.98);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Social Button Enhancement */
+.btn-google {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    color: #1e293b;
+    font-weight: 500;
+    padding: 14px;
+    border-radius: 12px;
+    transition: all 0.2s;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.btn-google:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.auth-card {
+    /* Glass enhancement */
+    background: rgba(255, 255, 255, 0.6);
+    /* More opaque */
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    box-shadow:
+        0 20px 25px -5px rgba(0, 0, 0, 0.1),
+        0 10px 10px -5px rgba(0, 0, 0, 0.04),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+}
+.btn-cancel:hover { background: #D1D5DB !important; transform: translateY(-1px); }

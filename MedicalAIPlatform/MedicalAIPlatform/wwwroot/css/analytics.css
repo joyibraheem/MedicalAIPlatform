@@ -1,0 +1,907 @@
+/* Analytics Pages Styles - Match Settings Page Design */
+/* Use standard app-frame structure like other pages */
+
+.analytics-container {
+    position: relative;
+    width: 100%;
+    padding: 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* Remove custom background - use standard background from admin.css */
+.analytics-background {
+    display: none;
+}
+
+/* Dark Mode Support for Analytics - Match Settings Design */
+html[data-theme="dark"] .command-center-title h1 {
+    color: #ffffff !important;
+}
+
+html[data-theme="dark"] .command-center-title p {
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+html[data-theme="dark"] .section-title,
+html[data-theme="dark"] .findings-title {
+    color: #ffffff !important;
+}
+
+html[data-theme="dark"] .patient-name,
+html[data-theme="dark"] .detail-value {
+    color: #ffffff !important;
+}
+
+html[data-theme="dark"] .patient-details,
+html[data-theme="dark"] .detail-label {
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+html[data-theme="dark"] .results-card,
+body.dark-mode .results-card {
+    background: rgba(30, 41, 59, 0.6) !important;
+    backdrop-filter: blur(12px) saturate(120%) !important;
+    -webkit-backdrop-filter: blur(12px) saturate(120%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: #ffffff !important;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px) rotate(0deg); }
+    50% { transform: translateY(-20px) rotate(5deg); }
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 0.6; }
+}
+
+.analytics-overlay {
+    position: relative;
+    z-index: 1;
+    padding: 0;
+    width: 100%;
+}
+
+/* Ensure app-frame uses standard styling from admin.css */
+body.doctor-dashboard .app-frame {
+    width: 95% !important;
+    max-width: var(--app-max-width, 1200px) !important;
+    margin: 0 auto !important;
+    height: auto !important;
+    min-height: 90vh !important;
+    max-height: none !important;
+}
+
+/* Header styling - Use standard admin.css header, but ensure visibility */
+body.doctor-dashboard .app-header {
+    position: relative !important;
+    z-index: 1000 !important;
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Dark Mode Header - Keep light like Settings page */
+html[data-theme="dark"] body.doctor-dashboard .app-header,
+body.dark-mode.doctor-dashboard .app-header {
+    background: rgba(255, 255, 255, 0.95) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    border-bottom-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+html[data-theme="dark"] body.doctor-dashboard .app-header .brand-name,
+html[data-theme="dark"] body.doctor-dashboard .app-header .nav-link,
+body.dark-mode.doctor-dashboard .app-header .brand-name,
+body.dark-mode.doctor-dashboard .app-header .nav-link {
+    color: #1f2937 !important;
+}
+
+/* Ensure header elements are visible */
+/* Use standard header styles from admin.css - no overrides needed */
+
+/* Patient Header - Match Settings Card Design */
+.patient-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(15px) saturate(150%);
+    -webkit-backdrop-filter: blur(15px) saturate(150%);
+    border-radius: 16px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+/* Dark Mode Patient Header */
+html[data-theme="dark"] .patient-header,
+body.dark-mode .patient-header {
+    background: rgba(30, 41, 59, 0.6) !important;
+    backdrop-filter: blur(12px) saturate(120%) !important;
+    -webkit-backdrop-filter: blur(12px) saturate(120%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: #ffffff !important;
+}
+
+.back-button {
+    background: rgba(255, 255, 255, 0.3);
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #1A73E8;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    z-index: 2;
+}
+
+.back-button:hover {
+    background: rgba(255, 255, 255, 0.4);
+    transform: scale(1.1);
+}
+
+.patient-info {
+    flex: 1;
+}
+
+.patient-name {
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: #0f172a;
+    margin-bottom: 0.25rem;
+}
+
+/* Dark Mode Patient Name */
+html[data-theme="dark"] .patient-name,
+body.dark-mode .patient-name {
+    color: #ffffff !important;
+}
+
+.patient-details {
+    font-size: 0.9rem;
+    color: #64748b;
+}
+
+/* Dark Mode Patient Details */
+html[data-theme="dark"] .patient-details,
+body.dark-mode .patient-details {
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* Command Center Title - Matching image design exactly */
+.command-center-title {
+    text-align: center;
+    margin-bottom: 2rem;
+    max-width: 1400px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.command-center-title h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #1A73E8;
+    margin-bottom: 0.5rem;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    letter-spacing: -0.02em;
+}
+
+.command-center-title p {
+    font-size: 1.1rem;
+    color: #64748b;
+    font-weight: 400;
+    margin: 0;
+}
+
+/* Dark Mode Command Center Title */
+html[data-theme="dark"] .command-center-title h1,
+body.dark-mode .command-center-title h1 {
+    color: #ffffff !important;
+}
+
+html[data-theme="dark"] .command-center-title p,
+body.dark-mode .command-center-title p {
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* Case Input Card - Match Settings Card Design */
+.case-input-card {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(15px) saturate(150%);
+    -webkit-backdrop-filter: blur(15px) saturate(150%);
+    border-radius: 16px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+/* Dark Mode Case Input Card */
+html[data-theme="dark"] .case-input-card,
+body.dark-mode .case-input-card {
+    background: rgba(30, 41, 59, 0.6) !important;
+    backdrop-filter: blur(12px) saturate(120%) !important;
+    -webkit-backdrop-filter: blur(12px) saturate(120%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: #ffffff !important;
+}
+
+/* Add subtle medical icon overlays within the card */
+.case-input-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -10%;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.05) 0%, transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+    opacity: 0.5;
+}
+
+.section-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+/* Dark Mode Section Title */
+html[data-theme="dark"] .section-title,
+body.dark-mode .section-title {
+    color: #ffffff !important;
+}
+
+.section-icon {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    background: #1A73E8;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+.input-section {
+    margin-bottom: 2rem;
+}
+
+.input-label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: #64748b;
+    margin-bottom: 0.75rem;
+    letter-spacing: 0.5px;
+}
+
+/* Dark Mode Input Label */
+html[data-theme="dark"] .input-label,
+body.dark-mode .input-label {
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.upload-zone {
+    display: block;
+    border: 2px dashed rgba(26, 115, 232, 0.3);
+    border-radius: 1rem;
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Dark Mode Upload Zone */
+html[data-theme="dark"] .upload-zone,
+body.dark-mode .upload-zone {
+    background: rgba(30, 41, 59, 0.4) !important;
+    border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+html[data-theme="dark"] .upload-zone:hover,
+body.dark-mode .upload-zone:hover {
+    background: rgba(30, 41, 59, 0.6) !important;
+    border-color: #3B82F6 !important;
+}
+
+.upload-zone:hover {
+    border-color: #1A73E8;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+}
+
+.upload-icon {
+    font-size: 2.5rem;
+    color: #1A73E8;
+    margin-bottom: 0.5rem;
+}
+
+.upload-text {
+    font-weight: 600;
+    color: #0f172a;
+    margin-bottom: 0.25rem;
+}
+
+/* Dark Mode Upload Text */
+html[data-theme="dark"] .upload-text,
+body.dark-mode .upload-text {
+    color: #ffffff !important;
+}
+
+.upload-hint {
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
+/* Dark Mode Upload Hint */
+html[data-theme="dark"] .upload-hint,
+body.dark-mode .upload-hint {
+    color: rgba(255, 255, 255, 0.7) !important;
+}
+
+.file-preview {
+    position: relative;
+    margin-top: 1rem;
+    border-radius: 1rem;
+    overflow: hidden;
+    background: #000;
+    max-height: 300px;
+}
+
+.file-preview img {
+    width: 100%;
+    height: auto;
+    display: block;
+    object-fit: contain;
+}
+
+.remove-file {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: rgba(239, 68, 68, 0.9);
+    border: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.remove-file:hover {
+    background: rgba(239, 68, 68, 1);
+    transform: scale(1.1);
+}
+
+.clinical-textarea {
+    width: 100%;
+    padding: 1rem;
+    border: 1px solid rgba(26, 115, 232, 0.2);
+    border-radius: 1rem;
+    background: rgba(255, 255, 255, 0.5);
+    font-size: 0.95rem;
+    resize: vertical;
+    min-height: 120px;
+    transition: all 0.3s ease;
+    color: #1e293b;
+}
+
+.clinical-textarea:focus {
+    outline: none;
+    border-color: #1A73E8;
+    background: rgba(255, 255, 255, 0.7);
+    box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+}
+
+/* Dark Mode Textarea */
+html[data-theme="dark"] .clinical-textarea,
+body.dark-mode .clinical-textarea {
+    background: rgba(30, 41, 59, 0.5) !important;
+    border-color: rgba(255, 255, 255, 0.2) !important;
+    color: #ffffff !important;
+}
+
+html[data-theme="dark"] .clinical-textarea:focus,
+body.dark-mode .clinical-textarea:focus {
+    background: rgba(30, 41, 59, 0.7) !important;
+    border-color: #3B82F6 !important;
+}
+
+/* Action Buttons */
+.action-buttons {
+    margin-top: 2rem;
+}
+
+.button-row {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.action-btn {
+    flex: 1;
+    padding: 1rem 1.5rem;
+    border: none;
+    border-radius: 0.75rem;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: white;
+    position: relative;
+    z-index: 2;
+}
+
+.btn-xray {
+    background: linear-gradient(135deg, #1A73E8 0%, #4285F4 100%);
+}
+
+.btn-text {
+    background: linear-gradient(135deg, #1A73E8 0%, #4285F4 100%);
+}
+
+.btn-ct {
+    background: linear-gradient(135deg, #1A73E8 0%, #4285F4 100%);
+}
+
+.action-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.action-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.combined-btn {
+    width: 100%;
+    padding: 1.25rem 2rem;
+    background: linear-gradient(135deg, #1A73E8 0%, #4285F4 100%);
+    border: none;
+    border-radius: 0.75rem;
+    color: white;
+    font-weight: 600;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
+    position: relative;
+    z-index: 2;
+}
+
+.combined-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(26, 115, 232, 0.4);
+}
+
+.combined-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Download Section */
+.download-section {
+    margin-top: 2.5rem;
+    padding-top: 2rem;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.download-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #0f172a;
+}
+
+/* Dark Mode Download Section */
+html[data-theme="dark"] .download-section,
+body.dark-mode .download-section {
+    border-top-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+html[data-theme="dark"] .download-title,
+body.dark-mode .download-title {
+    color: #ffffff !important;
+    margin-bottom: 1rem;
+}
+
+.download-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.download-btn {
+    padding: 0.75rem 1.25rem;
+    background: rgba(255, 255, 255, 0.3);
+    border: 1px solid rgba(26, 115, 232, 0.2);
+    border-radius: 0.5rem;
+    color: #1A73E8;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.download-btn:hover {
+    background: rgba(255, 255, 255, 0.5);
+    border-color: #1A73E8;
+    transform: translateY(-1px);
+}
+
+.download-all {
+    background: linear-gradient(135deg, #1A73E8 0%, #4285F4 100%);
+    color: white;
+    border: none;
+}
+
+.download-all:hover {
+    background: linear-gradient(135deg, #4285F4 0%, #1A73E8 100%);
+    color: white;
+}
+
+/* Results Card - Match Settings Card Design */
+.results-card {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(15px) saturate(150%);
+    -webkit-backdrop-filter: blur(15px) saturate(150%);
+    border-radius: 16px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+/* Dark Mode Results Card */
+html[data-theme="dark"] .results-card,
+body.dark-mode .results-card {
+    background: rgba(30, 41, 59, 0.6) !important;
+    backdrop-filter: blur(12px) saturate(120%) !important;
+    -webkit-backdrop-filter: blur(12px) saturate(120%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: #ffffff !important;
+}
+
+/* Add subtle background medical icons within results cards */
+.results-card::before {
+    content: '';
+    position: absolute;
+    top: 10%;
+    left: 5%;
+    width: 150px;
+    height: 150px;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.03) 0%, transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+    opacity: 0.4;
+}
+
+.results-card::after {
+    content: '';
+    position: absolute;
+    bottom: 10%;
+    right: 5%;
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.03) 0%, transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+    opacity: 0.4;
+}
+
+.findings-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 1rem;
+    position: relative;
+    z-index: 2;
+}
+
+/* Dark Mode Findings Title */
+html[data-theme="dark"] .findings-title,
+body.dark-mode .findings-title {
+    color: #ffffff !important;
+}
+
+/* Dark Mode Findings Title */
+html[data-theme="dark"] .findings-title,
+body.dark-mode .findings-title {
+    color: #ffffff !important;
+}
+
+.model-link {
+    color: #1A73E8;
+    text-decoration: underline;
+    cursor: pointer;
+    font-weight: 500;
+    margin-bottom: 1.5rem;
+    display: inline-block;
+    position: relative;
+    z-index: 2;
+    transition: color 0.3s ease;
+}
+
+.model-link:hover {
+    color: #0d5bb8;
+}
+
+.pathology-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.pathology-item {
+    margin-bottom: 1.25rem;
+}
+
+.pathology-label {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+}
+
+.pathology-name {
+    font-weight: 600;
+    color: #0f172a;
+}
+
+.pathology-percentage {
+    font-weight: 600;
+    color: #1A73E8;
+}
+
+.pathology-bar {
+    height: 8px;
+    background: rgba(203, 213, 225, 0.5);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.pathology-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #1A73E8 0%, #4285F4 100%);
+    border-radius: 4px;
+    transition: width 0.6s ease;
+}
+
+.pathology-percentage {
+    font-weight: 600;
+    color: #1A73E8;
+}
+
+/* X-Ray Image Display */
+.xray-display {
+    position: relative;
+    background: #000;
+    border-radius: 1rem;
+    overflow: hidden;
+    margin-bottom: 1rem;
+}
+
+.xray-image {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.heatmap-overlay-img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    mix-blend-mode: screen;
+    pointer-events: none;
+}
+
+.heatmap-control {
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 0 0 1rem 1rem;
+}
+
+.heatmap-slider {
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(203, 213, 225, 0.5);
+    outline: none;
+    -webkit-appearance: none;
+}
+
+.heatmap-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #1A73E8;
+    cursor: pointer;
+}
+
+.heatmap-slider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #1A73E8;
+    cursor: pointer;
+    border: none;
+}
+
+/* Medical Entities */
+.entities-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.entities-bordered {
+    padding: 1.5rem;
+    border: 2px dashed rgba(26, 115, 232, 0.3);
+    border-radius: 1rem;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(5px);
+    position: relative;
+    z-index: 2;
+}
+
+.entity-badge {
+    padding: 0.75rem 1.25rem;
+    background: rgba(26, 115, 232, 0.15);
+    border: 1px solid rgba(26, 115, 232, 0.3);
+    border-radius: 0.75rem;
+    font-size: 0.9rem;
+    color: #1A73E8;
+    font-weight: 500;
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.entity-name {
+    font-weight: 600;
+    color: #0f172a;
+    font-size: 0.95rem;
+}
+
+.entity-type {
+    font-size: 0.8rem;
+    color: #64748b;
+    font-weight: 400;
+}
+
+/* Predicted Class */
+.predicted-class {
+    padding: 1.5rem;
+    background: rgba(26, 115, 232, 0.1);
+    border: 2px dashed rgba(26, 115, 232, 0.3);
+    border-radius: 1rem;
+    margin-bottom: 1.5rem;
+    position: relative;
+    z-index: 2;
+}
+
+.predicted-class-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: #64748b;
+    margin-bottom: 0.5rem;
+}
+
+.predicted-class-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #1A73E8;
+}
+
+.class-probabilities {
+    margin-top: 1.5rem;
+}
+
+.class-prob-item {
+    margin-bottom: 1rem;
+}
+
+.class-prob-label {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+}
+
+.class-prob-name {
+    font-weight: 600;
+    color: #0f172a;
+}
+
+.class-prob-percentage {
+    font-weight: 600;
+    color: #1A73E8;
+}
+
+.class-prob-bar {
+    height: 8px;
+    background: rgba(203, 213, 225, 0.5);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.class-prob-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #1A73E8 0%, #4285F4 100%);
+    border-radius: 4px;
+    transition: width 0.6s ease;
+}
+
+/* Hide Analytics-specific settings button - use layout's settings-fab instead */
+.settings-btn {
+    display: none !important;
+}
+
+.settings-btn:hover {
+    background: rgba(255, 255, 255, 0.5);
+    transform: rotate(90deg) scale(1.1);
+}
+
+/* Loading Spinner */
+.spinner-border-sm {
+    width: 1rem;
+    height: 1rem;
+    border-width: 0.15em;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .analytics-overlay {
+        padding: 1rem;
+    }
+
+    .command-center-title h1 {
+        font-size: 2rem;
+    }
+
+    .case-input-card {
+        padding: 1.5rem;
+    }
+
+    .button-row {
+        flex-direction: column;
+    }
+
+    .action-btn {
+        width: 100%;
+    }
+}

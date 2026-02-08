@@ -1,0 +1,20 @@
+@{
+    ViewData["Title"] = "Approval Pending";
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <div class="card shadow">
+                <div class="card-body py-5">
+                    <h1 class="display-4 text-warning mb-4"><i class="bi bi-clock-history"></i> Approval Pending</h1>
+                    <p class="lead">Thank you for registering as a Doctor.</p>
+                    <p>Your account has been created and verified with the code, but it is currently pending administrative approval.</p>
+                    <p>You will be notified once your account is fully active.</p>
+                    <hr class="my-4">
+                    <a asp-controller="Home" asp-action="Index" class="btn btn-primary">Return to Home</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

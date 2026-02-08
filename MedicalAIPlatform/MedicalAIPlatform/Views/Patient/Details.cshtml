@@ -1,0 +1,1309 @@
+@model MedicalAIPlatform.Models.PatientDetailsViewModel
+@{
+    ViewData["Title"] = $"Patient: {Model.Patient.FullName}";
+    Layout = "_DoctorLayout";
+}
+@Html.AntiForgeryToken()
+
+<link rel="stylesheet" href="~/css/analytics.css" asp-append-version="true" />
+<style>
+    /* Modal styling - ensure it's visible and clickable */
+    #linkModelsModal .modal-content {
+        border: none;
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+    
+    #linkModelsModal .modal-header {
+        border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    #linkModelsModal .modal-footer {
+        border-top: 1px solid #dee2e6;
+        padding: 1rem 1.5rem;
+    }
+    
+    /* Ensure buttons are clickable */
+    #linkModelsBtn, #cancelLinkBtn {
+        transition: all 0.2s ease;
+    }
+    
+    #linkModelsBtn:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
+    }
+    
+    #cancelLinkBtn:hover {
+        transform: translateY(-1px);
+    }
+    
+    /* Modal backdrop - ensure proper z-index */
+    .modal-backdrop {
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 1050 !important;
+    }
+    
+    /* Ensure modal is above backdrop */
+    .modal {
+        z-index: 1055 !important;
+    }
+    
+    #linkModelsModal {
+        z-index: 1055 !important;
+    }
+    
+    #linkModelsModal .modal-dialog {
+        z-index: 1056 !important;
+        position: relative;
+    }
+    
+    #linkModelsModal .modal-content {
+        z-index: 1057 !important;
+        position: relative;
+    }
+    
+    /* Prevent backdrop from blocking modal interactions */
+    .modal.show {
+        pointer-events: auto !important;
+    }
+    
+    .modal.show .modal-dialog {
+        pointer-events: auto !important;
+    }
+    
+    .modal.show .modal-content {
+        pointer-events: auto !important;
+    }
+    
+    /* Ensure backdrop doesn't block clicks on modal */
+    .modal-backdrop {
+        pointer-events: auto !important;
+    }
+    
+    /* Make sure modal is always above backdrop */
+    body.modal-open .modal.show {
+        z-index: 1055 !important;
+    }
+    
+    body.modal-open .modal.show .modal-dialog {
+        z-index: 1056 !important;
+    }
+    
+    body.modal-open .modal.show .modal-content {
+        z-index: 1057 !important;
+    }
+</style>
+
+<div class="analytics-container">
+    <div class="analytics-overlay">
+        <!-- Header -->
+        <div class="patient-header">
+            <button class="back-button" onclick="window.location.href='@Url.Action("Index", "Patient")'">
+                <i class="bi bi-arrow-left"></i>
+            </button>
+            <div class="patient-info">
+                <div class="patient-name">@Model.Patient.FullName</div>
+                <div style="font-size: 0.9rem; color: #aaa;">@(Model.Patient.PatientId ?? "No Patient ID")</div>
+            </div>
+        </div>
+
+        <!-- Patient Information Card -->
+        <div class="case-input-card mb-4">
+            <h2 class="section-title">Patient Information</h2>
+            <div class="row">
+                <div class="col-md-3 text-center mb-3">
+                    @if (!string.IsNullOrEmpty(Model.ProfileImageDataUrl))
+                    {
+                        <img src="@Model.ProfileImageDataUrl" alt="Profile" style="width: 150px; height: 150px; border-radius: 50%; object-fit: cover; border: 3px solid #007bff;" />
+                    }
+                    else
+                    {
+                        <div style="width: 150px; height: 150px; border-radius: 50%; background: #6c757d; display: flex; align-items: center; justify-content: center; color: white; font-size: 3rem; font-weight: bold; margin: 0 auto;">
+                            @Model.Patient.FirstName[0]@Model.Patient.LastName[0]
+                        </div>
+                    }
+                </div>
+                <div class="col-md-9">
+                    <div class="row">
+                        <div class="col-md-6 mb-2">
+                            <strong>Date of Birth:</strong> @Model.Patient.DateOfBirth.ToString("yyyy-MM-dd")
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <strong>Gender:</strong> @Model.Patient.Gender
+                        </div>
+                        @if (!string.IsNullOrEmpty(Model.Patient.Email))
+                        {
+                            <div class="col-md-6 mb-2">
+                                <strong>Email:</strong> @Model.Patient.Email
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(Model.Patient.PhoneNumber))
+                        {
+                            <div class="col-md-6 mb-2">
+                                <strong>Phone:</strong> @Model.Patient.PhoneNumber
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(Model.Patient.Address))
+                        {
+                            <div class="col-md-12 mb-2">
+                                <strong>Address:</strong> @Model.Patient.Address
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(Model.Patient.Allergies))
+                        {
+                            <div class="col-md-6 mb-2">
+                                <strong>Allergies:</strong> @Model.Patient.Allergies
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(Model.Patient.CurrentMedications))
+                        {
+                            <div class="col-md-6 mb-2">
+                                <strong>Current Medications:</strong> @Model.Patient.CurrentMedications
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(Model.Patient.MedicalHistorySummary))
+                        {
+                            <div class="col-md-12 mb-2">
+                                <strong>Medical History:</strong> @Model.Patient.MedicalHistorySummary
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Medical Scans Section -->
+        <div class="case-input-card mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2 class="section-title mb-0">Medical Scans</h2>
+                <button class="btn btn-primary" onclick="showUploadScanModal()">
+                    <i class="bi bi-plus-circle"></i> Upload Scan
+                </button>
+            </div>
+
+            @if (Model.Scans.Any())
+            {
+                <div class="row">
+                    @foreach (var scan in Model.Scans)
+                    {
+                        <div class="col-md-6 mb-4">
+                            <div class="card">
+                                <div class="card-header d-flex justify-content-between">
+                                    <span><strong>@scan.ScanType</strong> - @scan.ScanDate.ToString("yyyy-MM-dd HH:mm")</span>
+                                    <span class="badge bg-info">@scan.FileName</span>
+                                </div>
+                                <div class="card-body">
+                                    @if (!string.IsNullOrEmpty(scan.ImageDataUrl))
+                                    {
+                                        <img src="@scan.ImageDataUrl" alt="@scan.ScanType" class="img-fluid mb-3" style="max-height: 300px; width: 100%; object-fit: contain;" />
+                                    }
+                                    
+                                    @if (!string.IsNullOrEmpty(scan.LinkedModels))
+                                    {
+                                        <div class="mb-2">
+                                            <strong>Linked Models:</strong> 
+                                            <span class="badge bg-success">@scan.LinkedModels</span>
+                                        </div>
+                                    }
+                                    
+                                    @if (!string.IsNullOrEmpty(scan.GeneratedResult))
+                                    {
+                                        <div class="alert alert-info">
+                                            <strong>Generated Result:</strong>
+                                            <pre style="white-space: pre-wrap; margin: 0;">@scan.GeneratedResult</pre>
+                                            @if (scan.ResultGeneratedAt.HasValue)
+                                            {
+                                                <small class="text-muted">Generated: @scan.ResultGeneratedAt.Value.ToString("yyyy-MM-dd HH:mm")</small>
+                                            }
+                                        </div>
+                                    }
+                                    
+                                    <div class="btn-group">
+                                        <button class="btn btn-sm btn-primary link-models-btn" 
+                                                data-patient-id="@Model.Patient.Id" 
+                                                data-scan-id="@scan.Id" 
+                                                data-scan-type="@scan.ScanType">
+                                            <i class="bi bi-link"></i> Link AI Models
+                                        </button>
+                                        @if (string.IsNullOrEmpty(scan.GeneratedResult))
+                                        {
+                                            <button class="btn btn-sm btn-success generate-result-btn" 
+                                                    data-patient-id="@Model.Patient.Id" 
+                                                    data-scan-id="@scan.Id">
+                                                <i class="bi bi-magic"></i> Generate Result
+                                            </button>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="text-center py-4">
+                    <i class="bi bi-image" style="font-size: 2rem; color: #6c757d;"></i>
+                    <p class="mt-2">No scans uploaded yet.</p>
+                </div>
+            }
+        </div>
+
+        <!-- History Section -->
+        <div class="case-input-card">
+            <h2 class="section-title">Medical History</h2>
+            @if (Model.HistoryEntries.Any())
+            {
+                <div class="list-group">
+                    @foreach (var history in Model.HistoryEntries)
+                    {
+                        <div class="list-group-item mb-3">
+                            <div class="d-flex justify-content-between mb-2">
+                                <h5>@history.VisitType - @history.VisitDate.ToString("yyyy-MM-dd HH:mm")</h5>
+                            </div>
+                            @if (!string.IsNullOrEmpty(history.ChiefComplaint))
+                            {
+                                <p><strong>Chief Complaint:</strong> @history.ChiefComplaint</p>
+                            }
+                            @if (!string.IsNullOrEmpty(history.ConditionDescription))
+                            {
+                                <p><strong>Condition:</strong> @history.ConditionDescription</p>
+                            }
+                            @if (!string.IsNullOrEmpty(history.ClinicalNotes))
+                            {
+                                <p><strong>Clinical Notes:</strong> @history.ClinicalNotes</p>
+                            }
+                            @if (!string.IsNullOrEmpty(history.Diagnosis))
+                            {
+                                <p><strong>Diagnosis:</strong> @history.Diagnosis</p>
+                            }
+                            @if (!string.IsNullOrEmpty(history.TreatmentPlan))
+                            {
+                                <p><strong>Treatment Plan:</strong> @history.TreatmentPlan</p>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="text-center py-4">
+                    <i class="bi bi-clock-history" style="font-size: 2rem; color: #6c757d;"></i>
+                    <p class="mt-2">No history entries yet.</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Upload Scan Modal -->
+<div class="modal fade" id="uploadScanModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Upload Medical Scan</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="uploadScanForm">
+                    <input type="hidden" id="uploadPatientId" value="@Model.Patient.Id" />
+                    <div class="mb-3">
+                        <label class="form-label">Scan Type</label>
+                        <select id="uploadScanType" class="form-control" required>
+                            <option value="">Select Scan Type</option>
+                            <option value="XRay">X-Ray</option>
+                            <option value="CTScan">CT Scan</option>
+                            <option value="MRI">MRI</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Scan File</label>
+                        <input type="file" id="uploadScanFile" class="form-control" accept="image/png,image/jpeg,image/dicom" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Condition Description (Optional)</label>
+                        <textarea id="uploadConditionText" class="form-control" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="uploadScan()">Upload</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Link Models Modal -->
+<div class="modal fade" id="linkModelsModal" tabindex="-1" aria-labelledby="linkModelsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="linkModelsModalLabel">
+                    <i class="bi bi-link-45deg"></i> Link AI Models to Scan
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close" id="closeModalBtn"></button>
+            </div>
+            <div class="modal-body" style="padding: 1.5rem;">
+                <form id="linkModelsForm">
+                    <input type="hidden" id="linkPatientId" />
+                    <input type="hidden" id="linkScanId" />
+                    
+                    <!-- Instructions -->
+                    <div class="alert alert-primary mb-4" role="alert">
+                        <h6 class="alert-heading"><i class="bi bi-info-circle-fill"></i> Instructions</h6>
+                        <p class="mb-0" id="modelInfoText">The appropriate AI model for your scan type has been automatically selected. Click <strong>"Link Models"</strong> to proceed, or select additional models if needed.</p>
+                    </div>
+                    
+                    <!-- Model Selection -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold mb-3">
+                            <i class="bi bi-check2-square"></i> Select AI Models to Link:
+                        </label>
+                        
+                        <div class="card mb-2" id="chexnetCard" style="border: 2px solid #e0e0e0;">
+                            <div class="card-body p-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="modelCheXNet" value="CheXNet" onchange="updateModelSelection()" style="width: 20px; height: 20px; cursor: pointer;">
+                                    <label class="form-check-label ms-2" for="modelCheXNet" style="cursor: pointer; width: 100%;">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <strong class="text-primary">CheXNet</strong>
+                                                <small class="text-muted d-block">For X-Ray chest image analysis</small>
+                                            </div>
+                                            <span class="badge bg-success" id="chexnetBadge" style="display:none;">
+                                                <i class="bi bi-check-circle"></i> Selected
+                                            </span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card mb-2" id="biobertCard" style="border: 2px solid #e0e0e0;">
+                            <div class="card-body p-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="modelBioBert" value="BioBert" onchange="updateModelSelection()" style="width: 20px; height: 20px; cursor: pointer;">
+                                    <label class="form-check-label ms-2" for="modelBioBert" style="cursor: pointer; width: 100%;">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <strong class="text-primary">BioBert</strong>
+                                                <small class="text-muted d-block">For clinical text analysis (optional)</small>
+                                            </div>
+                                            <span class="badge bg-success" id="biobertBadge" style="display:none;">
+                                                <i class="bi bi-check-circle"></i> Selected
+                                            </span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card mb-3" id="lungaiCard" style="border: 2px solid #e0e0e0;">
+                            <div class="card-body p-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="modelLungAI" value="LungAI" onchange="updateModelSelection()" style="width: 20px; height: 20px; cursor: pointer;">
+                                    <label class="form-check-label ms-2" for="modelLungAI" style="cursor: pointer; width: 100%;">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <strong class="text-primary">LungAI</strong>
+                                                <small class="text-muted d-block">For CT Scan chest analysis</small>
+                                            </div>
+                                            <span class="badge bg-success" id="lungaiBadge" style="display:none;">
+                                                <i class="bi bi-check-circle"></i> Selected
+                                            </span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Clinical Text Input -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">
+                            <i class="bi bi-text-paragraph"></i> Clinical Text (Optional - for BioBert):
+                        </label>
+                        <textarea id="linkClinicalText" class="form-control" rows="3" placeholder="Enter patient symptoms, clinical notes, or condition description here..."></textarea>
+                        <small class="text-muted">This text will be analyzed by BioBert if selected above.</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary btn-lg" id="cancelLinkBtn" data-bs-dismiss="modal" style="min-width: 120px; cursor: pointer;">
+                    <i class="bi bi-x-circle"></i> Cancel
+                </button>
+                <button type="button" class="btn btn-primary btn-lg" id="linkModelsBtn" style="min-width: 180px; font-weight: bold; cursor: pointer;">
+                    <i class="bi bi-link-45deg"></i> <span id="linkBtnText">Link Models</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Global backdrop monitor - watches for unwanted backdrop creation
+        let backdropMonitor = null;
+        function startBackdropMonitor() {
+            if (backdropMonitor) {
+                backdropMonitor.disconnect(); // Disconnect old one if exists
+            }
+            
+            backdropMonitor = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.addedNodes.length > 0) {
+                        mutation.addedNodes.forEach(function(node) {
+                            if (node.nodeType === 1 && node.classList && node.classList.contains('modal-backdrop')) {
+                                // Small delay to let Bootstrap finish its setup
+                                setTimeout(function() {
+                                    const allBackdrops = document.querySelectorAll('.modal-backdrop');
+                                    console.log(`Backdrop monitor: Detected backdrop. Total: ${allBackdrops.length}`);
+                                    
+                                    // Remove ALL backdrops for linkModelsModal - backdrop causes blocking
+                                    const linkModal = document.getElementById('linkModelsModal');
+                                    if (linkModal && linkModal.classList.contains('show')) {
+                                        console.log(`Removing ALL ${allBackdrops.length} backdrop(s) - backdrop disabled for linkModelsModal`);
+                                        allBackdrops.forEach(backdrop => {
+                                            backdrop.remove();
+                                        });
+                                        // Clean up body classes
+                                        document.body.classList.remove('modal-open');
+                                        document.body.style.overflow = '';
+                                        document.body.style.paddingRight = '';
+                                    }
+                                }, 10);
+                            }
+                        });
+                    }
+                });
+            });
+            
+            backdropMonitor.observe(document.body, {
+                childList: true,
+                subtree: false
+            });
+            
+            console.log('Backdrop monitor started');
+        }
+        
+        // Start monitoring on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            startBackdropMonitor();
+        });
+        
+        // Use event delegation for dynamically rendered buttons
+        document.addEventListener('DOMContentLoaded', function() {
+            // Handle Link AI Models button clicks
+            document.addEventListener('click', function(e) {
+                if (e.target.closest('.link-models-btn')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const btn = e.target.closest('.link-models-btn');
+                    const patientId = btn.getAttribute('data-patient-id');
+                    const scanId = btn.getAttribute('data-scan-id');
+                    const scanType = btn.getAttribute('data-scan-type');
+                    
+                    console.log('=== Link AI Models button clicked ===');
+                    
+                    // Close uploadScanModal and remove its backdrop before opening linkModelsModal
+                    closeUploadScanModal();
+                    
+                    // Wait a bit to ensure cleanup completes before opening new modal
+                    setTimeout(() => {
+                        // Aggressive cleanup - remove ALL backdrops
+                        const remainingBackdrops = document.querySelectorAll('.modal-backdrop');
+                        if (remainingBackdrops.length > 0) {
+                            console.log('Pre-open cleanup: Removing all backdrops:', remainingBackdrops.length);
+                            remainingBackdrops.forEach(backdrop => {
+                                backdrop.remove();
+                            });
+                        }
+                        
+                        // Ensure body is completely clean
+                        document.body.classList.remove('modal-open');
+                        document.body.style.overflow = '';
+                        document.body.style.paddingRight = '';
+                        document.body.style.removeProperty('overflow');
+                        document.body.style.removeProperty('padding-right');
+                        
+                        // Now open the Link AI Models modal
+                        openLinkModelsModal(patientId, scanId, scanType);
+                    }, 150);
+                }
+                
+                if (e.target.closest('.generate-result-btn')) {
+                    const btn = e.target.closest('.generate-result-btn');
+                    const patientId = btn.getAttribute('data-patient-id');
+                    const scanId = btn.getAttribute('data-scan-id');
+                    generateResult(patientId, scanId);
+                }
+            });
+            
+            // Set up modal button event listeners
+            setupModalButtons();
+        });
+        
+        function setupModalButtons() {
+            console.log('Setting up modal buttons...');
+            
+            // Link Models button - use both onclick and event listener
+            const linkBtn = document.getElementById('linkModelsBtn');
+            if (linkBtn) {
+                console.log('Link button found, setting up handlers');
+                
+                // Remove existing handlers
+                linkBtn.onclick = null;
+                linkBtn.removeAttribute('onclick');
+                
+                // Add onclick handler
+                linkBtn.onclick = function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Link Models button clicked (onclick)');
+                    if (typeof window.linkModels === 'function') {
+                        window.linkModels();
+                    } else {
+                        alert('Error: Function not found. Please refresh the page.');
+                    }
+                    return false;
+                };
+                
+                // Also add event listener as backup (remove old ones first)
+                const newLinkBtn = linkBtn.cloneNode(true);
+                linkBtn.parentNode.replaceChild(newLinkBtn, linkBtn);
+                
+                // Set onclick
+                newLinkBtn.onclick = function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Link Models button clicked');
+                    if (typeof window.linkModels === 'function') {
+                        window.linkModels();
+                    } else {
+                        alert('Error: Function not found. Please refresh the page.');
+                    }
+                    return false;
+                };
+                
+                // Add event listener
+                newLinkBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Link Models button clicked (event listener)');
+                    if (typeof window.linkModels === 'function') {
+                        window.linkModels();
+                    }
+                });
+                
+                console.log('Link button setup complete');
+            } else {
+                console.error('Link button not found!');
+            }
+            
+            // Cancel button - Bootstrap handles it via data-bs-dismiss
+            // Just ensure it's clickable
+            const cancelBtn = document.getElementById('cancelLinkBtn');
+            if (cancelBtn) {
+                cancelBtn.style.cursor = 'pointer';
+                cancelBtn.style.pointerEvents = 'auto';
+            }
+        }
+        
+        // Define the actual reset function first (before it's used)
+        const actualResetFunction = function() {
+            // Reset checkboxes when modal is closed
+            const chexnet = document.getElementById('modelCheXNet');
+            const biobert = document.getElementById('modelBioBert');
+            const lungai = document.getElementById('modelLungAI');
+            const linkBtn = document.getElementById('linkModelsBtn');
+            
+            if (chexnet) {
+                chexnet.checked = false;
+                chexnet.disabled = false;
+            }
+            if (biobert) {
+                biobert.checked = false;
+                biobert.disabled = false;
+            }
+            if (lungai) {
+                lungai.checked = false;
+                lungai.disabled = false;
+            }
+            
+            const clinicalText = document.getElementById('linkClinicalText');
+            if (clinicalText) clinicalText.value = '';
+            
+            // Reset button
+            if (linkBtn) {
+                linkBtn.disabled = false;
+                linkBtn.classList.remove('btn-success', 'btn-secondary');
+                linkBtn.classList.add('btn-primary');
+                const linkBtnText = document.getElementById('linkBtnText');
+                if (linkBtnText) {
+                    linkBtnText.textContent = 'Link Models';
+                } else {
+                    linkBtn.innerHTML = '<i class="bi bi-link-45deg"></i> Link Models';
+                }
+            }
+            
+            updateModelSelection();
+        };
+        
+        // Set up modal close handler once on page load (only one listener)
+        let modalCloseHandlerSetup = false;
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!modalCloseHandlerSetup) {
+                modalCloseHandlerSetup = true;
+                const modalElement = document.getElementById('linkModelsModal');
+                if (modalElement) {
+                    modalElement.addEventListener('hidden.bs.modal', function() {
+                        console.log('Modal closed, resetting...');
+                        actualResetFunction();
+                    }, { once: false });
+                }
+            }
+        });
+        
+        // Ensure functions are available immediately
+        if (typeof linkModels === 'undefined') {
+            // Will be defined below
+        }
+
+        function showUploadScanModal() {
+            const modal = new bootstrap.Modal(document.getElementById('uploadScanModal'));
+            modal.show();
+        }
+        
+        function closeUploadScanModal() {
+            console.log('=== Cleaning up uploadScanModal ===');
+            
+            // Close the uploadScanModal if it's open
+            const uploadModalElement = document.getElementById('uploadScanModal');
+            if (uploadModalElement) {
+                const uploadModal = bootstrap.Modal.getInstance(uploadModalElement);
+                if (uploadModal) {
+                    console.log('Hiding uploadScanModal instance');
+                    uploadModal.hide();
+                    
+                    // Wait for Bootstrap's hide animation, then dispose
+                    setTimeout(() => {
+                        uploadModal.dispose();
+                        
+                        // Clean up modal element
+                        uploadModalElement.classList.remove('show', 'fade');
+                        uploadModalElement.style.display = 'none';
+                        uploadModalElement.setAttribute('aria-hidden', 'true');
+                        uploadModalElement.removeAttribute('aria-modal');
+                        uploadModalElement.removeAttribute('role');
+                        
+                        // Remove ALL backdrop elements
+                        const backdrops = document.querySelectorAll('.modal-backdrop');
+                        console.log(`Found ${backdrops.length} backdrop(s) to remove`);
+                        backdrops.forEach((backdrop) => {
+                            backdrop.remove();
+                        });
+                        
+                        // Clean up body classes and styles
+                        document.body.classList.remove('modal-open');
+                        document.body.style.overflow = '';
+                        document.body.style.paddingRight = '';
+                        document.body.style.removeProperty('overflow');
+                        document.body.style.removeProperty('padding-right');
+                        
+                        console.log('Cleanup complete');
+                    }, 300); // Wait for Bootstrap's fade animation
+                } else {
+                    // No instance, but clean up anyway
+                    uploadModalElement.classList.remove('show', 'fade');
+                    uploadModalElement.style.display = 'none';
+                    
+                    // Remove backdrops
+                    document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+                    document.body.classList.remove('modal-open');
+                    document.body.style.overflow = '';
+                    document.body.style.paddingRight = '';
+                }
+            } else {
+                // Modal element doesn't exist, but clean up backdrops anyway
+                document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+                document.body.classList.remove('modal-open');
+                document.body.style.overflow = '';
+                document.body.style.paddingRight = '';
+            }
+        }
+
+        function uploadScan() {
+             const uploadModalElement = document.getElementsByClassName('modal-backdrop');
+            uploadModalElement?.classList?.remove('show', 'fade','modal-backdrop');
+            const patientId = document.getElementById('uploadPatientId').value;
+            const scanType = document.getElementById('uploadScanType').value;
+            const scanFile = document.getElementById('uploadScanFile').files[0];
+            const conditionText = document.getElementById('uploadConditionText').value;
+
+            if (!scanType || !scanFile) {
+                alert('Please select scan type and file.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('patientId', patientId);
+            formData.append('scanFile', scanFile);
+            formData.append('scanType', scanType);
+            if (conditionText) {
+                formData.append('conditionText', conditionText);
+            }
+
+            // Add anti-forgery token to form data
+            const token = document.querySelector('input[name="__RequestVerificationToken"]');
+            if (token) {
+                formData.append('__RequestVerificationToken', token.value);
+            }
+
+            fetch('@Url.Action("UploadScan")', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(error => {
+                alert('Error uploading scan: ' + error);
+            });
+        }
+
+        function openLinkModelsModal(patientId, scanId, scanType) {
+            try {
+                 const uploadModalElement = document.getElementsByClassName('modal-backdrop');
+            uploadModalElement?.classList?.remove('show', 'fade','modal-backdrop');
+                console.log('=== Opening Link Models Modal ===');
+                console.log('Patient ID:', patientId);
+                console.log('Scan ID:', scanId);
+                console.log('Scan Type:', scanType);
+                
+                // Final cleanup check before opening modal
+                const existingBackdrops = document.querySelectorAll('.modal-backdrop');
+                if (existingBackdrops.length > 0) {
+                    console.log('Removing existing backdrops before opening modal:', existingBackdrops.length);
+                    existingBackdrops.forEach(backdrop => backdrop.remove());
+                }
+                
+                // Ensure body is clean
+                document.body.classList.remove('modal-open');
+                document.body.style.overflow = '';
+                document.body.style.paddingRight = '';
+                
+                // Validate inputs
+                if (!patientId || !scanId) {
+                    alert('Error: Missing patient or scan information. Please refresh the page and try again.');
+                    console.error('Missing required parameters:', { patientId, scanId });
+                    return;
+                }
+                
+                // Get modal element
+                const modalElement = document.getElementById('linkModelsModal');
+                if (!modalElement) {
+                    alert('Error: Modal element not found. Please refresh the page.');
+                    console.error('Modal element not found');
+                    return;
+                }
+                
+                // Store scan type in a data attribute for later use
+                modalElement.setAttribute('data-scan-type', scanType || '');
+                modalElement.setAttribute('data-patient-id', patientId);
+                modalElement.setAttribute('data-scan-id', scanId);
+                
+                // Set hidden inputs
+                const patientIdInput = document.getElementById('linkPatientId');
+                const scanIdInput = document.getElementById('linkScanId');
+                if (patientIdInput) patientIdInput.value = patientId;
+                if (scanIdInput) scanIdInput.value = scanId;
+                
+                // Get checkboxes
+                const chexnetCheckbox = document.getElementById('modelCheXNet');
+                const lungAICheckbox = document.getElementById('modelLungAI');
+                const biobertCheckbox = document.getElementById('modelBioBert');
+                
+                if (!chexnetCheckbox || !lungAICheckbox || !biobertCheckbox) {
+                    alert('Error: Form elements not found. Please refresh the page.');
+                    console.error('Checkboxes not found');
+                    return;
+                }
+                
+                // Reset all checkboxes first
+                chexnetCheckbox.checked = false;
+                biobertCheckbox.checked = false;
+                lungAICheckbox.checked = false;
+                chexnetCheckbox.disabled = false;
+                lungAICheckbox.disabled = false;
+                biobertCheckbox.disabled = false;
+                
+                // Normalize scan type
+                const normalizedScanType = (scanType || '').trim();
+                const lowerScanType = normalizedScanType.toLowerCase();
+                
+                console.log('Normalized scan type:', normalizedScanType);
+                console.log('Lower scan type:', lowerScanType);
+                
+                // Set up models based on scan type
+                if (normalizedScanType === 'XRay' || lowerScanType === 'xray' || lowerScanType === 'x-ray') {
+                    chexnetCheckbox.disabled = false;
+                    chexnetCheckbox.checked = true;
+                    lungAICheckbox.disabled = true;
+                    lungAICheckbox.checked = false;
+                    console.log('✓ X-Ray detected - CheXNet auto-selected');
+                } else if (normalizedScanType === 'CTScan' || lowerScanType === 'ctscan' || lowerScanType === 'ct scan' || lowerScanType === 'ct') {
+                    chexnetCheckbox.disabled = true;
+                    chexnetCheckbox.checked = false;
+                    lungAICheckbox.disabled = false;
+                    lungAICheckbox.checked = true;
+                    console.log('✓ CT Scan detected - LungAI auto-selected');
+                } else {
+                    console.warn('Unknown scan type:', normalizedScanType, '- enabling all models');
+                }
+                
+                // BioBert is always available
+                biobertCheckbox.disabled = false;
+                
+                // Clear clinical text
+                const clinicalTextArea = document.getElementById('linkClinicalText');
+                if (clinicalTextArea) clinicalTextArea.value = '';
+                
+                // Show modal using Bootstrap
+                if (typeof bootstrap === 'undefined' || !bootstrap.Modal) {
+                    alert('Error: Bootstrap is not loaded. Please refresh the page.');
+                    console.error('Bootstrap Modal not available');
+                    return;
+                }
+                
+                // Final cleanup - remove any lingering backdrops before creating new modal
+                const lingeringBackdrops = document.querySelectorAll('.modal-backdrop');
+                if (lingeringBackdrops.length > 0) {
+                    console.log('Removing lingering backdrops before showing modal:', lingeringBackdrops.length);
+                    lingeringBackdrops.forEach(backdrop => backdrop.remove());
+                }
+                
+                // Ensure body is clean
+                document.body.classList.remove('modal-open');
+                document.body.style.overflow = '';
+                document.body.style.paddingRight = '';
+                
+                // Dispose any existing modal instance to avoid conflicts
+                const existingModal = bootstrap.Modal.getInstance(modalElement);
+                if (existingModal) {
+                    existingModal.dispose();
+                }
+                
+                // Ensure modal has proper z-index BEFORE showing
+                modalElement.style.zIndex = '1055';
+                const modalDialog = modalElement.querySelector('.modal-dialog');
+                if (modalDialog) {
+                    modalDialog.style.zIndex = '1056';
+                    modalDialog.style.position = 'relative';
+                }
+                const modalContent = modalElement.querySelector('.modal-content');
+                if (modalContent) {
+                    modalContent.style.zIndex = '1057';
+                    modalContent.style.position = 'relative';
+                }
+                
+                // Create new modal instance WITHOUT backdrop to avoid blocking issues
+                const modal = new bootstrap.Modal(modalElement, {
+                    backdrop: false,  // Disable backdrop to prevent blocking
+                    keyboard: true,   // Allow ESC to close
+                    focus: true       // Auto-focus on modal
+                });
+                
+                // Set up buttons BEFORE showing modal
+                setupModalButtons();
+                
+                // Show modal
+                modal.show();
+                
+                // Remove any backdrop that Bootstrap might have created anyway
+                setTimeout(() => {
+                    const backdrops = document.querySelectorAll('.modal-backdrop');
+                    backdrops.forEach(backdrop => {
+                        console.log('Removing backdrop that Bootstrap created');
+                        backdrop.remove();
+                    });
+                    // Clean up body classes
+                    document.body.classList.remove('modal-open');
+                    document.body.style.overflow = '';
+                    document.body.style.paddingRight = '';
+                }, 10);
+                
+                // Aggressive backdrop removal - remove ALL backdrops immediately
+                const removeAllBackdrops = function() {
+                    const backdrops = document.querySelectorAll('.modal-backdrop');
+                    if (backdrops.length > 0) {
+                        console.log(`Removing ${backdrops.length} backdrop(s)`);
+                        backdrops.forEach(backdrop => {
+                            backdrop.remove();
+                        });
+                    }
+                    // Clean up body classes
+                    document.body.classList.remove('modal-open');
+                    document.body.style.overflow = '';
+                    document.body.style.paddingRight = '';
+                    document.body.style.removeProperty('overflow');
+                    document.body.style.removeProperty('padding-right');
+                };
+                
+                // Remove backdrops immediately and repeatedly
+                removeAllBackdrops();
+                setTimeout(removeAllBackdrops, 10);
+                setTimeout(removeAllBackdrops, 50);
+                setTimeout(removeAllBackdrops, 100);
+                setTimeout(removeAllBackdrops, 200);
+                
+                // Check when modal is fully shown
+                modalElement.addEventListener('shown.bs.modal', function() {
+                    removeAllBackdrops();
+                    
+                    // Ensure modal is visible and interactive
+                    modalElement.style.zIndex = '1055';
+                    modalElement.style.pointerEvents = 'auto';
+                    modalElement.style.display = 'block';
+                    if (modalDialog) {
+                        modalDialog.style.zIndex = '1056';
+                        modalDialog.style.pointerEvents = 'auto';
+                    }
+                    if (modalContent) {
+                        modalContent.style.zIndex = '1057';
+                        modalContent.style.pointerEvents = 'auto';
+                    }
+                    
+                    // Force all interactive elements to be clickable
+                    const allButtons = modalElement.querySelectorAll('button, input, textarea, select, a, .form-check-input, .form-check-label');
+                    allButtons.forEach(btn => {
+                        btn.style.pointerEvents = 'auto';
+                        btn.style.cursor = 'pointer';
+                    });
+                    
+                    // Final backdrop removal
+                    removeAllBackdrops();
+                    
+                    updateModelSelection();
+                    setupModalButtons(); // Re-setup buttons after modal is shown
+                    
+                    // Verify selection
+                    const selected = [];
+                    if (chexnetCheckbox.checked && !chexnetCheckbox.disabled) selected.push('CheXNet');
+                    if (biobertCheckbox.checked && !biobertCheckbox.disabled) selected.push('BioBert');
+                    if (lungAICheckbox.checked && !lungAICheckbox.disabled) selected.push('LungAI');
+                    
+                    console.log('Models selected after modal shown:', selected);
+                    
+                    // If nothing is selected, force select the appropriate one
+                    if (selected.length === 0) {
+                        console.warn('No models selected! Forcing selection...');
+                        if (normalizedScanType === 'XRay' || lowerScanType === 'xray' || lowerScanType === 'x-ray') {
+                            chexnetCheckbox.checked = true;
+                            chexnetCheckbox.disabled = false;
+                        } else if (normalizedScanType === 'CTScan' || lowerScanType === 'ctscan' || lowerScanType === 'ct scan' || lowerScanType === 'ct') {
+                            lungAICheckbox.checked = true;
+                            lungAICheckbox.disabled = false;
+                        }
+                        updateModelSelection();
+                    }
+                }, { once: true });
+                
+            } catch (error) {
+                console.error('Error opening link models modal:', error);
+                alert('An error occurred while opening the modal. Please check the browser console for details.');
+            }
+        }
+
+        // Make linkModels function globally accessible
+        window.linkModels = function() {
+             const uploadModalElement = document.getElementsByClassName('modal-backdrop');
+            uploadModalElement?.classList?.remove('show', 'fade','modal-backdrop');
+            console.log('=== linkModels function called ===');
+            const patientId = document.getElementById('linkPatientId')?.value;
+            const scanId = document.getElementById('linkScanId')?.value;
+            const clinicalText = document.getElementById('linkClinicalText')?.value || '';
+            
+            if (!patientId || !scanId) {
+                alert('Error: Missing patient or scan information. Please close the modal and try again.');
+                console.error('Missing parameters:', { patientId, scanId });
+                return;
+            }
+            
+            const chexnetCheckbox = document.getElementById('modelCheXNet');
+            const biobertCheckbox = document.getElementById('modelBioBert');
+            const lungAICheckbox = document.getElementById('modelLungAI');
+            
+            if (!chexnetCheckbox || !biobertCheckbox || !lungAICheckbox) {
+                alert('Error: Form elements not found. Please refresh the page.');
+                console.error('Checkboxes not found');
+                return;
+            }
+            
+            // Get scan type from modal data attribute as fallback
+            const modalElement = document.getElementById('linkModelsModal');
+            const scanType = modalElement ? modalElement.getAttribute('data-scan-type') || '' : '';
+            const lowerScanType = scanType.toLowerCase();
+            
+            console.log('=== Link Models Function Called ===');
+            console.log('Patient ID:', patientId, 'Scan ID:', scanId);
+            console.log('Scan Type:', scanType);
+            console.log('Checkbox states:');
+            console.log('  CheXNet - checked:', chexnetCheckbox.checked, 'disabled:', chexnetCheckbox.disabled);
+            console.log('  BioBert - checked:', biobertCheckbox.checked, 'disabled:', biobertCheckbox.disabled);
+            console.log('  LungAI - checked:', lungAICheckbox.checked, 'disabled:', lungAICheckbox.disabled);
+            
+            const models = [];
+            
+            // Collect checked and enabled models
+            if (chexnetCheckbox.checked && !chexnetCheckbox.disabled) {
+                models.push('CheXNet');
+            }
+            if (biobertCheckbox.checked && !biobertCheckbox.disabled) {
+                models.push('BioBert');
+            }
+            if (lungAICheckbox.checked && !lungAICheckbox.disabled) {
+                models.push('LungAI');
+            }
+
+            console.log('Models collected:', models);
+
+            // If no models selected, force select based on scan type
+            if (models.length === 0) {
+                console.warn('No models selected! Auto-selecting based on scan type...');
+                
+                if (scanType === 'XRay' || lowerScanType === 'xray' || lowerScanType === 'x-ray') {
+                    chexnetCheckbox.checked = true;
+                    chexnetCheckbox.disabled = false;
+                    models.push('CheXNet');
+                    console.log('✓ Auto-selected CheXNet for X-Ray');
+                } else if (scanType === 'CTScan' || lowerScanType === 'ctscan' || lowerScanType === 'ct scan' || lowerScanType === 'ct') {
+                    lungAICheckbox.checked = true;
+                    lungAICheckbox.disabled = false;
+                    models.push('LungAI');
+                    console.log('✓ Auto-selected LungAI for CT Scan');
+                } else {
+                    // Last resort: select first enabled checkbox
+                    if (!chexnetCheckbox.disabled) {
+                        chexnetCheckbox.checked = true;
+                        models.push('CheXNet');
+                        console.log('✓ Emergency: Selected CheXNet');
+                    } else if (!lungAICheckbox.disabled) {
+                        lungAICheckbox.checked = true;
+                        models.push('LungAI');
+                        console.log('✓ Emergency: Selected LungAI');
+                    }
+                }
+                
+                if (models.length === 0) {
+                    alert('Error: Could not determine which model to use. Please manually select at least one model.');
+                    return;
+                }
+            }
+            
+            console.log('Final models to link:', models);
+            
+            // Validate BioBert requires clinical text
+            if (models.includes('BioBert') && !clinicalText.trim()) {
+                const useBioBert = confirm('BioBert requires clinical text. You haven\'t entered any text. Do you want to continue without BioBert?');
+                if (useBioBert) {
+                    models.splice(models.indexOf('BioBert'), 1);
+                } else {
+                    return; // User cancelled, they want to add text
+                }
+            }
+
+            const formData = new FormData();
+            formData.append('patientId', patientId);
+            formData.append('scanId', scanId);
+            formData.append('models', JSON.stringify(models));
+            if (clinicalText) {
+                formData.append('clinicalText', clinicalText);
+            }
+
+            // Add anti-forgery token
+            const token = document.querySelector('input[name="__RequestVerificationToken"]');
+            if (token) {
+                formData.append('__RequestVerificationToken', token.value);
+            }
+
+            // Show loading state
+            const linkBtn = document.getElementById('linkModelsBtn');
+            const originalBtnText = linkBtn ? linkBtn.innerHTML : '';
+            if (linkBtn) {
+                linkBtn.disabled = true;
+                linkBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Linking Models...';
+            }
+
+            fetch('@Url.Action("LinkModels")', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    // Show success message
+                    if (linkBtn) {
+                        linkBtn.innerHTML = '<i class="bi bi-check-circle"></i> Success!';
+                        linkBtn.classList.remove('btn-primary');
+                        linkBtn.classList.add('btn-success');
+                    }
+                    
+                    // Close modal after a short delay
+                    setTimeout(() => {
+                        const modalElement = document.getElementById('linkModelsModal');
+                        if (modalElement) {
+                            const modal = bootstrap.Modal.getInstance(modalElement);
+                            if (modal) modal.hide();
+                        }
+                        location.reload();
+                    }, 1500);
+                } else {
+                    // Restore button
+                    if (linkBtn) {
+                        linkBtn.disabled = false;
+                        linkBtn.innerHTML = originalBtnText;
+                    }
+                    alert('Error: ' + (data.error || 'Unknown error occurred'));
+                }
+            })
+            .catch(error => {
+                // Restore button
+                if (linkBtn) {
+                    linkBtn.disabled = false;
+                    linkBtn.innerHTML = originalBtnText;
+                }
+                console.error('Error linking models:', error);
+                alert('Error linking models: ' + error.message + '. Please check your connection and try again.');
+            });
+        };
+        
+        // Make resetLinkModelsModal globally accessible (using the function defined above)
+        window.resetLinkModelsModal = actualResetFunction;
+        
+        // Close modal function
+        window.closeLinkModal = function() {
+            console.log('closeLinkModal called');
+            actualResetFunction();
+            const modalElement = document.getElementById('linkModelsModal');
+            if (modalElement) {
+                const modal = bootstrap.Modal.getInstance(modalElement);
+                if (modal) {
+                    modal.hide();
+                }
+            }
+        };
+        
+        // Test function to verify buttons are clickable
+        console.log('Modal buttons setup complete. Testing...');
+        setTimeout(function() {
+            const linkBtn = document.getElementById('linkModelsBtn');
+            const cancelBtn = document.getElementById('cancelLinkBtn');
+            console.log('Link button exists:', !!linkBtn, 'disabled:', linkBtn?.disabled);
+            console.log('Cancel button exists:', !!cancelBtn);
+            if (linkBtn) {
+                console.log('Link button onclick:', linkBtn.getAttribute('onclick'));
+                console.log('Link button style:', linkBtn.style.cssText);
+            }
+        }, 1000);
+
+        function updateModelSelection() {
+             const uploadModalElement = document.getElementsByClassName('modal-backdrop');
+            uploadModalElement?.classList?.remove('show', 'fade','modal-backdrop');
+            // Update visual indicators
+            const chexnet = document.getElementById('modelCheXNet');
+            const biobert = document.getElementById('modelBioBert');
+            const lungai = document.getElementById('modelLungAI');
+            
+            const chexnetBadge = document.getElementById('chexnetBadge');
+            const biobertBadge = document.getElementById('biobertBadge');
+            const lungaiBadge = document.getElementById('lungaiBadge');
+            const chexnetCard = document.getElementById('chexnetCard');
+            const biobertCard = document.getElementById('biobertCard');
+            const lungaiCard = document.getElementById('lungaiCard');
+            
+            // Update badges
+            if (chexnetBadge) chexnetBadge.style.display = chexnet.checked ? 'inline' : 'none';
+            if (biobertBadge) biobertBadge.style.display = biobert.checked ? 'inline' : 'none';
+            if (lungaiBadge) lungaiBadge.style.display = lungai.checked ? 'inline' : 'none';
+            
+            // Update card borders to highlight selected
+            if (chexnetCard) {
+                chexnetCard.style.borderColor = chexnet.checked ? '#0d6efd' : '#e0e0e0';
+                chexnetCard.style.backgroundColor = chexnet.checked ? '#f0f7ff' : '#fff';
+            }
+            if (biobertCard) {
+                biobertCard.style.borderColor = biobert.checked ? '#0d6efd' : '#e0e0e0';
+                biobertCard.style.backgroundColor = biobert.checked ? '#f0f7ff' : '#fff';
+            }
+            if (lungaiCard) {
+                lungaiCard.style.borderColor = lungai.checked ? '#0d6efd' : '#e0e0e0';
+                lungaiCard.style.backgroundColor = lungai.checked ? '#f0f7ff' : '#fff';
+            }
+            
+            // Update info text
+            const selected = [];
+            if (chexnet && chexnet.checked) selected.push('CheXNet');
+            if (biobert && biobert.checked) selected.push('BioBert');
+            if (lungai && lungai.checked) selected.push('LungAI');
+            
+            const infoTextEl = document.getElementById('modelInfoText');
+            if (infoTextEl) {
+                if (selected.length > 0) {
+                    infoTextEl.innerHTML = `<strong>✓ ${selected.length} model(s) selected:</strong> ${selected.join(', ')}. Click <strong>"Link Models"</strong> button below to proceed.`;
+                } else {
+                    infoTextEl.textContent = '⚠️ Please select at least one AI model. The appropriate model for your scan type should be pre-selected.';
+                }
+            }
+            
+            // Update button state
+            const linkBtn = document.getElementById('linkModelsBtn');
+            const linkBtnText = document.getElementById('linkBtnText');
+            if (linkBtn) {
+                if (selected.length > 0) {
+                    linkBtn.disabled = false;
+                    linkBtn.classList.remove('btn-secondary');
+                    linkBtn.classList.add('btn-primary');
+                    if (linkBtnText) {
+                        linkBtnText.textContent = 'Link Models (' + selected.length + ')';
+                    } else {
+                        linkBtn.innerHTML = '<i class="bi bi-link-45deg"></i> Link Models (' + selected.length + ')';
+                    }
+                } else {
+                    linkBtn.disabled = true;
+                    linkBtn.classList.remove('btn-primary');
+                    linkBtn.classList.add('btn-secondary');
+                    if (linkBtnText) {
+                        linkBtnText.textContent = 'Select a Model First';
+                    } else {
+                        linkBtn.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Select a Model First';
+                    }
+                }
+            }
+        }
+
+        // Define resetLinkModelsModal function (using the actualResetFunction we defined above)
+        function resetLinkModelsModal() {
+            if (typeof actualResetFunction === 'function') {
+                actualResetFunction();
+            }
+        }
+
+        function generateResult(patientId, scanId) {
+            // This would typically call an endpoint to generate a summary result
+            // For now, we'll just reload the page after linking models
+            alert('Please link AI models first to generate results.');
+        }
+    </script>
+}

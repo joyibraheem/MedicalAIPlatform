@@ -1,0 +1,57 @@
+@model IEnumerable<MedicalAIPlatform.Models.ApplicationUser>
+@{
+    ViewData["Title"] = "Pending Doctors";
+}
+
+<div class="container mt-4">
+    <h2>Pending Doctor Approvals</h2>
+    <hr />
+
+    <div class="card shadow">
+        <div class="card-body">
+            @if (Model.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Email</th>
+                                <th>Full Name</th>
+                                <th>Specialization</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var user in Model)
+                            {
+                                <tr>
+                                    <td>@user.Email</td>
+                                    <td>@user.FullName</td>
+                                    <td>@user.Specialization</td>
+                                    <td>
+                                        <div class="d-flex gap-2">
+                                            <form asp-action="ApproveDoctor" method="post">
+                                                <input type="hidden" name="userId" value="@user.Id" />
+                                                <button type="submit" class="btn btn-success btn-sm">Approve</button>
+                                            </form>
+                                            <form asp-action="RejectDoctor" method="post">
+                                                <input type="hidden" name="userId" value="@user.Id" />
+                                                <button type="submit" class="btn btn-danger btn-sm">Reject</button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-info">
+                    No pending doctor approvals at this time.
+                </div>
+            }
+        </div>
+    </div>
+</div>

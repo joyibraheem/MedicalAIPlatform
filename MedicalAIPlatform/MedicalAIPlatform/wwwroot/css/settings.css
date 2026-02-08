@@ -1,0 +1,674 @@
+/* Settings Page Styles */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* Body background and glass container handled by _DoctorLayout */
+
+/* Inner Content Wrapper */
+.settings-content {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 6rem;
+    /* Bottom padding for AI button */
+    position: relative;
+    z-index: 10;
+}
+
+/* Header */
+.settings-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.btn-back-arrow {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+}
+
+/* Profile Section */
+.profile-section {
+    text-align: center;
+    margin-bottom: 3rem;
+    position: relative;
+}
+
+.profile-avatar-wrapper {
+    position: relative;
+    width: 100px;
+    height: 100px;
+    margin: 0 auto 1rem;
+}
+
+.profile-avatar {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, 0.2);
+    object-fit: cover;
+    background: #1e293b;
+}
+
+.verified-badge {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    width: 24px;
+    height: 24px;
+    background: #3B82F6;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #0f172a;
+    /* Match darkening */
+    color: white;
+    font-size: 12px;
+}
+
+.profile-name {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+}
+
+.profile-role {
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.7);
+    font-weight: 400;
+}
+
+/* Section Label */
+.section-label {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    color: white;
+    margin-top: 1.5rem;
+}
+
+/* Cards - Default Dark Mode */
+.settings-card {
+    background: rgba(255, 255, 255, 0.15);
+    /* Light glass on dark */
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 16px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+}
+
+/* Dark Mode Cards - Match Image Design - Semi-transparent dark grey */
+html[data-theme="dark"] .settings-card,
+body.dark-mode .settings-card {
+    background: rgba(30, 41, 59, 0.6) !important;
+    backdrop-filter: blur(12px) saturate(120%) !important;
+    -webkit-backdrop-filter: blur(12px) saturate(120%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Light Mode Cards - Translucent Glassmorphism */
+html[data-theme="light"] .settings-card,
+body.light-mode .settings-card {
+    background: rgba(255, 255, 255, 0.85) !important;
+    backdrop-filter: blur(15px) saturate(150%) !important;
+    -webkit-backdrop-filter: blur(15px) saturate(150%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    color: #1e293b !important;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
+}
+
+.profile-details-card {
+    background: rgba(255, 255, 255, 0.5);
+    color: #1e293b;
+}
+
+/* Dark Mode Profile Card - Match Image Design */
+html[data-theme="dark"] .profile-details-card,
+body.dark-mode .profile-details-card {
+    background: rgba(30, 41, 59, 0.65) !important;
+    backdrop-filter: blur(12px) saturate(120%) !important;
+    -webkit-backdrop-filter: blur(12px) saturate(120%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: #ffffff !important;
+}
+
+/* Light Mode Profile Card - Translucent */
+html[data-theme="light"] .profile-details-card,
+body.light-mode .profile-details-card {
+    background: rgba(255, 255, 255, 0.9) !important;
+    backdrop-filter: blur(15px) saturate(150%) !important;
+    -webkit-backdrop-filter: blur(15px) saturate(150%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.4) !important;
+    color: #1e293b !important;
+}
+
+.detail-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #333;
+    /* Darker label */
+    margin-bottom: 0.25rem;
+}
+
+.detail-value {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: #000;
+}
+
+.detail-value:last-child {
+    margin-bottom: 0;
+}
+
+/* Interactable Cards (Preferences) */
+.pref-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+/* Dark mode card should not be clickable (only the toggle is) */
+#darkModeCard {
+    cursor: default !important;
+    pointer-events: auto; /* Allow pointer events so toggle can work */
+}
+
+#darkModeCard:hover {
+    background: transparent !important;
+}
+
+/* Make sure toggle area is always clickable */
+#darkModeCard .form-check,
+#darkModeCard .form-check-input {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+}
+
+.pref-card:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.pref-icon-label {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.pref-icon {
+    font-size: 1.2rem;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.pref-text h5 {
+    font-size: 1rem;
+    margin: 0;
+    font-weight: 600;
+}
+
+.pref-text p {
+    font-size: 0.85rem;
+    margin: 0;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* Toggle Switch Custom - Match Image Design */
+.form-check-input.settings-toggle {
+    width: 3.5em;
+    height: 1.75em;
+    cursor: pointer;
+    background-color: rgba(255, 255, 255, 0.3) !important;
+    border: none !important;
+    transition: all 0.3s ease;
+    position: relative;
+    pointer-events: auto;
+    z-index: 10;
+}
+
+/* Toggle container should be clickable */
+.form-check.form-switch {
+    pointer-events: auto;
+    cursor: pointer;
+    z-index: 10;
+}
+
+.form-check-input.settings-toggle:checked {
+    background-color: #3B82F6 !important;
+    border-color: #3B82F6 !important;
+}
+
+.form-check-input.settings-toggle:focus {
+    box-shadow: 0 0 0 0.25rem rgba(59, 130, 246, 0.25);
+}
+
+/* Dark Mode Toggle Styles */
+html[data-theme="dark"] .form-check-input.settings-toggle,
+body.dark-mode .form-check-input.settings-toggle {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+html[data-theme="dark"] .form-check-input.settings-toggle:checked,
+body.dark-mode .form-check-input.settings-toggle:checked {
+    background-color: #3B82F6 !important;
+    border-color: #3B82F6 !important;
+}
+
+/* Light Mode Toggle Styles */
+html[data-theme="light"] .form-check-input.settings-toggle,
+body.light-mode .form-check-input.settings-toggle {
+    background-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+html[data-theme="light"] .form-check-input.settings-toggle:checked,
+body.light-mode .form-check-input.settings-toggle:checked {
+    background-color: #3B82F6 !important;
+    border-color: #3B82F6 !important;
+}
+
+/* Logout Button */
+.btn-logout-large {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    background: white;
+    color: #DC2626;
+    /* Red */
+    border: none;
+    padding: 1rem;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 1rem;
+    margin-top: 2rem;
+    cursor: pointer;
+    transition: transform 0.2s;
+    text-decoration: none;
+    /* In case it's an anchor */
+}
+
+.btn-logout-large:hover {
+    transform: translateY(-2px);
+    background: #f8fafc;
+    color: #DC2626;
+}
+
+/* AI Floating Button */
+.fab-ai {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 56px;
+    height: 56px;
+    background: linear-gradient(135deg, #3B82F6, #1D4581);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    font-size: 1.2rem;
+    box-shadow: 0 4px 15px rgba(29, 69, 129, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    z-index: 100;
+    cursor: pointer;
+}
+
+/* Dark Mode Overrides for Settings Page - Match Image Design */
+html[data-theme="dark"] body.settings-page,
+body.settings-page.dark-mode {
+    background: #0a0e1a !important;
+    background-image: 
+        radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.2) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(16, 185, 129, 0.15) 0%, transparent 50%),
+        radial-gradient(circle at 50% 30%, rgba(99, 102, 241, 0.1) 0%, transparent 40%),
+        linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(0, 0, 0, 0.98) 100%),
+        url('../images/hero-bg-v3.png') !important;
+    background-size: cover, cover, cover, cover, cover !important;
+    background-position: center center !important;
+    background-attachment: fixed !important;
+    color: #ffffff !important;
+    position: relative;
+}
+
+html[data-theme="dark"] body.settings-page::before,
+body.settings-page.dark-mode::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: 
+        radial-gradient(circle at 30% 40%, rgba(59, 130, 246, 0.2) 0%, transparent 40%),
+        radial-gradient(circle at 70% 60%, rgba(16, 185, 129, 0.15) 0%, transparent 40%);
+    pointer-events: none;
+    z-index: 0;
+}
+
+html[data-theme="dark"] .settings-content,
+body.dark-mode .settings-content {
+    color: #f1f5f9;
+}
+
+html[data-theme="dark"] .settings-header span,
+body.dark-mode .settings-header span {
+    color: #ffffff !important;
+}
+
+html[data-theme="dark"] .section-label,
+body.dark-mode .section-label {
+    color: #ffffff !important;
+}
+
+html[data-theme="dark"] .settings-card,
+body.dark-mode .settings-card {
+    background: rgba(30, 41, 59, 0.7) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    color: #f1f5f9 !important;
+}
+
+html[data-theme="dark"] .pref-icon,
+body.dark-mode .pref-icon {
+    color: rgba(255, 255, 255, 0.9) !important;
+}
+
+html[data-theme="dark"] .pref-text h5,
+body.dark-mode .pref-text h5 {
+    color: #ffffff !important;
+}
+
+html[data-theme="dark"] .pref-text p,
+body.dark-mode .pref-text p {
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+html[data-theme="dark"] .bi-chevron-right,
+body.dark-mode .bi-chevron-right {
+    color: rgba(255, 255, 255, 0.5) !important;
+}
+
+html[data-theme="dark"] .profile-name,
+body.dark-mode .profile-name {
+    color: #ffffff !important;
+}
+
+html[data-theme="dark"] .profile-role,
+body.dark-mode .profile-role {
+    color: rgba(255, 255, 255, 0.85) !important;
+}
+
+html[data-theme="dark"] .profile-details-card,
+body.dark-mode .profile-details-card {
+    background: rgba(30, 41, 59, 0.8) !important;
+    color: #f1f5f9 !important;
+}
+
+html[data-theme="dark"] .detail-label,
+body.dark-mode .detail-label {
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+html[data-theme="dark"] .detail-value,
+body.dark-mode .detail-value {
+    color: #ffffff !important;
+}
+
+html[data-theme="dark"] .btn-logout-large,
+body.dark-mode .btn-logout-large {
+    background: white !important;
+    color: #DC2626 !important;
+}
+
+/* Light Mode Overrides */
+html[data-theme="light"] body.settings-page,
+body.settings-page.light-mode {
+    background: #f0f2f5 !important;
+    color: #333 !important;
+}
+
+html[data-theme="light"] .settings-glass-container,
+body.light-mode .settings-glass-container {
+    background: rgba(255, 255, 255, 0.5);
+    backdrop-filter: blur(15px) saturate(150%);
+    -webkit-backdrop-filter: blur(15px) saturate(150%);
+}
+
+html[data-theme="light"] body.settings-page,
+body.settings-page.light-mode {
+    background: url('../images/hero-bg-v3.png') no-repeat center center fixed !important;
+    background-size: cover !important;
+    background-attachment: fixed !important;
+}
+
+html[data-theme="light"] .app-header,
+body.light-mode .app-header {
+    background: rgba(255, 255, 255, 0.9) !important;
+    border-bottom: 1px solid #e5e7eb !important;
+}
+
+html[data-theme="light"] .app-header .brand-name,
+html[data-theme="light"] .app-header .nav-link,
+html[data-theme="light"] .app-header .header-right a,
+body.light-mode .app-header .brand-name,
+body.light-mode .app-header .nav-link,
+body.light-mode .app-header .header-right a {
+    color: #1f2937 !important;
+}
+
+html[data-theme="light"] .btn-back-arrow,
+body.light-mode .btn-back-arrow {
+    color: #1f2937;
+}
+
+html[data-theme="light"] .section-label,
+body.light-mode .section-label {
+    color: #4b5563;
+}
+
+html[data-theme="light"] .settings-card,
+body.light-mode .settings-card {
+    background: rgba(255, 255, 255, 0.85) !important;
+    backdrop-filter: blur(15px) saturate(150%) !important;
+    -webkit-backdrop-filter: blur(15px) saturate(150%) !important;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+
+html[data-theme="light"] .pref-icon,
+body.light-mode .pref-icon {
+    color: #4b5563;
+}
+
+html[data-theme="light"] .pref-text h5,
+body.light-mode .pref-text h5 {
+    color: #1f2937;
+}
+
+html[data-theme="light"] .pref-text p,
+body.light-mode .pref-text p {
+    color: #6b7280;
+}
+
+html[data-theme="light"] .bi-chevron-right,
+body.light-mode .bi-chevron-right {
+    color: #9ca3af !important;
+}
+
+/* RTL Support */
+html[dir='rtl'] .settings-header {
+    flex-direction: row-reverse;
+}
+
+html[dir='rtl'] .btn-back-arrow {
+    transform: rotate(180deg);
+}
+
+html[dir='rtl'] .pref-card {
+    flex-direction: row-reverse;
+}
+
+html[dir='rtl'] .pref-icon-label {
+    flex-direction: row-reverse;
+}
+
+html[dir='rtl'] .bi-chevron-right {
+    transform: rotate(180deg);
+}
+
+/* Language Selection Modal */
+.language-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    display: none; /* Hidden by default, shown via JS */
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    animation: fadeIn 0.2s ease;
+}
+
+.language-modal[style*="display: flex"],
+.language-modal.show {
+    display: flex !important;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.language-modal-content {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    border-radius: 24px;
+    padding: 2.5rem;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.language-modal-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 0.5rem;
+    text-align: center;
+}
+
+.language-modal-subtitle {
+    font-size: 1rem;
+    color: #64748b;
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.language-options {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+
+.language-option {
+    flex: 1;
+    padding: 1.5rem 2rem;
+    background: rgba(255, 255, 255, 0.8);
+    border: 2px solid rgba(26, 115, 232, 0.2);
+    border-radius: 16px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #0f172a;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 150px;
+}
+
+.language-option:hover {
+    background: rgba(26, 115, 232, 0.1);
+    border-color: #1A73E8;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(26, 115, 232, 0.2);
+}
+
+.language-option.selected {
+    background: linear-gradient(135deg, #1A73E8 0%, #4285F4 100%);
+    border-color: #1A73E8;
+    color: white;
+    box-shadow: 0 4px 16px rgba(26, 115, 232, 0.4);
+}
+
+.language-name {
+    display: block;
+}
+
+/* Dark Mode Modal Styles */
+html[data-theme="dark"] .language-modal-content,
+body.dark-mode .language-modal-content {
+    background: rgba(30, 41, 59, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+html[data-theme="dark"] .language-modal-title,
+body.dark-mode .language-modal-title {
+    color: white;
+}
+
+html[data-theme="dark"] .language-modal-subtitle,
+body.dark-mode .language-modal-subtitle {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+html[data-theme="dark"] .language-option,
+body.dark-mode .language-option {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+html[data-theme="dark"] .language-option:hover,
+body.dark-mode .language-option:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+html[data-theme="dark"] .language-option.selected,
+body.dark-mode .language-option.selected {
+    background: linear-gradient(135deg, #1A73E8 0%, #4285F4 100%);
+    border-color: #1A73E8;
+    color: white;
+}
+
+/* RTL Support for Modal */
+html[dir='rtl'] .language-modal-title,
+html[dir='rtl'] .language-modal-subtitle {
+    text-align: center;
+}

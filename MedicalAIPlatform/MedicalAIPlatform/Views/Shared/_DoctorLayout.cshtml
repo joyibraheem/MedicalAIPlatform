@@ -1,0 +1,158 @@
+@{
+    var isDarkMode = true; // Default to Dark Mode
+    if (Context.Request.Cookies.TryGetValue("Settings_DarkMode", out var darkModeVal))
+    {
+        if (bool.TryParse(darkModeVal, out var parsedMode))
+        {
+            isDarkMode = parsedMode;
+        }
+    }
+
+    // Default language is ALWAYS English - client-side JavaScript will apply saved preference
+    var language = "en";
+    var dir = "ltr";
+    var bodyClass = "doctor-dashboard";
+    if (!isDarkMode)
+    {
+        bodyClass += " light-mode";
+    }
+}
+<!DOCTYPE html>
+<html lang="@language" dir="@dir" class="@(!isDarkMode ? "light-mode-global" : "")">
+<head>
+    <script>
+        (function () {
+            // Initialize theme immediately to prevent flash
+            const savedTheme = localStorage.getItem("theme");
+            const prefs = localStorage.getItem("medicalAiPrefs") ? JSON.parse(localStorage.getItem("medicalAiPrefs")) : null;
+            
+            let isDarkMode = true; // Default to dark
+            if (savedTheme === "light" || savedTheme === "dark") {
+                isDarkMode = savedTheme === "dark";
+            } else if (prefs && typeof prefs.isDarkMode === "boolean") {
+                isDarkMode = prefs.isDarkMode;
+            }
+            
+            // Apply theme immediately
+            document.documentElement.setAttribute("data-theme", isDarkMode ? "dark" : "light");
+            document.documentElement.classList.toggle("light-mode-global", !isDarkMode);
+            
+            // Apply body classes
+            if (document.body) {
+                document.body.classList.toggle("light-mode", !isDarkMode);
+                document.body.classList.toggle("dark-mode", isDarkMode);
+            } else {
+                document.addEventListener("DOMContentLoaded", function() {
+                    document.body.classList.toggle("light-mode", !isDarkMode);
+                    document.body.classList.toggle("dark-mode", isDarkMode);
+                });
+            }
+            
+            // Initialize language
+            const savedLang = localStorage.getItem("lang") || (prefs ? prefs.language : null) || "en";
+            document.documentElement.setAttribute("lang", savedLang);
+            document.documentElement.setAttribute("dir", savedLang === "ar" ? "rtl" : "ltr");
+        })();
+    </script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - MedicalAIPlatform</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Bootstrap & Icons -->
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    
+    <!-- Admin CSS for App Frame & Header Consistency -->
+    <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+    
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="~/css/doctor-dashboard.css" asp-append-version="true" />
+    <!-- Site CSS for global overrides -->
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <style>
+        #darkOverlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.3);
+            z-index: 0;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.25s ease;
+        }
+
+        html[data-theme="dark"] #darkOverlay {
+            opacity: 0.5;
+        }
+        
+        html[data-theme="dark"] .app-frame,
+        body.dark-mode .app-frame {
+            position: relative;
+            z-index: 1;
+        }
+        
+        html[data-theme="dark"] .app-content,
+        body.dark-mode .app-content {
+            position: relative;
+            z-index: 2;
+        }
+    </style>
+</head>
+<body class="@bodyClass">
+    <div id="darkOverlay"></div>
+    
+    <!-- The Central App Frame -->
+    <div class="app-frame">
+        
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-left">
+                <div class="logo-container">
+                    <img src="~/images/chest-icon.png" alt="ChestAI" class="logo-icon" style="width: 36px; height: 36px; border-radius: 6px;" />
+                    <span class="brand-name" data-i18n="brand_chestai">ChestAI</span>
+                </div>
+                <nav class="main-nav">
+                    <a asp-controller="Home" asp-action="Index" class="nav-link" data-i18n="nav_home">Home</a>
+                    <a asp-controller="Patient" asp-action="Index" class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Patient" ? "active" : "")" data-i18n="nav_patients">Patients</a>
+                    <a asp-controller="FollowUp" asp-action="Index" class="nav-link @(ViewData["Title"] == "Follow Up" ? "active" : "")" data-i18n="nav_follow_up">Follow up</a>
+                    <a asp-controller="PatientCalendar" asp-action="Index" class="nav-link @(ViewData["Title"] == "Calendar" ? "active" : "")" data-i18n="nav_calendar">Calendar</a>
+                    <a asp-controller="Analytics" asp-action="Index" class="nav-link @(ViewData["Title"] == "Analytics" ? "active" : "")" data-i18n="nav_analytics">Analytics</a>
+                    <a asp-controller="AIAssistant" asp-action="Index" class="nav-link @(ViewData["Title"] == "AI Assistant" ? "active" : "")" data-i18n="nav_ai_assistant">AI Assistant</a>
+                </nav>
+            </div>
+            
+            <div class="header-right">
+                <a asp-controller="Account" asp-action="Logout" class="nav-link" style="text-decoration:none; color:inherit;">
+                    <div style="cursor:pointer; font-weight:500; font-size:1rem; color: #6B7280; display:flex; align-items:center; gap:8px;">
+                         <span data-i18n="nav_logout">Logout</span>
+                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                           <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                         </svg>
+                    </div>
+                </a>
+            </div>
+        </header>
+
+        <div class="app-content">
+            @RenderBody()
+        </div>
+
+    </div>
+
+    <!-- Floating Settings Button -->
+    <a asp-controller="Settings" asp-action="Index" class="settings-fab">
+        <i class="bi bi-gear-wide-connected"></i>
+    </a>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/i18n.js" asp-append-version="true"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

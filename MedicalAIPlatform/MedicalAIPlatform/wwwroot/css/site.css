@@ -1,0 +1,381 @@
+html {
+  font-size: 14px;
+}
+
+@media (min-width: 768px) {
+  html {
+    font-size: 16px;
+  }
+}
+
+.btn:focus,
+.btn:active:focus,
+.btn-link.nav-link:focus,
+.form-control:focus,
+.form-check-input:focus {
+  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+}
+
+html {
+  position: relative;
+  min-height: 100%;
+}
+
+body {
+  margin-bottom: 60px;
+}
+
+.form-floating>.form-control-plaintext::placeholder,
+.form-floating>.form-control::placeholder {
+  color: var(--bs-secondary-color);
+  text-align: end;
+}
+
+.form-floating>.form-control-plaintext:focus::placeholder,
+.form-floating>.form-control:focus::placeholder {
+  text-align: start;
+}
+
+.light-mode {
+  background-color: #ffffff;
+  color: #212529;
+}
+
+.dark-mode {
+  background-color: #121212;
+  color: #f5f5f5;
+}
+
+.dark-mode a,
+.dark-mode .nav-link,
+.dark-mode .navbar-brand {
+  color: #f5f5f5 !important;
+}
+
+.dark-mode .bg-white {
+  background-color: #1f1f1f !important;
+}
+
+.dark-mode .border-bottom,
+.dark-mode .border-top {
+  border-color: #333 !important;
+}
+
+/* Social Authentication Buttons */
+.btn-social {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.btn-social:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.btn-google {
+  background-color: #fff;
+  border-color: #db4437;
+  color: #db4437;
+}
+
+.btn-google:hover {
+  background-color: #f8f9fa;
+  border-color: #c23321;
+  color: #c23321;
+}
+
+.btn-apple {
+  background-color: #000;
+  border-color: #000;
+  color: #fff;
+}
+
+.btn-apple:hover {
+  background-color: #333;
+  border-color: #333;
+  color: #fff;
+}
+
+.btn-social svg {
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+/* --- Global Light Mode --- */
+html.light-mode-global body,
+body.light-mode {
+  background-color: #f0f2f5 !important;
+  background-image: none !important;
+  color: #333 !important;
+}
+
+/* Glass containers in Light Mode */
+html.light-mode-global body .glass-container,
+html.light-mode-global body .settings-glass-container,
+html.light-mode-global body .calendar-glass-container,
+html.light-mode-global body .auth-card,
+html.light-mode-global body .app-frame,
+body.light-mode .glass-container,
+body.light-mode .settings-glass-container,
+body.light-mode .calendar-glass-container,
+body.light-mode .auth-card,
+body.light-mode .app-frame {
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(14px);
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  color: #1f2937;
+}
+
+/* Headers in Light Mode */
+html.light-mode-global body .app-header,
+body.light-mode .app-header {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-bottom: 1px solid #e5e7eb !important;
+}
+
+html.light-mode-global body .app-header .brand-name,
+html.light-mode-global body .app-header .nav-link,
+html.light-mode-global body .app-header .header-right a,
+html.light-mode-global body .nav-link,
+html.light-mode-global body .page-title,
+html.light-mode-global body h1,
+html.light-mode-global body h2,
+html.light-mode-global body h3,
+body.light-mode .app-header .brand-name,
+body.light-mode .app-header .nav-link,
+body.light-mode .app-header .header-right a,
+body.light-mode .nav-link,
+body.light-mode .page-title,
+body.light-mode h1,
+body.light-mode h2,
+body.light-mode h3 {
+  color: #1f2937 !important;
+}
+
+html.light-mode-global body .nav-link.active,
+body.light-mode .nav-link.active {
+  color: #1D4581 !important;
+  border-bottom-color: #1D4581 !important;
+}
+
+/* Cards */
+html.light-mode-global body .card,
+html.light-mode-global body .stat-card,
+html.light-mode-global body .patient-card,
+html.light-mode-global body .settings-card,
+html.light-mode-global body .apt-card,
+html.light-mode-global body .calendar-widget,
+html.light-mode-global body .appointments-widget,
+body.light-mode .card,
+body.light-mode .stat-card,
+body.light-mode .patient-card,
+body.light-mode .settings-card,
+body.light-mode .apt-card,
+body.light-mode .calendar-widget,
+body.light-mode .appointments-widget {
+  background: #ffffff !important;
+  border-color: #e5e7eb !important;
+  color: #333 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+}
+
+html.light-mode-global body .text-muted,
+html.light-mode-global body .small,
+html.light-mode-global body .stat-subtext,
+html.light-mode-global body .patient-info p,
+body.light-mode .text-muted,
+body.light-mode .small,
+body.light-mode .stat-subtext,
+body.light-mode .patient-info p {
+  color: #6b7280 !important;
+}
+
+/* Inputs */
+html.light-mode-global body .form-control,
+html.light-mode-global body .form-control-custom,
+body.light-mode .form-control,
+body.light-mode .form-control-custom {
+  background: #fff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #1e293b !important;
+}
+
+/* --- Global Dark Mode Support via data-theme --- */
+html[data-theme="dark"],
+html[data-theme="dark"] body {
+  background-color: #0f172a !important;
+  color: #f1f5f9 !important;
+}
+
+html[data-theme="dark"] .app-header {
+  background: rgba(15, 23, 42, 0.95) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+html[data-theme="dark"] .app-header .brand-name,
+html[data-theme="dark"] .app-header .nav-link,
+html[data-theme="dark"] .nav-link {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+html[data-theme="dark"] .nav-link.active {
+  color: #60a5fa !important;
+}
+
+html[data-theme="dark"] .card,
+html[data-theme="dark"] .stat-card,
+html[data-theme="dark"] .settings-card {
+  background: rgba(30, 41, 59, 0.8) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #f1f5f9 !important;
+}
+
+html[data-theme="dark"] .text-muted {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+html[data-theme="dark"] .form-control {
+  background: rgba(30, 41, 59, 0.8) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: #f1f5f9 !important;
+}
+
+/* --- Global RTL Support --- */
+html[dir='rtl'] {
+  direction: rtl;
+  text-align: right;
+}
+
+html[dir='rtl'] .app-header,
+html[dir='rtl'] .header-left,
+html[dir='rtl'] .settings-header,
+html[dir='rtl'] .pref-card,
+html[dir='rtl'] .pref-icon-label {
+  flex-direction: row-reverse;
+}
+
+html[dir='rtl'] .header-right {
+  margin-left: 0;
+  margin-right: auto;
+}
+
+html[dir='rtl'] .nav-link {
+  margin-left: 1rem;
+  margin-right: 0;
+}
+
+html[dir='rtl'] .bi-chevron-right,
+html[dir='rtl'] .btn-back-arrow {
+  transform: rotate(180deg);
+}
+
+html[dir='rtl'] .input-wrapper .form-icon {
+  left: auto;
+  right: 16px;
+}
+
+html[dir='rtl'] .form-control-custom {
+  padding-left: 15px;
+  padding-right: 48px;
+}
+
+/* Advanced Floating Settings Button */
+.settings-fab {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  width: 56px;
+  height: 56px;
+  background: linear-gradient(135deg, #ffffff 0%, #f0f2f5 100%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1D4581;
+  font-size: 1.6rem;
+  box-shadow:
+    0 8px 32px rgba(29, 69, 129, 0.15),
+    0 2px 8px rgba(29, 69, 129, 0.05),
+    inset 0 1px 1px rgba(255, 255, 255, 0.9);
+  z-index: 1050;
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  text-decoration: none;
+  overflow: hidden;
+}
+
+.settings-fab::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.8), transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.settings-fab:hover {
+  transform: translateY(-4px) scale(1.05);
+  background: linear-gradient(135deg, #1D4581 0%, #127FEC 100%);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow:
+    0 12px 40px rgba(29, 69, 129, 0.3),
+    0 4px 12px rgba(29, 69, 129, 0.1),
+    inset 0 1px 1px rgba(255, 255, 255, 0.3);
+}
+
+.settings-fab:hover::before {
+  opacity: 1;
+}
+
+.settings-fab i {
+  transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  display: inline-block;
+}
+
+.settings-fab:hover i {
+  transform: rotate(90deg);
+}
+
+/* Pulse animation for a "live" feel */
+@keyframes softPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(29, 69, 129, 0.1);
+  }
+
+  70% {
+    box-shadow: 0 0 0 10px rgba(29, 69, 129, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(29, 69, 129, 0);
+  }
+}
+
+.settings-fab {
+  animation: softPulse 3s infinite;
+}
+
+.settings-fab:hover {
+  animation: none;
+}
+
+.dark-mode .settings-fab {
+  background: linear-gradient(135deg, #2d2d2d 0%, #1f1f1f 100%);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #a0a0a0;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.dark-mode .settings-fab:hover {
+  background: linear-gradient(135deg, #1D4581 0%, #127FEC 100%);
+  color: #ffffff;
+  border-color: transparent;
+  box-shadow: 0 12px 40px rgba(18, 127, 236, 0.4);
+}

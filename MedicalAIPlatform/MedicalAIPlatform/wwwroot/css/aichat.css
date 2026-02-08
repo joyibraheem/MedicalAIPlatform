@@ -1,0 +1,484 @@
+/* MedAI Chat Interface Styles */
+.medai-chat-wrapper {
+    position: relative;
+    width: 100%;
+    min-height: calc(100vh - 120px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+}
+
+.medai-background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: 
+        radial-gradient(circle at 20% 30%, rgba(59, 130, 246, 0.15) 0%, transparent 50%),
+        radial-gradient(circle at 80% 70%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
+        linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(99, 102, 241, 0.1) 100%);
+    background-color: #f8fafc;
+    filter: blur(8px);
+    opacity: 0.6;
+    z-index: 0;
+}
+
+.medai-background::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: 
+        radial-gradient(circle at 15% 25%, rgba(59, 130, 246, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 85% 75%, rgba(99, 102, 241, 0.08) 0%, transparent 40%);
+    opacity: 0.5;
+}
+
+.medai-chat-window {
+    position: relative;
+    width: 90%;
+    max-width: 600px;
+    height: 85vh;
+    max-height: 800px;
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 20px;
+    box-shadow: 
+        0 20px 60px rgba(0, 0, 0, 0.15),
+        0 0 0 1px rgba(255, 255, 255, 0.5);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 10;
+}
+
+.medai-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    background: rgba(255, 255, 255, 0.9);
+    flex-shrink: 0;
+}
+
+.medai-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.medai-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.medai-title-section {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.medai-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #1f2937;
+    line-height: 1.2;
+}
+
+.medai-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    background: #10b981;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.status-text {
+    font-size: 12px;
+    color: #10b981;
+    font-weight: 500;
+}
+
+.medai-header-right {
+    display: flex;
+    gap: 8px;
+}
+
+.medai-control-btn {
+    background: none;
+    border: none;
+    padding: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #374151;
+    transition: opacity 0.2s;
+}
+
+.medai-control-btn:hover {
+    opacity: 0.7;
+}
+
+.medai-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    overflow-y: auto;
+    background: rgba(249, 250, 251, 0.5);
+}
+
+.medai-timestamp {
+    text-align: center;
+    font-size: 12px;
+    color: #9ca3af;
+    margin-bottom: 16px;
+}
+
+.medai-action-buttons {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+
+.medai-action-btn {
+    background: #3b82f6;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.medai-action-btn:hover {
+    background: #2563eb;
+}
+
+.medai-messages {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 16px;
+    overflow-y: auto;
+}
+
+.medai-message-wrapper {
+    display: flex;
+    flex-direction: column;
+    max-width: 75%;
+}
+
+.medai-message-wrapper.user-message {
+    align-self: flex-end;
+    align-items: flex-end;
+}
+
+.medai-message-wrapper.assistant-message {
+    align-self: flex-start;
+    align-items: flex-start;
+}
+
+.medai-sender-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 4px;
+}
+
+.medai-message-bubble {
+    padding: 12px 16px;
+    border-radius: 18px;
+    font-size: 14px;
+    line-height: 1.5;
+    word-wrap: break-word;
+    position: relative;
+}
+
+.user-bubble {
+    background: #2563eb;
+    color: white;
+    border-bottom-right-radius: 4px;
+}
+
+.assistant-bubble {
+    background: #f3f4f6;
+    color: #1f2937;
+    border-bottom-left-radius: 4px;
+}
+
+.medai-message-bubble strong {
+    color: #2563eb;
+    font-weight: 600;
+}
+
+.assistant-bubble strong {
+    color: #2563eb;
+}
+
+.typing-indicator {
+    display: flex;
+    gap: 4px;
+    padding: 4px 0;
+}
+
+.typing-indicator span {
+    width: 8px;
+    height: 8px;
+    background: #9ca3af;
+    border-radius: 50%;
+    animation: typing 1.4s infinite;
+}
+
+.typing-indicator span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.typing-indicator span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes typing {
+    0%, 60%, 100% {
+        transform: translateY(0);
+        opacity: 0.7;
+    }
+    30% {
+        transform: translateY(-10px);
+        opacity: 1;
+    }
+}
+
+.medai-system-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #9ca3af;
+    margin-bottom: 12px;
+}
+
+.status-indicator {
+    width: 4px;
+    height: 4px;
+    background: #9ca3af;
+    border-radius: 50%;
+    opacity: 0.5;
+}
+
+.medai-input-area {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #f3f4f6;
+    padding: 12px;
+    border-radius: 12px;
+    flex-shrink: 0;
+}
+
+.medai-attach-btn {
+    background: #e5e7eb;
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.2s;
+    margin: 0;
+    padding: 0;
+}
+
+.medai-attach-btn:hover {
+    background: #d1d5db;
+}
+
+.medai-attach-btn input[type="file"] {
+    display: none;
+}
+
+.medai-input-form {
+    flex: 1;
+}
+
+.medai-input {
+    width: 100%;
+    border: none;
+    background: transparent;
+    padding: 8px 12px;
+    font-size: 14px;
+    color: #1f2937;
+    outline: none;
+    resize: none;
+    font-family: inherit;
+}
+
+.medai-input::placeholder {
+    color: #9ca3af;
+}
+
+.medai-send-btn {
+    background: #9ca3af;
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: not-allowed;
+    flex-shrink: 0;
+    transition: all 0.2s;
+    opacity: 0.6;
+}
+
+.medai-send-btn.active {
+    background: #2563eb;
+    cursor: pointer;
+    opacity: 1;
+    transform: scale(1.05);
+}
+
+.medai-send-btn.active:hover:not(:disabled) {
+    background: #1d4ed8;
+    transform: scale(1.1);
+}
+
+.medai-send-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: scale(1);
+}
+
+.medai-uploads-preview {
+    display: flex;
+    gap: 8px;
+    padding: 8px 12px;
+    flex-wrap: wrap;
+    max-height: 120px;
+    overflow-y: auto;
+    flex-shrink: 0;
+}
+
+.medai-upload-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #f3f4f6;
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    color: #374151;
+}
+
+.upload-preview-img {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+    border-radius: 6px;
+}
+
+.upload-file-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #e5e7eb;
+    border-radius: 6px;
+}
+
+.upload-file-name {
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.upload-remove-btn {
+    background: none;
+    border: none;
+    padding: 2px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+.upload-remove-btn:hover {
+    opacity: 1;
+}
+
+/* Scrollbar styling */
+.medai-content::-webkit-scrollbar,
+.medai-messages::-webkit-scrollbar {
+    width: 6px;
+}
+
+.medai-content::-webkit-scrollbar-track,
+.medai-messages::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.medai-content::-webkit-scrollbar-thumb,
+.medai-messages::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 3px;
+}
+
+.medai-content::-webkit-scrollbar-thumb:hover,
+.medai-messages::-webkit-scrollbar-thumb:hover {
+    background: #9ca3af;
+}
+
+/* Error message styling */
+.medai-error {
+    background: #fee2e2;
+    color: #991b1b;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    margin-bottom: 12px;
+}
+
+/* User avatar styling */
+.user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-top: 4px;
+}

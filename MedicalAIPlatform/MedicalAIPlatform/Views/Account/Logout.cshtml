@@ -1,0 +1,82 @@
+@{
+    ViewData["Title"] = "Log Out";
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>
+        (function () {
+            const theme = localStorage.getItem("theme");
+            document.documentElement.setAttribute(
+                "data-theme",
+                theme === "dark" ? "dark" : "light"
+            );
+        })();
+    </script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - MedicalAIPlatform</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/auth.css" asp-append-version="true" />
+    <style>
+        #darkOverlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.75);
+            z-index: 9998;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.25s ease;
+        }
+
+        html[data-theme="dark"] #darkOverlay {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div id="darkOverlay"></div>
+
+    <div class="container">
+        <main role="main" class="pb-3">
+            
+            <div class="auth-card" style="max-width: 400px; padding: 2rem;">
+                <!-- Drag Handle (Visual only) -->
+                <div style="width: 40px; height: 4px; background: rgba(0,0,0,0.1); margin: 0 auto 2rem; border-radius: 2px;"></div>
+
+                <!-- Blue Logout Icon -->
+                <div style="width: 50px; height: 50px; margin: 0 auto 1rem; color: #127FEC;">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+                    </svg>
+                </div>
+
+                <h3 style="font-size: 1.25rem; font-weight: 700; color: #1F2937; margin-bottom: 0.5rem;">Log Out</h3>
+                
+                <p style="font-size: 0.95rem; color: #6B7280; font-weight: 500; margin-bottom: 2rem;">
+                    Are you sure you want to log out?
+                </p>
+
+                <!-- Logout Form -->
+                <form asp-action="Logout" method="post">
+                    <button type="submit" class="btn-auth btn-primary-auth" style="display:flex; align-items:center; justify-content:center; gap:8px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                           <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+                        </svg>
+                        Log Out
+                    </button>
+                    
+                    <a href="javascript:history.back()" class="btn-auth btn-cancel" style="background: #E5E7EB; color: #374151; margin-bottom: 0; display:block; text-decoration:none;">
+                        Cancel
+                    </a>
+                </form>
+
+            </div>
+
+        </main>
+    </div>
+
+</body>
+</html>

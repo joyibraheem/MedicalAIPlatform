@@ -1,0 +1,48 @@
+@model IEnumerable<MedicalAIPlatform.Models.AIAlertViewModel>
+@{
+    ViewData["Title"] = "AI Driven Alerts";
+}
+
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4 mt-4">
+        <div>
+            <h1>AI Driven Alerts <span class="badge bg-danger rounded-pill align-top fs-6">Prototype</span></h1>
+            <p class="text-muted">Real-time analysis of patient data (Simulated)</p>
+        </div>
+        <button class="btn btn-outline-secondary">
+            Refresh Analysis
+        </button>
+    </div>
+
+    <div class="row">
+        @foreach (var alert in Model)
+        {
+            <div class="col-md-4 mb-4">
+                <div class="card shadow-sm h-100 border-start-5 border-start border-@((alert.Severity == "High" ? "danger" : alert.Severity == "Medium" ? "warning" : "info"))">
+                    <div class="card-header bg-white d-flex justify-content-between">
+                        <span class="badge bg-@((alert.Severity == "High" ? "danger" : alert.Severity == "Medium" ? "warning" : "info"))">@alert.Severity Risk</span>
+                        <small class="text-muted">@alert.Timestamp.ToShortTimeString()</small>
+                    </div>
+                    <div class="card-body">
+                        <h5 class="card-title text-danger">@alert.AlertType</h5>
+                        <p class="card-text">
+                            <strong>Patient:</strong> @alert.PatientName
+                        </p>
+                        <hr/>
+                        <p class="card-text text-muted small">
+                            <strong>AI Analysis:</strong> Potential anomaly detected in recent vitals pattern matching known criteria for @alert.AlertType.
+                        </p>
+                        <div class="alert alert-light border">
+                            <strong>Suggested Next Step:</strong><br/>
+                            @alert.SuggestedNextStep
+                        </div>
+                    </div>
+                    <div class="card-footer bg-white text-end">
+                        <button class="btn btn-sm btn-primary">Action</button>
+                        <button class="btn btn-sm btn-outline-secondary">Dismiss</button>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>

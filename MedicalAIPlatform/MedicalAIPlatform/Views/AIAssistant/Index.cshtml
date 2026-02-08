@@ -1,0 +1,124 @@
+@{
+    ViewData["Title"] = "AI Assistant";
+    Layout = "_DoctorLayout";
+}
+
+<link rel="stylesheet" href="~/css/aichat.css" asp-append-version="true" />
+
+<div class="medai-chat-wrapper">
+    <!-- Background with medical theme -->
+    <div class="medai-background"></div>
+    
+    <!-- Chat Window -->
+    <div class="medai-chat-window">
+        <!-- Header -->
+        <div class="medai-header">
+            <div class="medai-header-left">
+                <div class="medai-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2Z" fill="#2563EB"/>
+                        <path d="M12 8L10 10L8 8" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        <circle cx="16" cy="8" r="1.5" fill="white"/>
+                    </svg>
+                </div>
+                <div class="medai-title-section">
+                    <h2 class="medai-title" data-i18n="ai_assistant_title">MedAI Assistant</h2>
+                    <div class="medai-status">
+                        <span class="status-dot"></span>
+                        <span class="status-text" data-i18n="ai_assistant_live">Live</span>
+                    </div>
+                </div>
+            </div>
+            <div class="medai-header-right">
+                <button class="medai-control-btn" onclick="toggleMinimize()">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <path d="M4 6L8 10L12 6" stroke="#374151" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                <button class="medai-control-btn" onclick="closeChat()">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <path d="M12 4L4 12M4 4L12 12" stroke="#374151" stroke-width="1.5" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Chat Content -->
+        <div class="medai-content">
+            <!-- Timestamp -->
+            <div class="medai-timestamp">Today, @DateTime.Now.ToString("h:mm tt")</div>
+
+            <!-- Action Buttons -->
+            <div class="medai-action-buttons">
+                <button class="medai-action-btn">Explain Heatmap</button>
+                <button class="medai-action-btn">Scan Status</button>
+                <button class="medai-action-btn">contact support</button>
+            </div>
+
+            <!-- Messages -->
+            <div class="medai-messages" id="chat-messages">
+                <!-- Messages will be added dynamically via JavaScript -->
+            </div>
+
+            <!-- System Status -->
+            <div class="medai-system-status">
+                <span class="status-indicator"></span>
+                <span class="status-indicator"></span>
+                <span data-i18n="ai_assistant_system_standby">System standby</span>
+            </div>
+
+            <!-- Input Area -->
+            <div class="medai-input-area">
+                <label for="file-upload" class="medai-attach-btn">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M10 4V16M4 10H16" stroke="#374151" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    <input type="file" id="file-upload" accept="image/*,.pdf,.doc,.docx" multiple style="display: none;" />
+                </label>
+                <div class="medai-input-form">
+                    <textarea id="chat-input" class="medai-input" data-i18n="ai_assistant_tell_me" placeholder="+ Tell me what do you want?" rows="1"></textarea>
+                </div>
+                <button id="send-btn" class="medai-send-btn" type="button">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M18 2L9 11M18 2L12 18L9 11M18 2L2 8L9 11" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Uploaded Files Preview -->
+            <div class="medai-uploads-preview"></div>
+        </div>
+    </div>
+</div>
+
+@Html.AntiForgeryToken()
+
+<script src="~/js/aichat.js" asp-append-version="true"></script>
+
+<script>
+    function toggleMinimize() {
+        // Toggle minimize functionality (optional)
+        console.log('Minimize clicked');
+    }
+
+    function closeChat() {
+        // Navigate back or close chat (optional)
+        if (confirm('Are you sure you want to close the chat?')) {
+            window.location.href = '@Url.Action("Index", "Home")';
+        }
+    }
+</script>
+
+<style>
+    /* Ensure the page fills the viewport */
+    body.doctor-dashboard .app-frame {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+    }
+
+    body.doctor-dashboard .app-frame > main {
+        flex: 1;
+        padding: 0;
+    }
+</style>
