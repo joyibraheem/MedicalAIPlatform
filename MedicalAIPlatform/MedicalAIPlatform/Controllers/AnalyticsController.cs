@@ -1,247 +1,445 @@
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using MedicalAIPlatform.Services;
 using MedicalAIPlatform.Models;
-using System.Text;
-using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using MedicalAIPlatform.Models.Dicom;
+using MedicalAIPlatform.Services;
+using MedicalAIPlatform.Services.Dicom;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+namespace MedicalAIPlatform.Controllers;
 
-namespace MedicalAIPlatform.Controllers
+[Authorize]
+public sealed class AnalyticsController : Controller
 {
-    [Authorize]
-    public class AnalyticsController : Controller
+    private const long MaxAnalyticsUploadBytes = 512L * 1024 * 1024;
+
+    private readonly CheXNetApiClient _cheXNetApi;
+    private readonly BioBertApiClient _bioBertApi;
+    private readonly LungAIApiClient _lungAIApi;
+    private readonly AnalyticsStateService _stateService;
+    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly DicomInferencePipelineOrchestrator _dicomPipeline;
+    private readonly ILogger<AnalyticsController> _logger;
+
+    private static readonly DicomAggregationMethod DefaultSliceAggregation = DicomAggregationMethod.MaxPooling;
+
+    public AnalyticsController(
+        CheXNetApiClient cheXNetApi,
+        BioBertApiClient bioBertApi,
+        LungAIApiClient lungAIApi,
+        AnalyticsStateService stateService,
+        UserManager<ApplicationUser> userManager,
+        DicomInferencePipelineOrchestrator dicomPipeline,
+        ILogger<AnalyticsController> logger)
     {
-        private readonly CheXNetApiClient _cheXNetApi;
-        private readonly BioBertApiClient _bioBertApi;
-        private readonly LungAIApiClient _lungAIApi;
-        private readonly AnalyticsStateService _stateService;
-        private readonly UserManager<ApplicationUser> _userManager;
+        _cheXNetApi = cheXNetApi;
+        _bioBertApi = bioBertApi;
+        _lungAIApi = lungAIApi;
+        _stateService = stateService;
+        _userManager = userManager;
+        _dicomPipeline = dicomPipeline;
+        _logger = logger;
+    }
 
-        public AnalyticsController(
-            CheXNetApiClient cheXNetApi,
-            BioBertApiClient bioBertApi,
-            LungAIApiClient lungAIApi,
-            AnalyticsStateService stateService,
-            UserManager<ApplicationUser> userManager)
+    private async Task SetDoctorName()
+    {
+        if (User?.Identity?.IsAuthenticated ?? false)
         {
-            _cheXNetApi = cheXNetApi;
-            _bioBertApi = bioBertApi;
-            _lungAIApi = lungAIApi;
-            _stateService = stateService;
-            _userManager = userManager;
+            var user = await _userManager.GetUserAsync(User);
+            ViewBag.DoctorName = user != null
+                ? (user.FullName ?? user.UserName)
+                : User.Identity?.Name ?? "Doctor";
         }
-
-        private async Task SetDoctorName()
+        else
         {
-            if (User?.Identity?.IsAuthenticated ?? false)
-            {
-                var user = await _userManager.GetUserAsync(User);
-                if (user != null)
-                {
-                    ViewBag.DoctorName = user.FullName ?? user.UserName;
-                }
-                else
-                {
-                    ViewBag.DoctorName = User.Identity.Name;
-                }
-            }
-            else
-            {
-                ViewBag.DoctorName = "Doctor";
-            }
+            ViewBag.DoctorName = "Doctor";
         }
+    }
 
-        public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index()
+    {
+        await SetDoctorName();
+        return View();
+    }
+
+    [HttpPost]
+    [RequestFormLimits(MultipartBodyLengthLimit = MaxAnalyticsUploadBytes)]
+    [RequestSizeLimit(MaxAnalyticsUploadBytes)]
+    public async Task<IActionResult> AnalyzeXRay(IFormFile xrayFile, CancellationToken cancellationToken)
+    {
+        if (xrayFile == null || xrayFile.Length == 0)
+            return Json(new { success = false, error = "Please upload an X-Ray image." });
+
+        try
         {
-            await SetDoctorName();
-            return View();
+            LogUpload("AnalyzeXRay", xrayFile);
+            var bytes = await ReadAllBytesAsync(xrayFile, cancellationToken).ConfigureAwait(false);
+            var results = await ResolveCheXNetPredictionAsync(xrayFile, bytes, cancellationToken).ConfigureAwait(false);
+
+            string? previewUrl = null;
+            if (!AnalyticsDicomRouting.IsDicomUpload(xrayFile))
+                previewUrl = MakeDataUrl(bytes, xrayFile.ContentType);
+            else if (results.TryGetValue("CheXNet", out var chex) && !string.IsNullOrEmpty(chex.PreviewImageDataUrl))
+                previewUrl = chex.PreviewImageDataUrl;
+
+            _stateService.SetResults(results, null, null, previewUrl, null, null);
+
+            return Json(new { success = true, redirect = Url.Action("XRay") });
         }
-
-        [HttpPost]
-        public async Task<IActionResult> AnalyzeXRay(IFormFile xrayFile)
+        catch (Exception ex)
         {
-            if (xrayFile == null || xrayFile.Length == 0)
-            {
-                return Json(new { success = false, error = "Please upload an X-Ray image." });
-            }
-
-            try
-            {
-                using var ms = new MemoryStream();
-                await xrayFile.CopyToAsync(ms);
-                var imageBytes = ms.ToArray();
-                var imageDataUrl = $"data:{xrayFile.ContentType};base64,{Convert.ToBase64String(imageBytes)}";
-
-                var results = await _cheXNetApi.PredictAsync(
-                    imageBytes: imageBytes,
-                    fileName: xrayFile.FileName,
-                    contentType: xrayFile.ContentType,
-                    models: "CheXNet",
-                    topK: 14);
-
-                _stateService.SetResults(results, null, null, imageDataUrl, null, null);
-
-                return Json(new { success = true, redirect = Url.Action("XRay") });
-            }
-            catch (Exception ex)
-            {
-                return Json(new { success = false, error = ex.Message });
-            }
+            _logger.LogError(ex, "AnalyzeXRay failed for {FileName}", SafeFileName(xrayFile));
+            return Json(new { success = false, error = ex.Message });
         }
+    }
 
-        [HttpPost]
-        public async Task<IActionResult> AnalyzeText(string clinicalText)
+    [HttpPost]
+    public async Task<IActionResult> AnalyzeText(string clinicalText)
+    {
+        if (string.IsNullOrWhiteSpace(clinicalText))
+            return Json(new { success = false, error = "Please enter clinical text." });
+
+        try
         {
-            if (string.IsNullOrWhiteSpace(clinicalText))
-            {
-                return Json(new { success = false, error = "Please enter clinical text." });
-            }
-
-            try
-            {
-                var results = await _bioBertApi.PredictAsync(clinicalText);
-                _stateService.SetResults(null, results, null, null, null, clinicalText);
-                return Json(new { success = true, redirect = Url.Action("Text") });
-            }
-            catch (Exception ex)
-            {
-                return Json(new { success = false, error = ex.Message });
-            }
+            var results = await _bioBertApi.PredictAsync(clinicalText);
+            _stateService.SetResults(null, results, null, null, null, clinicalText);
+            return Json(new { success = true, redirect = Url.Action("Text") });
         }
-
-        [HttpPost]
-        public async Task<IActionResult> AnalyzeCT(IFormFile ctFile)
+        catch (Exception ex)
         {
-            if (ctFile == null || ctFile.Length == 0)
-            {
-                return Json(new { success = false, error = "Please upload a CT scan image." });
-            }
-
-            try
-            {
-                using var ms = new MemoryStream();
-                await ctFile.CopyToAsync(ms);
-                var imageBytes = ms.ToArray();
-                var imageDataUrl = $"data:{ctFile.ContentType};base64,{Convert.ToBase64String(imageBytes)}";
-
-                var results = await _lungAIApi.PredictCtAsync(imageBytes, ctFile.FileName, ctFile.ContentType);
-                _stateService.SetResults(null, null, results, null, imageDataUrl, null);
-                return Json(new { success = true, redirect = Url.Action("CT") });
-            }
-            catch (Exception ex)
-            {
-                return Json(new { success = false, error = ex.Message });
-            }
+            return Json(new { success = false, error = ex.Message });
         }
+    }
 
-        [HttpPost]
-        public async Task<IActionResult> AnalyzeCombined(IFormFile? xrayFile, string? clinicalText, IFormFile? ctFile)
+    [HttpPost]
+    [RequestFormLimits(MultipartBodyLengthLimit = MaxAnalyticsUploadBytes)]
+    [RequestSizeLimit(MaxAnalyticsUploadBytes)]
+    public async Task<IActionResult> AnalyzeCT(IFormFile ctFile, CancellationToken cancellationToken)
+    {
+        if (ctFile == null || ctFile.Length == 0)
+            return Json(new { success = false, error = "Please upload a CT scan image." });
+
+        try
         {
-            try
+            LogUpload("AnalyzeCT", ctFile);
+            var bytes = await ReadAllBytesAsync(ctFile, cancellationToken).ConfigureAwait(false);
+            LungAICtResponse results = await ResolveCtPredictionAsync(ctFile, bytes, cancellationToken)
+                .ConfigureAwait(false);
+
+            string? ctPreviewUrl = null;
+            if (!AnalyticsDicomRouting.IsDicomUpload(ctFile))
+                ctPreviewUrl = MakeDataUrl(bytes, ctFile.ContentType);
+            else if (!string.IsNullOrEmpty(results.PreviewImageDataUrl))
+                ctPreviewUrl = results.PreviewImageDataUrl;
+
+            _stateService.SetResults(null, null, results, null, ctPreviewUrl, null);
+            return Json(new { success = true, redirect = Url.Action("CT") });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "AnalyzeCT failed for {FileName}", SafeFileName(ctFile));
+            return Json(new { success = false, error = ex.Message });
+        }
+    }
+
+    [HttpPost]
+    [RequestFormLimits(MultipartBodyLengthLimit = MaxAnalyticsUploadBytes)]
+    [RequestSizeLimit(MaxAnalyticsUploadBytes)]
+    public async Task<IActionResult> AnalyzeCombined(
+        [FromForm(Name = "xrayFile")] IFormFile? xrayFile,
+        [FromForm(Name = "clinicalText")] string? clinicalText,
+        [FromForm(Name = "ctFile")] IFormFile? ctFile,
+        CancellationToken cancellationToken)
+    {
+        clinicalText = string.IsNullOrWhiteSpace(clinicalText) ? null : clinicalText.Trim();
+        try
+        {
+            Task<Dictionary<string, CheXNetPredictionResponse>>? chexTask = null;
+            Task<BioBertResponse>? bertTask = null;
+
+            byte[]? xRayBytes = null;
+            byte[]? ctBytes = null;
+
+            if (xrayFile is { Length: > 0 })
             {
-                Task<Dictionary<string, CheXNetPredictionResponse>>? chexTask = null;
-                Task<BioBertResponse>? bertTask = null;
-                Task<LungAICtResponse>? ctTask = null;
+                LogUpload("AnalyzeCombined:X-Ray slot", xrayFile);
+                xRayBytes = await ReadAllBytesAsync(xrayFile, cancellationToken).ConfigureAwait(false);
+                chexTask = ResolveCheXNetPredictionAsync(xrayFile, xRayBytes, cancellationToken);
+            }
 
-                string? xrayDataUrl = null;
-                string? ctDataUrl = null;
+            if (clinicalText != null)
+                bertTask = _bioBertApi.PredictAsync(clinicalText, cancellationToken);
 
-                if (xrayFile != null && xrayFile.Length > 0)
+            if (ctFile is { Length: > 0 })
+            {
+                LogUpload("AnalyzeCombined:CT slot", ctFile);
+                ctBytes = await ReadAllBytesAsync(ctFile, cancellationToken).ConfigureAwait(false);
+            }
+
+            if (chexTask == null && bertTask == null && ctBytes == null)
+                return Json(new { success = false, error = "Please provide at least one input." });
+
+            // BioBERT runs in parallel with imaging. Both DICOM HTTP pipelines MUST NOT run concurrently:
+            // they share the scoped DicomInferencePipelineOrchestrator and fo-dicom/renderer state — parallel
+            // RunAsync causes races and random failures only when both X-Ray + CT DICOM slots are filled.
+            Dictionary<string, CheXNetPredictionResponse>? chexResults = null;
+            Exception? chexFault = null;
+            LungAICtResponse? lungRaw = null;
+            Exception? lungFault = null;
+
+            async Task RunDicomBranchesOneAfterAnotherAsync()
+            {
+                if (chexTask is not null)
                 {
-                    using var ms = new MemoryStream();
-                    await xrayFile.CopyToAsync(ms);
-                    var imageBytes = ms.ToArray();
-                    xrayDataUrl = $"data:{xrayFile.ContentType};base64,{Convert.ToBase64String(imageBytes)}";
-                    chexTask = _cheXNetApi.PredictAsync(imageBytes, xrayFile.FileName, xrayFile.ContentType, "CheXNet", null, 14);
-                }
-
-                if (!string.IsNullOrWhiteSpace(clinicalText))
-                {
-                    bertTask = _bioBertApi.PredictAsync(clinicalText);
-                }
-
-                if (ctFile != null && ctFile.Length > 0)
-                {
-                    using var ms = new MemoryStream();
-                    await ctFile.CopyToAsync(ms);
-                    var imageBytes = ms.ToArray();
-                    ctDataUrl = $"data:{ctFile.ContentType};base64,{Convert.ToBase64String(imageBytes)}";
-                    ctTask = _lungAIApi.PredictCtAsync(imageBytes, ctFile.FileName, ctFile.ContentType);
-                }
-
-                var toWait = new List<Task>();
-                if (chexTask != null) toWait.Add(chexTask);
-                if (bertTask != null) toWait.Add(bertTask);
-                if (ctTask != null) toWait.Add(ctTask);
-
-                if (toWait.Count == 0)
-                {
-                    return Json(new { success = false, error = "Please provide at least one input." });
+                    (chexResults, chexFault) = await ConsumeTaskMaybe(chexTask).ConfigureAwait(false);
                 }
 
-                await Task.WhenAll(toWait);
-
-                Dictionary<string, CheXNetPredictionResponse>? chexResults = null;
-                BioBertResponse? bioBertResults = null;
-                LungAICtResponse? lungAIResults = null;
-
-                if (chexTask != null) chexResults = await chexTask;
-                if (bertTask != null) bioBertResults = await bertTask;
-                if (ctTask != null) lungAIResults = await ctTask;
-
-                _stateService.SetResults(chexResults, bioBertResults, lungAIResults, xrayDataUrl, ctDataUrl, clinicalText);
-                return Json(new { success = true, redirect = Url.Action("Combined") });
+                // Start CT DICOM pipeline only after chest branch finishes — avoids overlapping RunAsync on scoped pipeline.
+                if (ctBytes is not null && ctFile is { Length: > 0 })
+                {
+                    var ctPipe = ResolveCtPredictionAsync(ctFile, ctBytes, cancellationToken);
+                    (lungRaw, lungFault) = await ConsumeTaskMaybe(ctPipe).ConfigureAwait(false);
+                }
             }
-            catch (Exception ex)
+
+            BioBertResponse? bioResults = null;
+            Exception? bertFault = null;
+
+            async Task RunBioBranchAsync()
             {
-                return Json(new { success = false, error = ex.Message });
+                if (bertTask is null)
+                    return;
+                (bioResults, bertFault) = await ConsumeTaskMaybe(bertTask).ConfigureAwait(false);
             }
-        }
 
-        public async Task<IActionResult> XRay()
+            await Task.WhenAll(RunDicomBranchesOneAfterAnotherAsync(), RunBioBranchAsync()).ConfigureAwait(false);
+
+            var warnings = new List<string>();
+            if (chexFault is not null)
+            {
+                _logger.LogError(chexFault, "AnalyzeCombined: X-Ray branch failed");
+                warnings.Add($"X-Ray / chest: {chexFault.Message}");
+            }
+
+            if (bertFault is not null)
+            {
+                _logger.LogError(bertFault, "AnalyzeCombined: BioBERT branch failed");
+                warnings.Add($"Clinical text (BioBERT): {bertFault.Message}");
+            }
+
+            LungAICtResponse? lungResults = lungRaw;
+            if (lungFault is not null)
+            {
+                _logger.LogError(lungFault, "AnalyzeCombined: CT / lung branch failed");
+                warnings.Add($"CT / ChestAI: {lungFault.Message}");
+                lungResults = new LungAICtResponse
+                {
+                    Probabilities = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase),
+                    Error = lungFault.Message,
+                };
+            }
+
+            int okBranches =
+                (chexTask is not null && chexFault is null && chexResults?.ContainsKey("CheXNet") == true ? 1 : 0)
+                + (bertTask is not null && bertFault is null && bioResults is not null ? 1 : 0)
+                + (ctBytes is not null && lungFault is null ? 1 : 0);
+
+            if (okBranches == 0)
+                return Json(new
+                {
+                    success = false,
+                    error = warnings.Count > 0
+                        ? string.Join(" ", warnings)
+                        : "Combined analysis could not finish. Check that inference services are running.",
+                });
+
+            string? xrayDataUrl = null;
+            if (xRayBytes != null && xrayFile != null && !AnalyticsDicomRouting.IsDicomUpload(xrayFile))
+                xrayDataUrl = MakeDataUrl(xRayBytes, xrayFile.ContentType);
+            else if (
+                chexResults != null
+                && chexResults.TryGetValue("CheXNet", out var chexVm)
+                && !string.IsNullOrEmpty(chexVm.PreviewImageDataUrl))
+                xrayDataUrl = chexVm.PreviewImageDataUrl;
+
+            string? ctDataUrl = null;
+            if (ctBytes != null && ctFile != null && !AnalyticsDicomRouting.IsDicomUpload(ctFile))
+                ctDataUrl = MakeDataUrl(ctBytes, ctFile.ContentType);
+            else if (lungResults != null && !string.IsNullOrEmpty(lungResults.PreviewImageDataUrl))
+                ctDataUrl = lungResults.PreviewImageDataUrl;
+
+            _stateService.SetResults(chexResults, bioResults, lungResults, xrayDataUrl, ctDataUrl, clinicalText);
+
+            if (warnings.Count > 0)
+                TempData["CombinedWarnings"] = string.Join(" • ", warnings);
+
+            return Json(new { success = true, redirect = Url.Action("Combined") ?? "/Analytics/Combined" });
+        }
+        catch (Exception ex)
         {
-            if (_stateService.CurrentResults == null || !_stateService.CurrentResults.ContainsKey("CheXNet"))
-            {
-                TempData["Error"] = "No X-Ray analysis results available. Please analyze an X-Ray image first.";
-                return RedirectToAction("Index");
-            }
-            await SetDoctorName();
-            return View();
+            _logger.LogError(ex, "AnalyzeCombined failed");
+            return Json(new { success = false, error = ex.Message });
+        }
+    }
+
+    private static Task<(T? Result, Exception? Fault)> ConsumeTaskMaybe<T>(Task<T>? task) where T : class
+        => task is null ? Task.FromResult<(T?, Exception?)>((null, null)) : AwaitQuiet(task);
+
+    private static async Task<(T?, Exception?)> AwaitQuiet<T>(Task<T> task) where T : class
+    {
+        try
+        {
+            var v = await task.ConfigureAwait(false);
+            return (v, null);
+        }
+        catch (Exception ex)
+        {
+            return (null, ex);
+        }
+    }
+
+    public async Task<IActionResult> XRay()
+    {
+        if (_stateService.CurrentResults == null || !_stateService.CurrentResults.ContainsKey("CheXNet"))
+        {
+            TempData["Error"] = "No X-Ray analysis results available. Please analyze an X-Ray image first.";
+            return RedirectToAction("Index");
         }
 
-        public async Task<IActionResult> Text()
+        await SetDoctorName();
+        return View();
+    }
+
+    public async Task<IActionResult> Text()
+    {
+        if (_stateService.CurrentBioBertResults == null)
         {
-            if (_stateService.CurrentBioBertResults == null)
-            {
-                TempData["Error"] = "No text analysis results available. Please analyze clinical text first.";
-                return RedirectToAction("Index");
-            }
-            await SetDoctorName();
-            return View();
+            TempData["Error"] = "No text analysis results available. Please analyze clinical text first.";
+            return RedirectToAction("Index");
         }
 
-        public async Task<IActionResult> CT()
+        await SetDoctorName();
+        return View();
+    }
+
+    public async Task<IActionResult> CT()
+    {
+        if (_stateService.CurrentLungAIResults == null)
         {
-            if (_stateService.CurrentLungAIResults == null)
-            {
-                TempData["Error"] = "No CT scan analysis results available. Please analyze a CT scan first.";
-                return RedirectToAction("Index");
-            }
-            await SetDoctorName();
-            return View();
+            TempData["Error"] = "No CT scan analysis results available. Please analyze a CT scan first.";
+            return RedirectToAction("Index");
         }
 
-        public async Task<IActionResult> Combined()
+        await SetDoctorName();
+        return View();
+    }
+
+    public async Task<IActionResult> Combined()
+    {
+        if (_stateService.CurrentResults == null &&
+            _stateService.CurrentBioBertResults == null &&
+            _stateService.CurrentLungAIResults == null)
         {
-            if (_stateService.CurrentResults == null && 
-                _stateService.CurrentBioBertResults == null && 
-                _stateService.CurrentLungAIResults == null)
-            {
-                TempData["Error"] = "No analysis results available. Please run an analysis first.";
-                return RedirectToAction("Index");
-            }
-            await SetDoctorName();
-            return View();
+            TempData["Error"] = "No analysis results available. Please run an analysis first.";
+            return RedirectToAction("Index");
         }
+
+        await SetDoctorName();
+        return View();
+    }
+
+    private void LogUpload(string context, IFormFile file)
+    {
+        _logger.LogInformation(
+            "[{Context}] Upload: file={File}, length={Len}, declaredContentType={ContentType}, isDicom={IsDicom}",
+            context,
+            SafeFileName(file),
+            file.Length,
+            string.IsNullOrEmpty(file.ContentType) ? "(empty)" : file.ContentType,
+            AnalyticsDicomRouting.IsDicomUpload(file));
+    }
+
+    private static string SafeFileName(IFormFile file) =>
+        string.IsNullOrEmpty(file.FileName) ? "(no name)" : Path.GetFileName(file.FileName);
+
+    private async Task<byte[]> ReadAllBytesAsync(IFormFile file, CancellationToken cancellationToken)
+    {
+        await using var ms = new MemoryStream(capacity: (int)Math.Min(file.Length, int.MaxValue));
+        await file.CopyToAsync(ms, cancellationToken).ConfigureAwait(false);
+        return ms.ToArray();
+    }
+
+    /// <summary>CheXNet path: slice-based pipeline for DICOM, otherwise direct HTTP PNG/JPEG.</summary>
+    private async Task<Dictionary<string, CheXNetPredictionResponse>> ResolveCheXNetPredictionAsync(
+        IFormFile fileMeta,
+        byte[] fileBytes,
+        CancellationToken cancellationToken)
+    {
+        if (AnalyticsDicomRouting.IsDicomUpload(fileMeta))
+        {
+            _logger.LogInformation(
+                "Processing DICOM chest upload → slice-based pipeline (CheXNet per slice); file={File}",
+                SafeFileName(fileMeta));
+
+            await using var dicomMs = new MemoryStream(fileBytes, writable: false);
+            var pipe = await _dicomPipeline
+                .RunAsync(dicomMs, DefaultSliceAggregation, DicomInferenceBackend.HttpCheXNetChest, cancellationToken)
+                .ConfigureAwait(false);
+
+            var viewModel = AnalyticsDicomRouting.ToCheXNetPrediction(pipe);
+            return new Dictionary<string, CheXNetPredictionResponse>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["CheXNet"] = viewModel,
+            };
+        }
+
+        _logger.LogInformation(
+            "Processing raster chest image → CheXNet HTTP endpoint; file={File}",
+            SafeFileName(fileMeta));
+
+        return await _cheXNetApi.PredictAsync(
+            fileBytes,
+            SafeFileName(fileMeta),
+            string.IsNullOrWhiteSpace(fileMeta.ContentType) ? "application/octet-stream" : fileMeta.ContentType,
+            models: "CheXNet",
+            heatmapClass: null,
+            topK: 14,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>CT path: slice pipeline for volumetric DICOM, otherwise LungAI JPEG/PNG endpoint.</summary>
+    private async Task<LungAICtResponse> ResolveCtPredictionAsync(
+        IFormFile fileMeta,
+        byte[] fileBytes,
+        CancellationToken cancellationToken)
+    {
+        if (AnalyticsDicomRouting.IsDicomUpload(fileMeta))
+        {
+            _logger.LogInformation(
+                "Processing DICOM CT upload → slice-based pipeline (ChestAI per slice); file={File}",
+                SafeFileName(fileMeta));
+
+            await using var dicomMs = new MemoryStream(fileBytes, writable: false);
+            var pipe = await _dicomPipeline
+                .RunAsync(dicomMs, DefaultSliceAggregation, DicomInferenceBackend.HttpLungCtClassifier, cancellationToken)
+                .ConfigureAwait(false);
+
+            return AnalyticsDicomRouting.ToLungCtPrediction(pipe);
+        }
+
+        _logger.LogInformation(
+            "Processing raster CT slice → LungAI /predict/ct; file={File}",
+            SafeFileName(fileMeta));
+
+        return await _lungAIApi.PredictCtAsync(
+            fileBytes,
+            SafeFileName(fileMeta),
+            string.IsNullOrWhiteSpace(fileMeta.ContentType) ? "application/octet-stream" : fileMeta.ContentType,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    private static string MakeDataUrl(ReadOnlySpan<byte> bytes, string? contentType)
+    {
+        var mime = string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType.Trim();
+        return $"data:{mime};base64,{Convert.ToBase64String(bytes)}";
     }
 }

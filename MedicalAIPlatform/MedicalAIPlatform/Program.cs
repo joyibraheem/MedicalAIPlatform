@@ -1,16 +1,44 @@
 using MedicalAIPlatform.Controllers;
 using MedicalAIPlatform.Data;
 using MedicalAIPlatform.Models;
+using MedicalAIPlatform.Options;
 using MedicalAIPlatform.Services;
+using MedicalAIPlatform.Services.Dicom;
+using FellowOakDicom;
+using FellowOakDicom.Imaging;
+using FellowOakDicom.Imaging.NativeCodec;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+const long maxUploadBytes = 512L * 1024 * 1024;
+builder.Services.Configure<FormOptions>(o =>
+{
+    o.MultipartBodyLengthLimit = maxUploadBytes;
+});
+builder.Services.Configure<KestrelServerOptions>(o =>
+{
+    o.Limits.MaxRequestBodySize = maxUploadBytes;
+});
+builder.Services.Configure<IISServerOptions>(o =>
+{
+    o.MaxRequestBodySize = maxUploadBytes;
+});
+
+new DicomSetupBuilder()
+    .RegisterServices(s => s.AddFellowOakDicom()
+        .AddImageManager<ImageSharpImageManager>()
+        .AddTranscoderManager<NativeTranscoderManager>())
+    .SkipValidation()
+    .Build();
+
+builder.Services.AddFellowOakDicom();
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
@@ -89,7 +117,7 @@ builder.Services.AddSingleton(sp => new CheXNetApiEndpointOptions { BaseUrl = ch
 builder.Services.AddHttpClient<CheXNetApiClient>(client =>
 {
     client.BaseAddress = new Uri(chexnetApiBaseUrl, UriKind.Absolute);
-    client.Timeout = TimeSpan.FromSeconds(120);
+    client.Timeout = TimeSpan.FromMinutes(10);
 });
 
 builder.Services.AddHttpClient<BioBertApiClient>(client =>
@@ -101,8 +129,18 @@ builder.Services.AddHttpClient<BioBertApiClient>(client =>
 builder.Services.AddHttpClient<LungAIApiClient>(client =>
 {
     client.BaseAddress = new Uri(chexnetApiBaseUrl, UriKind.Absolute);
-    client.Timeout = TimeSpan.FromSeconds(120);
+    client.Timeout = TimeSpan.FromMinutes(10);
 });
+
+// DICOM slice pipeline (fo-dicom + ImageSharp + ONNX / HTTP inference)
+builder.Services.Configure<DicomPipelineOptions>(builder.Configuration.GetSection(DicomPipelineOptions.SectionName));
+builder.Services.AddSingleton<IDicomDatasetLoaderService, DicomDatasetLoaderService>();
+builder.Services.AddScoped<DicomSliceExtractionService>();
+builder.Services.AddScoped<DicomMetadataParser>();
+builder.Services.AddScoped<DicomSlicePreprocessor>();
+builder.Services.AddScoped<PredictionAggregationEngine>();
+builder.Services.AddSingleton<OnnxSliceInferenceRunner>();
+builder.Services.AddScoped<DicomInferencePipelineOrchestrator>();
 
 // Analytics State Service
 builder.Services.AddSingleton<AnalyticsStateService>();
@@ -134,6 +172,9 @@ builder.Services.Configure<CookiePolicyOptions>(options =>
 });
 
 var app = builder.Build();
+
+// fo-dicom resolves render/graph services from the host service provider
+DicomSetupBuilder.UseServiceProvider(app.Services);
 
 // Seed roles (Admin, Doctor) and initial users
 using (var scope = app.Services.CreateScope())
@@ -238,8 +279,13 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-// Force HTTPS redirection
-app.UseHttpsRedirection();
+// Only force HTTPS redirection if not running in Docker (where we use HTTP)
+// Check if we're running in a container by checking for Docker environment variable
+var isDocker = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true";
+if (!isDocker && !app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 // Apply cookie policy globally (must be before UseAuthentication)
 app.UseCookiePolicy();
@@ -249,6 +295,8 @@ app.UseRouting();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.MapControllers();
 
 app.MapStaticAssets();
 

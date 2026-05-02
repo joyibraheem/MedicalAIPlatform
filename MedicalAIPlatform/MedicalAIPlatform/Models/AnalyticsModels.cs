@@ -24,6 +24,19 @@ public sealed class CheXNetPredictionResponse
 
     [JsonPropertyName("inference_ms")]
     public int InferenceMs { get; set; }
+
+    /// <summary>Server-built JPEG/PNG thumbnail for DICOM-derived results (ignored for JSON).</summary>
+    [JsonIgnore]
+    public string PreviewImageMime { get; set; } = "image/jpeg";
+
+    [JsonIgnore]
+    public string PreviewImageBase64 { get; set; } = "";
+
+    [JsonIgnore]
+    public string PreviewImageDataUrl =>
+        string.IsNullOrWhiteSpace(PreviewImageBase64)
+            ? ""
+            : $"data:{(string.IsNullOrWhiteSpace(PreviewImageMime) ? "image/jpeg" : PreviewImageMime)};base64,{PreviewImageBase64}";
 }
 
 public sealed class CheXNetTopKItem
@@ -92,4 +105,17 @@ public sealed class LungAICtResponse
 
     [JsonPropertyName("error")]
     public string? Error { get; set; }
+
+    /// <summary>Rendered JPEG from DICOM pipeline for browser display (ignored for JSON).</summary>
+    [JsonIgnore]
+    public string PreviewImageMime { get; set; } = "image/jpeg";
+
+    [JsonIgnore]
+    public string PreviewImageBase64 { get; set; } = "";
+
+    [JsonIgnore]
+    public string PreviewImageDataUrl =>
+        string.IsNullOrWhiteSpace(PreviewImageBase64)
+            ? ""
+            : $"data:{(string.IsNullOrWhiteSpace(PreviewImageMime) ? "image/jpeg" : PreviewImageMime)};base64,{PreviewImageBase64}";
 }

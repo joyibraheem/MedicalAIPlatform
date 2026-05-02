@@ -31,7 +31,9 @@ public sealed class BioBertApiClient
             throw new HttpRequestException($"BioBERT API error ({(int)response.StatusCode}): {body}");
         }
 
-        var parsed = JsonSerializer.Deserialize<BioBertResponse>(body, JsonOptions);
-        return parsed ?? new BioBertResponse();
+        var parsed = JsonSerializer.Deserialize<BioBertResponse>(body, JsonOptions) ?? new BioBertResponse();
+        if (parsed.Entities is null)
+            parsed.Entities = [];
+        return parsed;
     }
 }

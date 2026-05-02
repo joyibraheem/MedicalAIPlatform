@@ -25,6 +25,17 @@
             <p data-i18n="analytics_multi_modal_system">Multi-modal AI Analysis System</p>
         </div>
 
+        @{
+            var combinedWarnings = TempData["CombinedWarnings"] as string;
+        }
+        @if (!string.IsNullOrWhiteSpace(combinedWarnings))
+        {
+            <div class="alert alert-warning results-card mb-3" role="status">
+                <strong>Partial combined run:</strong>
+                <span class="ms-1">@combinedWarnings</span>
+            </div>
+        }
+
         @if (StateService.CurrentResults == null && StateService.CurrentBioBertResults == null && StateService.CurrentLungAIResults == null)
         {
             <div class="results-card">
@@ -38,6 +49,12 @@
             @if (StateService.CurrentResults != null && StateService.CurrentResults.ContainsKey("CheXNet"))
             {
                 var xrayResult = StateService.CurrentResults["CheXNet"];
+                var xrayProbs = xrayResult.Probabilities ?? new Dictionary<string, double>(StringComparer.Ordinal);
+                var previewUrl = !string.IsNullOrEmpty(xrayResult.PreviewImageDataUrl)
+                    ? xrayResult.PreviewImageDataUrl
+                    : StateService.XRayImageDataUrl;
+                var heatmapUrl = xrayResult.Heatmap?.DataUrl;
+                var heatmapClass = xrayResult.Heatmap?.ClassName;
                 <div class="results-card">
                     <h2 class="findings-title" data-i18n="analytics_findings_reports">Findings Reports</h2>
                     <a class="model-link" href="#">X-Ray-CheXNet:CheXNet</a>
@@ -48,50 +65,84 @@
                                 <span class="small fw-bold text-slate-500">Pathology Probabilities</span>
                                 <span class="small text-muted float-end">Confidence Index</span>
                             </div>
-                            <ul class="pathology-list">
-                                @foreach (var item in xrayResult.Probabilities.OrderByDescending(kv => kv.Value))
-                                {
-                                    var percentage = item.Value * 100;
-                                    <li class="pathology-item">
-                                        <div class="pathology-label">
-                                            <span class="pathology-name">@item.Key</span>
-                                            <span class="pathology-percentage">@percentage.ToString("F0")%</span>
-                                        </div>
-                                        <div class="pathology-bar">
-                                            <div class="pathology-bar-fill" style="width: @percentage%"></div>
-                                        </div>
-                                    </li>
-                                }
-                            </ul>
+                            @if (!xrayProbs.Any())
+                            {
+                                <p class="text-muted mb-0">No pathology scores were returned for this study. Check that the inference service responded with probabilities, then try again.</p>
+                            }
+                            else
+                            {
+                                <ul class="pathology-list">
+                                    @foreach (var item in xrayProbs.OrderByDescending(kv => kv.Value))
+                                    {
+                                        var percentage = Math.Clamp(item.Value * 100.0, 0, 100);
+                                        <li class="pathology-item">
+                                            <div class="pathology-label">
+                                                <span class="pathology-name">@item.Key</span>
+                                                <span class="pathology-percentage">@percentage.ToString("F0")%</span>
+                                            </div>
+                                            <div class="pathology-bar">
+                                                <div class="pathology-bar-fill" style="width: @percentage.ToString(System.Globalization.CultureInfo.InvariantCulture)%"></div>
+                                            </div>
+                                        </li>
+                                    }
+                                </ul>
+                            }
                         </div>
 
                         <div class="col-lg-6">
-                            @if (!string.IsNullOrEmpty(StateService.XRayImageDataUrl))
+                            @if (!string.IsNullOrEmpty(previewUrl) || !string.IsNullOrEmpty(heatmapUrl))
                             {
-                                <div class="xray-display">
-                                    <img src="@StateService.XRayImageDataUrl" class="xray-image" alt="Chest X-Ray" />
-                                    @if (!string.IsNullOrEmpty(xrayResult.Heatmap.DataUrl))
+                                <div class="analytics-image-duo">
+                                    @if (!string.IsNullOrEmpty(previewUrl))
                                     {
-                                        <img src="@xrayResult.Heatmap.DataUrl" 
-                                             class="heatmap-overlay-img" 
-                                             id="heatmapOverlay"
-                                             style="opacity: 0.5" 
-                                             alt="Heatmap" />
+                                        <div class="analytics-side-panel">
+                                            <div class="analytics-side-caption" data-i18n="analytics_rendered_slice">Rendered slice</div>
+                                            <div class="xray-display analytics-side-frame">
+                                                <img src="@previewUrl" class="xray-image" alt="Chest study" />
+                                            </div>
+                                        </div>
+                                    }
+                                    @if (!string.IsNullOrEmpty(heatmapUrl))
+                                    {
+                                        <div class="analytics-side-panel">
+                                            <div class="analytics-side-caption">
+                                                <span data-i18n="analytics_attention_heatmap">Attention heatmap</span>@if (!string.IsNullOrWhiteSpace(heatmapClass))
+                                                {<span class="text-muted">&nbsp;(@heatmapClass)</span>}
+                                            </div>
+                                            <div class="xray-display analytics-side-frame">
+                                                <img src="@heatmapUrl" class="xray-image" alt="Attention heatmap" />
+                                            </div>
+                                        </div>
                                     }
                                 </div>
-                                <div class="heatmap-control">
-                                    <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <label class="small fw-bold">Heatmap Opacity</label>
-                                        <span class="badge bg-light text-dark" id="opacityValue">50%</span>
+
+                                @if (!string.IsNullOrEmpty(previewUrl) && !string.IsNullOrEmpty(heatmapUrl))
+                                {
+                                    <div class="mt-4">
+                                        <div class="analytics-side-caption mb-2" data-i18n="analytics_overlay_view">Overlay (adjust opacity)</div>
+                                        <div class="xray-display">
+                                            <img src="@previewUrl" class="xray-image" alt="" />
+                                            <img src="@heatmapUrl"
+                                                 class="heatmap-overlay-img"
+                                                 id="heatmapOverlay"
+                                                 style="opacity: 0.5"
+                                                 alt="" />
+                                        </div>
+                                        <div class="heatmap-control">
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <label class="small fw-bold" data-i18n="analytics_heatmap_opacity">Heatmap Opacity</label>
+                                                <span class="badge bg-light text-dark" id="opacityValue">50%</span>
+                                            </div>
+                                            <input type="range"
+                                                   class="heatmap-slider"
+                                                   id="heatmapSlider"
+                                                   min="0"
+                                                   max="100"
+                                                   value="50"
+                                                   oninput="updateHeatmapOpacity(this.value)" />
+                                        </div>
                                     </div>
-                                    <input type="range" 
-                                           class="heatmap-slider" 
-                                           id="heatmapSlider"
-                                           min="0" 
-                                           max="100" 
-                                           value="50"
-                                           oninput="updateHeatmapOpacity(this.value)" />
-                                </div>
+                                }
                             }
                         </div>
                     </div>
@@ -107,20 +158,40 @@
 
                     <div class="mt-4">
                         <h3 class="findings-title" style="font-size: 1.1rem; margin-bottom: 1rem;" data-i18n="analytics_key_medical_entities">Key Medical Entities</h3>
-                        <div class="entities-container">
-                            @foreach (var entity in StateService.CurrentBioBertResults.Entities.OrderByDescending(e => e.Score))
+                        @{
+                            var bioEntities = (StateService.CurrentBioBertResults.Entities ?? []).OrderByDescending(e => e.Score).ToList();
+                        }
+                        @if (!bioEntities.Any())
+                        {
+                            <p class="text-muted mb-0">No medical entities were extracted from the clinical text.</p>
+                        }
+                        else
+                        {
+                            <div class="entities-container">
+                            @foreach (var entity in bioEntities)
                             {
                                 <div class="entity-badge">
                                     <span class="entity-name">@entity.Word</span>
                                     <span class="entity-type">@entity.EntityGroup</span>
                                 </div>
                             }
-                        </div>
+                            </div>
+                        }
                     </div>
                 </div>
             }
 
             <!-- CT Results -->
+            @if (StateService.CurrentLungAIResults != null && !string.IsNullOrEmpty(StateService.CurrentLungAIResults.Error))
+            {
+                <div class="results-card border border-warning shadow-sm">
+                    <h2 class="findings-title">CT Scan-ChestAI (branch issue)</h2>
+                    <p class="alert alert-warning mb-0">
+                        @(StateService.CurrentLungAIResults.Error)
+                    </p>
+                </div>
+            }
+
             @if (StateService.CurrentLungAIResults != null && string.IsNullOrEmpty(StateService.CurrentLungAIResults.Error))
             {
                 <div class="results-card">
@@ -138,16 +209,21 @@
                         <div class="col-md-6">
                             <div class="class-probabilities">
                                 <div class="predicted-class-label mb-3" data-i18n="analytics_class_probabilities">Class Probabilities</div>
-                                @foreach (var kv in StateService.CurrentLungAIResults.Probabilities.OrderByDescending(x => x.Value))
+                                @{ var lungProbs = StateService.CurrentLungAIResults.Probabilities ?? new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase); }
+                                @if (!lungProbs.Any())
                                 {
-                                    var percentage = kv.Value * 100;
+                                    <p class="text-muted mb-0">No class probabilities in the response.</p>
+                                }
+                                @foreach (var kv in lungProbs.OrderByDescending(x => x.Value))
+                                {
+                                    var percentage = Math.Clamp(kv.Value * 100.0, 0, 100);
                                     <div class="class-prob-item">
                                         <div class="class-prob-label">
                                             <span class="class-prob-name">@kv.Key</span>
                                             <span class="class-prob-percentage">@percentage.ToString("F0")%</span>
                                         </div>
                                         <div class="class-prob-bar">
-                                            <div class="class-prob-bar-fill" style="width: @percentage%"></div>
+                                            <div class="class-prob-bar-fill" style="width: @percentage.ToString(System.Globalization.CultureInfo.InvariantCulture)%"></div>
                                         </div>
                                     </div>
                                 }
@@ -158,8 +234,8 @@
                     @if (!string.IsNullOrEmpty(StateService.CTImageDataUrl))
                     {
                         <div class="mt-4">
-                            <h3 class="findings-title" style="font-size: 1.1rem; margin-bottom: 1rem;">CT Scan Image</h3>
-                            <div class="xray-display">
+                            <div class="analytics-side-caption mb-2" data-i18n="analytics_rendered_slice">Rendered slice</div>
+                            <div class="xray-display analytics-side-frame">
                                 <img src="@StateService.CTImageDataUrl" class="xray-image" alt="CT Scan" />
                             </div>
                         </div>

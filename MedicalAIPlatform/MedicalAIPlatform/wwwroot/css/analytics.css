@@ -372,6 +372,30 @@ body.dark-mode .upload-hint {
     object-fit: contain;
 }
 
+.dicom-preview-badge {
+    display: none;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 1.25rem 1rem;
+    color: #e2e8f0;
+    background: rgba(30, 41, 59, 0.85);
+    font-size: 0.95rem;
+    line-height: 1.35;
+}
+
+.dicom-preview-badge i {
+    font-size: 1.75rem;
+    opacity: 0.9;
+    flex-shrink: 0;
+}
+
+html[data-theme="dark"] .dicom-preview-badge,
+body.dark-mode .dicom-preview-badge {
+    color: rgba(248, 250, 252, 0.95);
+    background: rgba(15, 23, 42, 0.9);
+}
+
 .remove-file {
     position: absolute;
     top: 0.5rem;
@@ -704,6 +728,32 @@ body.dark-mode .findings-title {
     border-radius: 1rem;
     overflow: hidden;
     margin-bottom: 1rem;
+}
+
+.xray-display.analytics-side-frame {
+    margin-bottom: 0;
+}
+
+.analytics-image-duo {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: flex-start;
+    margin-bottom: 0.75rem;
+}
+
+.analytics-side-panel {
+    flex: 1 1 240px;
+    min-width: 200px;
+    max-width: 100%;
+}
+
+.analytics-side-caption {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: rgba(15, 23, 42, 0.72);
+    margin-bottom: 0.4rem;
+    letter-spacing: 0.02em;
 }
 
 .xray-image {

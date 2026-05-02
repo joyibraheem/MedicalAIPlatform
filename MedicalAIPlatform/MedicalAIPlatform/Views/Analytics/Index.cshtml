@@ -36,9 +36,13 @@
                     <i class="bi bi-cloud-arrow-up upload-icon"></i>
                     <div class="upload-text" id="xrayFileName" data-i18n="analytics_upload_chest_xray">Upload Chest X-Ray</div>
                     <div class="upload-hint" data-i18n="analytics_dicom_supported">DICOM, PNG or JPG Supported</div>
-                    <input type="file" id="xrayFileInput" accept="image/png,image/jpeg,image/dicom" class="d-none" />
+                    <input type="file" id="xrayFileInput" accept="image/png,image/jpeg,application/dicom,.dcm,.dicm" class="d-none" />
                 </label>
                 <div id="xrayPreview" class="file-preview" style="display: none;">
+                    <div id="xrayPreviewDicom" class="dicom-preview-badge" style="display: none;" role="status">
+                        <i class="bi bi-file-earmark-medical" aria-hidden="true"></i>
+                        <span data-i18n="analytics_dicom_preview_note">DICOM selected — preview not shown. The file will still be analyzed.</span>
+                    </div>
                     <img id="xrayPreviewImg" src="" alt="X-Ray Preview" />
                     <button class="remove-file" onclick="clearXRay()">
                         <i class="bi bi-x"></i>
@@ -62,10 +66,14 @@
                 <label class="upload-zone" for="ctFileInput">
                     <i class="bi bi-cloud-arrow-up upload-icon"></i>
                     <div class="upload-text" id="ctFileName" data-i18n="analytics_upload_ct">Upload CT Scan</div>
-                    <div class="upload-hint" data-i18n="analytics_png_jpg_supported">PNG or JPG Supported</div>
-                    <input type="file" id="ctFileInput" accept="image/png,image/jpeg" class="d-none" />
+                    <div class="upload-hint" data-i18n="analytics_ct_scan_formats">DICOM, PNG or JPG Supported</div>
+                    <input type="file" id="ctFileInput" accept="image/png,image/jpeg,application/dicom,.dcm,.dicm" class="d-none" />
                 </label>
                 <div id="ctPreview" class="file-preview" style="display: none;">
+                    <div id="ctPreviewDicom" class="dicom-preview-badge" style="display: none;" role="status">
+                        <i class="bi bi-file-earmark-medical" aria-hidden="true"></i>
+                        <span data-i18n="analytics_dicom_preview_note">DICOM selected — preview not shown. The file will still be analyzed.</span>
+                    </div>
                     <img id="ctPreviewImg" src="" alt="CT Preview" />
                     <button class="remove-file" onclick="clearCT()">
                         <i class="bi bi-x"></i>
@@ -113,5 +121,6 @@
 @Html.AntiForgeryToken()
 
 @section Scripts {
+    <script src="~/js/radiology-file-input-helpers.js" asp-append-version="true"></script>
     <script src="~/js/analytics.js" asp-append-version="true"></script>
 }

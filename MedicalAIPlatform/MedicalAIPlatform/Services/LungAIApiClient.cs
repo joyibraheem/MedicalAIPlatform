@@ -49,8 +49,12 @@ public sealed class LungAIApiClient
             throw new HttpRequestException($"LungAI CT API error ({(int)response.StatusCode}): {message}.{hint}");
         }
 
-        var parsed = JsonSerializer.Deserialize<LungAICtResponse>(body, JsonOptions);
-        return parsed ?? new LungAICtResponse();
+        var parsed = JsonSerializer.Deserialize<LungAICtResponse>(body, JsonOptions) ?? new LungAICtResponse();
+        if (parsed.Probabilities is null)
+            parsed.Probabilities = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+        if (parsed.ClassNames is null)
+            parsed.ClassNames = [];
+        return parsed;
     }
 
     private static string? TryExtractDetail(string body)

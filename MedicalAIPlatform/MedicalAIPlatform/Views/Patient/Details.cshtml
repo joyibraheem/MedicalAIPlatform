@@ -173,12 +173,12 @@
 
         <!-- Medical Scans Section -->
         <div class="case-input-card mb-4">
-            <div class="d-flex justify-content-between align-items-center mb-3">
+           @*  <div class="d-flex justify-content-between align-items-center mb-3">
                 <h2 class="section-title mb-0">Medical Scans</h2>
                 <button class="btn btn-primary" onclick="showUploadScanModal()">
                     <i class="bi bi-plus-circle"></i> Upload Scan
                 </button>
-            </div>
+            </div> *@
 
             @if (Model.Scans.Any())
             {
@@ -318,7 +318,7 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Scan File</label>
-                        <input type="file" id="uploadScanFile" class="form-control" accept="image/png,image/jpeg,image/dicom" required />
+                        <input type="file" id="uploadScanFile" class="form-control" accept="image/png,image/jpeg,application/dicom,.dcm,.dicm" required />
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Condition Description (Optional)</label>

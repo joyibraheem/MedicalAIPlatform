@@ -28,6 +28,12 @@
         @if (StateService.CurrentResults != null && StateService.CurrentResults.ContainsKey("CheXNet"))
         {
             var result = StateService.CurrentResults["CheXNet"];
+            var probMap = result.Probabilities ?? new Dictionary<string, double>(StringComparer.Ordinal);
+            var previewUrl = !string.IsNullOrEmpty(result.PreviewImageDataUrl)
+                ? result.PreviewImageDataUrl
+                : StateService.XRayImageDataUrl;
+            var heatmapUrl = result.Heatmap?.DataUrl;
+            var heatmapClass = result.Heatmap?.ClassName;
             
             <div class="results-card">
                 <h2 class="findings-title" data-i18n="analytics_findings_reports">Findings Reports</h2>
@@ -39,50 +45,84 @@
                             <span class="small fw-bold text-slate-500">Pathology Probabilities</span>
                             <span class="small text-muted float-end">Confidence Index</span>
                         </div>
-                        <ul class="pathology-list">
-                            @foreach (var item in result.Probabilities.OrderByDescending(kv => kv.Value))
+                        @if (!probMap.Any())
+                        {
+                            <p class="text-muted mb-0">No pathology scores were returned. Confirm the CheXNet service is running and the image was accepted.</p>
+                        }
+                        else
+                        {
+                            <ul class="pathology-list">
+                            @foreach (var item in probMap.OrderByDescending(kv => kv.Value))
                             {
-                                var percentage = item.Value * 100;
+                                var percentage = Math.Clamp(item.Value * 100.0, 0, 100);
                                 <li class="pathology-item">
                                     <div class="pathology-label">
                                         <span class="pathology-name">@item.Key</span>
                                         <span class="pathology-percentage">@percentage.ToString("F0")%</span>
                                     </div>
                                     <div class="pathology-bar">
-                                        <div class="pathology-bar-fill" style="width: @percentage%"></div>
+                                        <div class="pathology-bar-fill" style="width: @percentage.ToString(System.Globalization.CultureInfo.InvariantCulture)%"></div>
                                     </div>
                                 </li>
                             }
-                        </ul>
+                            </ul>
+                        }
                     </div>
 
                     <div class="col-lg-6">
-                        @if (!string.IsNullOrEmpty(StateService.XRayImageDataUrl))
+                        @if (!string.IsNullOrEmpty(previewUrl) || !string.IsNullOrEmpty(heatmapUrl))
                         {
-                            <div class="xray-display">
-                                <img src="@StateService.XRayImageDataUrl" class="xray-image" alt="Chest X-Ray" />
-                                @if (!string.IsNullOrEmpty(result.Heatmap.DataUrl))
+                            <div class="analytics-image-duo">
+                                @if (!string.IsNullOrEmpty(previewUrl))
                                 {
-                                    <img src="@result.Heatmap.DataUrl" 
-                                         class="heatmap-overlay-img" 
-                                         id="heatmapOverlay"
-                                         style="opacity: 0.5" 
-                                         alt="Heatmap" />
+                                    <div class="analytics-side-panel">
+                                        <div class="analytics-side-caption" data-i18n="analytics_rendered_slice">Rendered slice</div>
+                                        <div class="xray-display analytics-side-frame">
+                                            <img src="@previewUrl" class="xray-image" alt="Chest study" />
+                                        </div>
+                                    </div>
+                                }
+                                @if (!string.IsNullOrEmpty(heatmapUrl))
+                                {
+                                    <div class="analytics-side-panel">
+                                        <div class="analytics-side-caption">
+                                            <span data-i18n="analytics_attention_heatmap">Attention heatmap</span>@if (!string.IsNullOrWhiteSpace(heatmapClass))
+                                            {<span class="text-muted">&nbsp;(@heatmapClass)</span>}
+                                        </div>
+                                        <div class="xray-display analytics-side-frame">
+                                            <img src="@heatmapUrl" class="xray-image" alt="Attention heatmap" />
+                                        </div>
+                                    </div>
                                 }
                             </div>
-                            <div class="heatmap-control">
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <label class="small fw-bold" data-i18n="analytics_heatmap_opacity">Heatmap Opacity</label>
-                                    <span class="badge bg-light text-dark" id="opacityValue">50%</span>
+
+                            @if (!string.IsNullOrEmpty(previewUrl) && !string.IsNullOrEmpty(heatmapUrl))
+                            {
+                                <div class="mt-4">
+                                    <div class="analytics-side-caption mb-2" data-i18n="analytics_overlay_view">Overlay (adjust opacity)</div>
+                                    <div class="xray-display">
+                                        <img src="@previewUrl" class="xray-image" alt="" />
+                                        <img src="@heatmapUrl"
+                                             class="heatmap-overlay-img"
+                                             id="heatmapOverlay"
+                                             style="opacity: 0.5"
+                                             alt="" />
+                                    </div>
+                                    <div class="heatmap-control">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <label class="small fw-bold" data-i18n="analytics_heatmap_opacity">Heatmap Opacity</label>
+                                            <span class="badge bg-light text-dark" id="opacityValue">50%</span>
+                                        </div>
+                                        <input type="range"
+                                               class="heatmap-slider"
+                                               id="heatmapSlider"
+                                               min="0"
+                                               max="100"
+                                               value="50"
+                                               oninput="updateHeatmapOpacity(this.value)" />
+                                    </div>
                                 </div>
-                                <input type="range" 
-                                       class="heatmap-slider" 
-                                       id="heatmapSlider"
-                                       min="0" 
-                                       max="100" 
-                                       value="50"
-                                       oninput="updateHeatmapOpacity(this.value)" />
-                            </div>
+                            }
                         }
                     </div>
                 </div>

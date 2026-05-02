@@ -36,6 +36,7 @@
             }
             else
             {
+                var lungProbs = StateService.CurrentLungAIResults.Probabilities ?? new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
                 <div class="results-card">
                     <h2 class="findings-title" data-i18n="analytics_findings_reports">Findings Reports</h2>
                     <a class="model-link" href="#">CT Scan-ChestAI (Chest Clarification)</a>
@@ -51,16 +52,20 @@
                         <div class="col-md-6">
                             <div class="class-probabilities">
                                 <div class="predicted-class-label mb-3">Class Probabilities</div>
-                                @foreach (var kv in StateService.CurrentLungAIResults.Probabilities.OrderByDescending(x => x.Value))
+                                @if (!lungProbs.Any())
                                 {
-                                    var percentage = kv.Value * 100;
+                                    <p class="text-muted mb-0">No class probabilities in the response.</p>
+                                }
+                                @foreach (var kv in lungProbs.OrderByDescending(x => x.Value))
+                                {
+                                    var percentage = Math.Clamp(kv.Value * 100.0, 0, 100);
                                     <div class="class-prob-item">
                                         <div class="class-prob-label">
                                             <span class="class-prob-name">@kv.Key</span>
                                             <span class="class-prob-percentage">@percentage.ToString("F0")%</span>
                                         </div>
                                         <div class="class-prob-bar">
-                                            <div class="class-prob-bar-fill" style="width: @percentage%"></div>
+                                            <div class="class-prob-bar-fill" style="width: @percentage.ToString(System.Globalization.CultureInfo.InvariantCulture)%"></div>
                                         </div>
                                     </div>
                                 }
@@ -71,8 +76,8 @@
                     @if (!string.IsNullOrEmpty(StateService.CTImageDataUrl))
                     {
                         <div class="mt-4">
-                            <h3 class="findings-title" style="font-size: 1.1rem; margin-bottom: 1rem;">CT Scan Image</h3>
-                            <div class="xray-display">
+                            <div class="analytics-side-caption mb-2" data-i18n="analytics_rendered_slice">Rendered slice</div>
+                            <div class="xray-display analytics-side-frame">
                                 <img src="@StateService.CTImageDataUrl" class="xray-image" alt="CT Scan" />
                             </div>
                         </div>

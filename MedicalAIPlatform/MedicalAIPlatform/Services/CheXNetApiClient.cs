@@ -60,6 +60,8 @@ public sealed class CheXNetApiClient
             throw new InvalidOperationException("CheXNet API returned invalid JSON.");
         }
 
+        NormalizeCheXNetResponse(parsed);
+
         return new Dictionary<string, CheXNetPredictionResponse>(StringComparer.OrdinalIgnoreCase)
         {
             ["CheXNet"] = parsed
@@ -81,5 +83,15 @@ public sealed class CheXNetApiClient
             // ignore
         }
         return null;
+    }
+
+    /// <summary>Deserializer can leave nested objects null; views assume non-null dictionaries / heatmap.</summary>
+    private static void NormalizeCheXNetResponse(CheXNetPredictionResponse p)
+    {
+        p.ClassNames ??= [];
+        p.Probabilities ??= new Dictionary<string, double>(StringComparer.Ordinal);
+        p.TopK ??= [];
+        p.Heatmap ??= new CheXNetHeatmap();
+        p.Device ??= "";
     }
 }

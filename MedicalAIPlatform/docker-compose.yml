@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  # SQL Server Database
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: medicalai-sqlserver
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=YourStrong@Passw0rd
+      - MSSQL_PID=Developer
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    networks:
+      - medicalai-network
+    healthcheck:
+      test: /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P YourStrong@Passw0rd -Q "SELECT 1" || exit 1
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  # ASP.NET Core Web Application
+  webapp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: medicalai-webapp
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=MedicalAIPlatformDb;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;MultipleActiveResultSets=true
+      - CHEXNET_API_AUTOSTART=false
+      - BIOBERT_API_AUTOSTART=false
+      - DOTNET_RUNNING_IN_CONTAINER=true
+    ports:
+      - "8080:8080"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    networks:
+      - medicalai-network
+    restart: unless-stopped
+
+volumes:
+  sqlserver_data:
+
+networks:
+  medicalai-network:
+    driver: bridge

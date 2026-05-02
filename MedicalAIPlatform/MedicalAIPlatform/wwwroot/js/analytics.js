@@ -9,15 +9,25 @@ document.getElementById('xrayFileInput')?.addEventListener('change', function(e)
     const file = e.target.files[0];
     if (file) {
         xrayFile = file;
-        document.getElementById('xrayFileName').textContent = file.name;
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            document.getElementById('xrayPreviewImg').src = e.target.result;
+        if (window.RadiologyFileInputHelpers) {
+            RadiologyFileInputHelpers.applyPreview(file, {
+                nameDisplay: document.getElementById('xrayFileName'),
+                previewWrap: document.getElementById('xrayPreview'),
+                imgEl: document.getElementById('xrayPreviewImg'),
+                badgeEl: document.getElementById('xrayPreviewDicom')
+            });
+        } else {
+            document.getElementById('xrayFileName').textContent = file.name;
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                document.getElementById('xrayPreviewImg').src = ev.target.result;
+                document.getElementById('xrayPreview').style.display = 'block';
+            };
+            reader.readAsDataURL(file);
             document.getElementById('xrayPreview').style.display = 'block';
-            document.getElementById('btnDownloadXRay').style.display = 'inline-flex';
-            updateDownloadAllButton();
-        };
-        reader.readAsDataURL(file);
+        }
+        document.getElementById('btnDownloadXRay').style.display = 'inline-flex';
+        updateDownloadAllButton();
     }
 });
 
@@ -26,15 +36,25 @@ document.getElementById('ctFileInput')?.addEventListener('change', function(e) {
     const file = e.target.files[0];
     if (file) {
         ctFile = file;
-        document.getElementById('ctFileName').textContent = file.name;
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            document.getElementById('ctPreviewImg').src = e.target.result;
+        if (window.RadiologyFileInputHelpers) {
+            RadiologyFileInputHelpers.applyPreview(file, {
+                nameDisplay: document.getElementById('ctFileName'),
+                previewWrap: document.getElementById('ctPreview'),
+                imgEl: document.getElementById('ctPreviewImg'),
+                badgeEl: document.getElementById('ctPreviewDicom')
+            });
+        } else {
+            document.getElementById('ctFileName').textContent = file.name;
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                document.getElementById('ctPreviewImg').src = ev.target.result;
+                document.getElementById('ctPreview').style.display = 'block';
+            };
+            reader.readAsDataURL(file);
             document.getElementById('ctPreview').style.display = 'block';
-            document.getElementById('btnDownloadCT').style.display = 'inline-flex';
-            updateDownloadAllButton();
-        };
-        reader.readAsDataURL(file);
+        }
+        document.getElementById('btnDownloadCT').style.display = 'inline-flex';
+        updateDownloadAllButton();
     }
 });
 
@@ -51,18 +71,46 @@ document.getElementById('clinicalText')?.addEventListener('input', function(e) {
 
 function clearXRay() {
     xrayFile = null;
-    document.getElementById('xrayFileInput').value = '';
-    document.getElementById('xrayFileName').textContent = 'Upload Chest X-Ray';
-    document.getElementById('xrayPreview').style.display = 'none';
+    if (window.RadiologyFileInputHelpers) {
+        RadiologyFileInputHelpers.resetPreview({
+            input: document.getElementById('xrayFileInput'),
+            previewWrap: document.getElementById('xrayPreview'),
+            imgEl: document.getElementById('xrayPreviewImg'),
+            badgeEl: document.getElementById('xrayPreviewDicom')
+        });
+    } else {
+        document.getElementById('xrayFileInput').value = '';
+        document.getElementById('xrayPreview').style.display = 'none';
+    }
+    if (typeof window.setLanguage === 'function') {
+        window.setLanguage(localStorage.getItem('lang') === 'ar' ? 'ar' : 'en');
+    } else {
+        const el = document.getElementById('xrayFileName');
+        if (el) el.textContent = 'Upload Chest X-Ray';
+    }
     document.getElementById('btnDownloadXRay').style.display = 'none';
     updateDownloadAllButton();
 }
 
 function clearCT() {
     ctFile = null;
-    document.getElementById('ctFileInput').value = '';
-    document.getElementById('ctFileName').textContent = 'Upload CT Scan';
-    document.getElementById('ctPreview').style.display = 'none';
+    if (window.RadiologyFileInputHelpers) {
+        RadiologyFileInputHelpers.resetPreview({
+            input: document.getElementById('ctFileInput'),
+            previewWrap: document.getElementById('ctPreview'),
+            imgEl: document.getElementById('ctPreviewImg'),
+            badgeEl: document.getElementById('ctPreviewDicom')
+        });
+    } else {
+        document.getElementById('ctFileInput').value = '';
+        document.getElementById('ctPreview').style.display = 'none';
+    }
+    if (typeof window.setLanguage === 'function') {
+        window.setLanguage(localStorage.getItem('lang') === 'ar' ? 'ar' : 'en');
+    } else {
+        const el = document.getElementById('ctFileName');
+        if (el) el.textContent = 'Upload CT Scan';
+    }
     document.getElementById('btnDownloadCT').style.display = 'none';
     updateDownloadAllButton();
 }
@@ -70,6 +118,56 @@ function clearCT() {
 function updateDownloadAllButton() {
     const hasAny = xrayFile || clinicalText.trim() || ctFile;
     document.getElementById('btnDownloadAll').style.display = hasAny ? 'inline-flex' : 'none';
+}
+
+/**
+ * Parses JSON analytics POST responses and surfaces HTTP errors without calling response.json() on HTML/error pages.
+ * @returns {{ success: boolean, redirect?: string, error?: string }}
+ */
+async function readAnalyticsPostResult(response) {
+    const text = await response.text();
+    let parsed = null;
+    if (text) {
+        try {
+            parsed = JSON.parse(text);
+        } catch {
+            /* login page HTML, 413 body, etc. */
+        }
+    }
+    const bodyError =
+        parsed && typeof parsed === 'object' && typeof parsed.error === 'string'
+            ? parsed.error
+            : null;
+
+    if (response.status === 401 || response.status === 403) {
+        return {
+            success: false,
+            error:
+                bodyError ||
+                'Not signed in or session expired. Refresh the page and log in again.'
+        };
+    }
+    if (response.status === 413) {
+        return {
+            success: false,
+            error:
+                bodyError ||
+                'Upload is too large for the server. Try a smaller file or contact an administrator.'
+        };
+    }
+    if (parsed && typeof parsed === 'object' && Object.prototype.hasOwnProperty.call(parsed, 'success')) {
+        return parsed;
+    }
+    if (!response.ok) {
+        const hint = text && text.trim() ? text.trim().slice(0, 240) : response.statusText;
+        return {
+            success: false,
+            error:
+                bodyError ||
+                ('Request failed (' + response.status + '). ' + hint)
+        };
+    }
+    return { success: false, error: 'Unexpected response from server.' };
 }
 
 async function analyzeXRay() {
@@ -85,10 +183,11 @@ async function analyzeXRay() {
     try {
         const response = await fetch('/Analytics/AnalyzeXRay', {
             method: 'POST',
-            body: formData
+            body: formData,
+            credentials: 'same-origin'
         });
 
-        const result = await response.json();
+        const result = await readAnalyticsPostResult(response);
         if (result.success) {
             window.location.href = result.redirect;
         } else {
@@ -115,10 +214,11 @@ async function analyzeText() {
     try {
         const response = await fetch('/Analytics/AnalyzeText', {
             method: 'POST',
-            body: formData
+            body: formData,
+            credentials: 'same-origin'
         });
 
-        const result = await response.json();
+        const result = await readAnalyticsPostResult(response);
         if (result.success) {
             window.location.href = result.redirect;
         } else {
@@ -144,10 +244,11 @@ async function analyzeCT() {
     try {
         const response = await fetch('/Analytics/AnalyzeCT', {
             method: 'POST',
-            body: formData
+            body: formData,
+            credentials: 'same-origin'
         });
 
-        const result = await response.json();
+        const result = await readAnalyticsPostResult(response);
         if (result.success) {
             window.location.href = result.redirect;
         } else {
@@ -161,7 +262,11 @@ async function analyzeCT() {
 }
 
 async function analyzeCombined() {
-    if (!xrayFile && !clinicalText.trim() && !ctFile) {
+    const clinicalEl = document.getElementById('clinicalText');
+    const clinicalTrim = clinicalEl ? clinicalEl.value.trim() : '';
+    if (clinicalEl) clinicalText = clinicalEl.value;
+
+    if (!xrayFile && !clinicalTrim && !ctFile) {
         showError('Please provide at least one input (X-Ray, Text, or CT).');
         return;
     }
@@ -169,20 +274,21 @@ async function analyzeCombined() {
     setLoading('btnCombined', true);
     const formData = new FormData();
     if (xrayFile) formData.append('xrayFile', xrayFile);
-    if (clinicalText.trim()) formData.append('clinicalText', clinicalText);
+    if (clinicalTrim) formData.append('clinicalText', clinicalTrim);
     if (ctFile) formData.append('ctFile', ctFile);
 
     try {
         const response = await fetch('/Analytics/AnalyzeCombined', {
             method: 'POST',
-            body: formData
+            body: formData,
+            credentials: 'same-origin'
         });
 
-        const result = await response.json();
-        if (result.success) {
+        const result = await readAnalyticsPostResult(response);
+        if (result && result.success === true && result.redirect) {
             window.location.href = result.redirect;
         } else {
-            showError(result.error || 'Analysis failed.');
+            showError((result && result.error) ? result.error : 'Analysis failed.');
         }
     } catch (error) {
         showError('Network error: ' + error.message);
