@@ -1,0 +1,489 @@
+/* CT Scan Viewer - Medical Glass Theme */
+:root {
+    --ct-primary: #1D4581;
+    --ct-accent: #127FEC;
+    --ct-glass: rgba(255, 255, 255, 0.85);
+    --ct-border: rgba(255, 255, 255, 0.35);
+    --ct-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    --ct-toolbar-bg: rgba(29, 69, 129, 0.95);
+    --ct-sidebar-width: 200px;
+    --ct-panel-bg: #0d1117;
+}
+
+.ctscan-page {
+    display: flex;
+    flex-direction: column;
+    height: calc(90vh - 120px);
+    min-height: 500px;
+    gap: 0.75rem;
+}
+
+.ctscan-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+}
+
+.ctscan-header h1 {
+    font-size: 1.35rem;
+    font-weight: 600;
+    color: var(--ct-primary);
+    margin: 0;
+}
+
+.ctscan-header p {
+    font-size: 0.85rem;
+    color: #6B7280;
+    margin: 0;
+}
+
+.ctscan-card {
+    background: var(--ct-glass);
+    backdrop-filter: blur(15px) saturate(150%);
+    -webkit-backdrop-filter: blur(15px) saturate(150%);
+    border-radius: 16px;
+    border: 1px solid var(--ct-border);
+    box-shadow: var(--ct-shadow);
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.ctscan-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.5rem 0.75rem;
+    background: var(--ct-toolbar-bg);
+    border-radius: 12px 12px 0 0;
+    flex-wrap: wrap;
+}
+
+.ctscan-toolbar .toolbar-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.35rem 0.65rem;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    white-space: nowrap;
+}
+
+.ctscan-toolbar .toolbar-btn:hover {
+    background: rgba(255, 255, 255, 0.22);
+}
+
+.ctscan-toolbar .toolbar-btn.active {
+    background: var(--ct-accent);
+    border-color: var(--ct-accent);
+}
+
+.ctscan-toolbar .toolbar-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.ctscan-toolbar .toolbar-spacer {
+    flex: 1;
+}
+
+.ctscan-toolbar .analyze-btn {
+    background: linear-gradient(135deg, #127FEC, #1D4581);
+    border-color: transparent;
+    font-weight: 600;
+}
+
+.ctscan-toolbar .analyze-btn.loading {
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+.ctscan-body {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    background: #111;
+    border-radius: 0 0 12px 12px;
+}
+
+.ctscan-sidebar {
+    width: var(--ct-sidebar-width);
+    background: rgba(0, 0, 0, 0.6);
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    overflow-y: auto;
+    transition: width 0.25s ease, opacity 0.25s ease;
+    flex-shrink: 0;
+}
+
+.ctscan-sidebar.hidden {
+    width: 0;
+    opacity: 0;
+    overflow: hidden;
+    border: none;
+}
+
+.ctscan-thumbnail {
+    padding: 0.5rem;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    transition: background 0.15s;
+}
+
+.ctscan-thumbnail:hover {
+    background: rgba(18, 127, 236, 0.15);
+}
+
+.ctscan-thumbnail.active {
+    background: rgba(18, 127, 236, 0.3);
+    border-left: 3px solid var(--ct-accent);
+}
+
+.ctscan-thumbnail img {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: 4px;
+    background: #000;
+    display: block;
+}
+
+.ctscan-thumbnail .thumb-label {
+    font-size: 0.7rem;
+    color: #ccc;
+    text-align: center;
+    margin-top: 0.3rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+}
+
+.ctscan-viewer-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.ctscan-viewer-grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 2px;
+    background: #000;
+    padding: 2px;
+    min-height: 0;
+}
+
+.ctscan-panel {
+    position: relative;
+    background: var(--ct-panel-bg);
+    overflow: hidden;
+    cursor: default;
+}
+
+.ctscan-panel.primary {
+    outline: 2px solid var(--ct-accent);
+    outline-offset: -2px;
+    z-index: 1;
+}
+
+.ctscan-panel img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+    transition: transform 0.2s ease;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+.ctscan-panel.pan-mode {
+    cursor: grab;
+}
+
+.ctscan-panel.pan-mode:active {
+    cursor: grabbing;
+}
+
+.ctscan-panel .panel-label {
+    position: absolute;
+    top: 6px;
+    left: 8px;
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.6);
+    background: rgba(0, 0, 0, 0.5);
+    padding: 2px 6px;
+    border-radius: 4px;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.ctscan-annotation-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 3;
+}
+
+.ctscan-annotation-layer.interactive {
+    pointer-events: auto;
+    cursor: crosshair;
+}
+
+.ctscan-annotation-layer.pan-active {
+    pointer-events: auto;
+    cursor: grab;
+}
+
+.ctscan-results {
+    width: 260px;
+    background: var(--ct-glass);
+    backdrop-filter: blur(12px);
+    border-left: 1px solid var(--ct-border);
+    padding: 1rem;
+    overflow-y: auto;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.ctscan-results h3 {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--ct-primary);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.ctscan-result-item {
+    background: rgba(255, 255, 255, 0.6);
+    border-radius: 10px;
+    padding: 0.75rem;
+    border: 1px solid rgba(29, 69, 129, 0.1);
+}
+
+.ctscan-result-item .result-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #6B7280;
+    margin-bottom: 0.25rem;
+}
+
+.ctscan-result-item .result-value {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--ct-primary);
+}
+
+.ctscan-result-item .result-confidence {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--ct-accent);
+}
+
+.ctscan-result-item .result-notes {
+    font-size: 0.82rem;
+    color: #4B5563;
+    line-height: 1.45;
+}
+
+.ctscan-results .placeholder-text {
+    font-size: 0.82rem;
+    color: #9CA3AF;
+    text-align: center;
+    padding: 1rem 0;
+}
+
+.ctscan-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.ctscan-dropdown-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    min-width: 180px;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    z-index: 100;
+    overflow: hidden;
+}
+
+.ctscan-dropdown-menu.show {
+    display: block;
+}
+
+.ctscan-dropdown-menu button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.6rem 1rem;
+    border: none;
+    background: none;
+    font-size: 0.82rem;
+    color: #374151;
+    cursor: pointer;
+    text-align: left;
+}
+
+.ctscan-dropdown-menu button:hover {
+    background: #F3F4F6;
+}
+
+.ctscan-upload-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.ctscan-upload-overlay.show {
+    display: flex;
+}
+
+.ctscan-upload-modal {
+    background: #fff;
+    border-radius: 16px;
+    padding: 1.5rem;
+    width: 90%;
+    max-width: 420px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+}
+
+.ctscan-upload-modal h4 {
+    margin: 0 0 1rem;
+    color: var(--ct-primary);
+    font-weight: 600;
+}
+
+.ctscan-upload-zone {
+    border: 2px dashed #CBD5E1;
+    border-radius: 12px;
+    padding: 2rem 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.ctscan-upload-zone:hover,
+.ctscan-upload-zone.dragover {
+    border-color: var(--ct-accent);
+    background: rgba(18, 127, 236, 0.05);
+}
+
+.ctscan-upload-zone i {
+    font-size: 2rem;
+    color: var(--ct-accent);
+}
+
+.ctscan-upload-zone p {
+    margin: 0.5rem 0 0;
+    font-size: 0.85rem;
+    color: #6B7280;
+}
+
+.ctscan-upload-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    justify-content: flex-end;
+}
+
+.ctscan-text-input {
+    position: absolute;
+    z-index: 10;
+    background: rgba(18, 127, 236, 0.9);
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 0.8rem;
+    min-width: 100px;
+}
+
+@media (max-width: 1024px) {
+    .ctscan-results {
+        width: 220px;
+    }
+}
+
+@media (max-width: 768px) {
+    .ctscan-body {
+        flex-direction: column;
+    }
+
+    .ctscan-sidebar {
+        width: 100%;
+        max-height: 120px;
+        display: flex;
+        flex-direction: row;
+        overflow-x: auto;
+    }
+
+    .ctscan-sidebar.hidden {
+        max-height: 0;
+    }
+
+    .ctscan-thumbnail {
+        min-width: 100px;
+        flex-shrink: 0;
+    }
+
+    .ctscan-results {
+        width: 100%;
+        border-left: none;
+        border-top: 1px solid var(--ct-border);
+        max-height: 180px;
+    }
+
+    .ctscan-toolbar .toolbar-btn span.btn-text {
+        display: none;
+    }
+}
+
+html[data-theme="dark"] .ctscan-card,
+body.dark-mode .ctscan-card {
+    background: rgba(30, 41, 59, 0.85);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+html[data-theme="dark"] .ctscan-header h1,
+body.dark-mode .ctscan-header h1 {
+    color: #93C5FD;
+}
+
+html[data-theme="dark"] .ctscan-result-item,
+body.dark-mode .ctscan-result-item {
+    background: rgba(15, 23, 42, 0.6);
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+html[data-theme="dark"] .ctscan-result-item .result-value,
+body.dark-mode .ctscan-result-item .result-value {
+    color: #E2E8F0;
+}
+
+html[data-theme="dark"] .ctscan-result-item .result-notes,
+body.dark-mode .ctscan-result-item .result-notes {
+    color: #94A3B8;
+}

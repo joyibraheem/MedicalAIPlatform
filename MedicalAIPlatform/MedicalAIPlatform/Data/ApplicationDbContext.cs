@@ -15,6 +15,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Patient> Patients { get; set; }
     public DbSet<PatientHistory> PatientHistories { get; set; }
     public DbSet<PatientScan> PatientScans { get; set; }
+    public DbSet<CTScan> CTScans { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -85,6 +86,16 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .OnDelete(DeleteBehavior.SetNull);
             
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+        });
+
+        builder.Entity<CTScan>(entity =>
+        {
+            entity.HasOne(e => e.Patient)
+                .WithMany()
+                .HasForeignKey(e => e.PatientId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.Property(e => e.UploadedAt).HasDefaultValueSql("GETUTCDATE()");
         });
     }
 }
