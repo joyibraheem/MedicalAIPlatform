@@ -1,0 +1,991 @@
+@page "/chat"
+@rendermode InteractiveServer
+
+@using CheXNet.BlazorApp.Models
+@using CheXNet.BlazorApp.Services
+@using Microsoft.JSInterop
+@using Microsoft.AspNetCore.Components.Forms
+@inject ChatService ChatService
+@inject CheXNetStateService StateService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@implements IDisposable
+
+<PageTitle>MedAI Assistant</PageTitle>
+
+<div class="medai-chat-wrapper">
+    <!-- Background with medical theme -->
+    <div class="medai-background"></div>
+    
+    <!-- Chat Window -->
+    <div class="medai-chat-window">
+        <!-- Header -->
+        <div class="medai-header">
+            <div class="medai-header-left">
+                <div class="medai-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2Z" fill="#2563EB"/>
+                        <path d="M12 8L10 10L8 8" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        <circle cx="16" cy="8" r="1.5" fill="white"/>
+                    </svg>
+                </div>
+                <div class="medai-title-section">
+                    <h2 class="medai-title">MedAI Assistant</h2>
+                    <div class="medai-status">
+                        <span class="status-dot"></span>
+                        <span class="status-text">Live</span>
+                    </div>
+                </div>
+            </div>
+            <div class="medai-header-right">
+                <button class="medai-control-btn" @onclick="ToggleMinimize">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <path d="M4 6L8 10L12 6" stroke="#374151" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                <button class="medai-control-btn" @onclick="CloseChat">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <path d="M12 4L4 12M4 4L12 12" stroke="#374151" stroke-width="1.5" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Chat Content -->
+        <div class="medai-content">
+            <!-- Timestamp -->
+            <div class="medai-timestamp">Today, @DateTime.Now.ToString("h:mm tt")</div>
+
+            <!-- Action Buttons (shown when no messages or empty state) -->
+            @if (_messages.Count <= 1)
+            {
+                <div class="medai-action-buttons">
+                    <button class="medai-action-btn" @onclick='() => SetInput("Explain Heatmap")'>Explain Heatmap</button>
+                    <button class="medai-action-btn" @onclick='() => SetInput("Scan Status")'>Scan Status</button>
+                    <button class="medai-action-btn" @onclick='() => SetInput("contact support")'>contact support</button>
+                </div>
+            }
+
+            <!-- Messages -->
+            <div class="medai-messages" id="chat-messages">
+                @foreach (var msg in _messages.Where(m => m.Role != "system"))
+                {
+                    @if (msg.Role == "user")
+                    {
+                        <div class="medai-message-wrapper user-message">
+                            <div class="medai-sender-label user-label">Dr. Smith</div>
+                            <div class="medai-message-bubble user-bubble">
+                                @((MarkupString)ProcessMessage(msg.Content))
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="medai-message-wrapper assistant-message">
+                            <div class="medai-sender-label assistant-label">MedAI</div>
+                            <div class="medai-message-bubble assistant-bubble">
+                                @((MarkupString)ProcessMessage(msg.Content))
+                            </div>
+                        </div>
+                    }
+                }
+
+                @if (_isBusy)
+                {
+                    <div class="medai-message-wrapper assistant-message">
+                        <div class="medai-sender-label assistant-label">MedAI</div>
+                        <div class="medai-message-bubble assistant-bubble">
+                            <div class="typing-indicator">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <!-- System Status -->
+            <div class="medai-system-status">
+                <span class="status-indicator"></span>
+                <span class="status-indicator"></span>
+                <span>System standby</span>
+            </div>
+
+            <!-- Input Area -->
+            <div class="medai-input-area">
+                <label for="file-upload" class="medai-attach-btn">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M10 4V16M4 10H16" stroke="#374151" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    <InputFile id="file-upload" OnChange="HandleFileUpload" accept="image/*,.pdf,.doc,.docx" class="d-none" />
+                </label>
+                <div class="medai-input-form">
+                    <InputTextArea @bind-Value="_formModel.Input"
+                                   @bind-Value:after="() => InvokeAsync(StateHasChanged)"
+                                   class="medai-input"
+                                   placeholder="Tell me what do you want?"
+                                   rows="1"
+                                   @onkeydown="HandleKeyDown"
+                                   @oninput="() => InvokeAsync(StateHasChanged)" />
+                </div>
+                <button class="medai-send-btn @(HasActiveInput ? "active" : "")" 
+                        @onclick="HandleSendClick"
+                        @onclick:stopPropagation="true"
+                        disabled="@(_isBusy || !HasActiveInput)"
+                        type="button">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M18 2L9 11M18 2L12 18L9 11M18 2L2 8L9 11" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Uploaded Files Preview -->
+            @if (_uploadedFiles.Any())
+            {
+                <div class="medai-uploads-preview">
+                    @foreach (var file in _uploadedFiles)
+                    {
+                        <div class="medai-upload-item">
+                            @if (file.IsImage)
+                            {
+                                <img src="@file.PreviewUrl" alt="@file.FileName" class="upload-preview-img" />
+                            }
+                            else
+                            {
+                                <div class="upload-file-icon">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                        <path d="M14 2H6C4.9 2 4 2.9 4 4V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V8L14 2Z" stroke="#374151" stroke-width="2"/>
+                                        <path d="M14 2V8H20" stroke="#374151" stroke-width="2"/>
+                                    </svg>
+                                </div>
+                            }
+                            <span class="upload-file-name">@file.FileName</span>
+                            <button class="upload-remove-btn" @onclick='() => RemoveFile(file)'>
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                    <path d="M12 4L4 12M4 4L12 12" stroke="#374151" stroke-width="2" stroke-linecap="round"/>
+                                </svg>
+                            </button>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .medai-chat-wrapper {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+
+    .medai-background {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: 
+            radial-gradient(circle at 20% 30%, rgba(59, 130, 246, 0.15) 0%, transparent 50%),
+            radial-gradient(circle at 80% 70%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
+            linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(99, 102, 241, 0.1) 100%);
+        background-color: #f8fafc;
+        filter: blur(8px);
+        opacity: 0.6;
+    }
+
+    .medai-background::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-image: 
+            radial-gradient(circle at 15% 25%, rgba(59, 130, 246, 0.08) 0%, transparent 40%),
+            radial-gradient(circle at 85% 75%, rgba(99, 102, 241, 0.08) 0%, transparent 40%);
+        opacity: 0.5;
+    }
+
+    .medai-chat-window {
+        position: relative;
+        width: 90%;
+        max-width: 600px;
+        height: 85vh;
+        max-height: 800px;
+        background: rgba(255, 255, 255, 0.98);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-radius: 20px;
+        box-shadow: 
+            0 20px 60px rgba(0, 0, 0, 0.15),
+            0 0 0 1px rgba(255, 255, 255, 0.5);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        z-index: 10;
+    }
+
+    .medai-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 20px;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        background: rgba(255, 255, 255, 0.9);
+    }
+
+    .medai-header-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .medai-icon {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .medai-title-section {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .medai-title {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 600;
+        color: #1f2937;
+        line-height: 1.2;
+    }
+
+    .medai-status {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        background: #10b981;
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+    }
+
+    @@keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+
+    .status-text {
+        font-size: 12px;
+        color: #10b981;
+        font-weight: 500;
+    }
+
+    .medai-header-right {
+        display: flex;
+        gap: 8px;
+    }
+
+    .medai-control-btn {
+        background: none;
+        border: none;
+        padding: 4px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #374151;
+        transition: opacity 0.2s;
+    }
+
+    .medai-control-btn:hover {
+        opacity: 0.7;
+    }
+
+    .medai-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        padding: 20px;
+        overflow-y: auto;
+        background: rgba(249, 250, 251, 0.5);
+    }
+
+    .medai-timestamp {
+        text-align: center;
+        font-size: 12px;
+        color: #9ca3af;
+        margin-bottom: 16px;
+    }
+
+    .medai-action-buttons {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+    }
+
+    .medai-action-btn {
+        background: #3b82f6;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .medai-action-btn:hover {
+        background: #2563eb;
+    }
+
+    .medai-messages {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+
+    .medai-message-wrapper {
+        display: flex;
+        flex-direction: column;
+        max-width: 75%;
+    }
+
+    .medai-message-wrapper.user-message {
+        align-self: flex-end;
+        align-items: flex-end;
+    }
+
+    .medai-message-wrapper.assistant-message {
+        align-self: flex-start;
+        align-items: flex-start;
+    }
+
+    .medai-sender-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 4px;
+    }
+
+    .medai-message-bubble {
+        padding: 12px 16px;
+        border-radius: 18px;
+        font-size: 14px;
+        line-height: 1.5;
+        word-wrap: break-word;
+        position: relative;
+    }
+
+    .user-bubble {
+        background: #2563eb;
+        color: white;
+        border-bottom-right-radius: 4px;
+    }
+
+    .assistant-bubble {
+        background: #f3f4f6;
+        color: #1f2937;
+        border-bottom-left-radius: 4px;
+    }
+
+    .medai-message-bubble ::deep strong {
+        color: #2563eb;
+        font-weight: 600;
+    }
+
+    .assistant-bubble ::deep strong {
+        color: #2563eb;
+    }
+
+    .typing-indicator {
+        display: flex;
+        gap: 4px;
+        padding: 4px 0;
+    }
+
+    .typing-indicator span {
+        width: 8px;
+        height: 8px;
+        background: #9ca3af;
+        border-radius: 50%;
+        animation: typing 1.4s infinite;
+    }
+
+    .typing-indicator span:nth-child(2) {
+        animation-delay: 0.2s;
+    }
+
+    .typing-indicator span:nth-child(3) {
+        animation-delay: 0.4s;
+    }
+
+    @@keyframes typing {
+        0%, 60%, 100% {
+            transform: translateY(0);
+            opacity: 0.7;
+        }
+        30% {
+            transform: translateY(-10px);
+            opacity: 1;
+        }
+    }
+
+    .medai-system-status {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        color: #9ca3af;
+        margin-bottom: 12px;
+    }
+
+    .status-indicator {
+        width: 4px;
+        height: 4px;
+        background: #9ca3af;
+        border-radius: 50%;
+        opacity: 0.5;
+    }
+
+    .medai-input-area {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: #f3f4f6;
+        padding: 12px;
+        border-radius: 12px;
+    }
+
+    .medai-attach-btn {
+        background: #e5e7eb;
+        border: none;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        flex-shrink: 0;
+        transition: background 0.2s;
+        margin: 0;
+        padding: 0;
+    }
+
+    .medai-attach-btn:hover {
+        background: #d1d5db;
+    }
+
+    .medai-attach-btn input[type="file"] {
+        display: none;
+    }
+
+    .medai-input-form {
+        flex: 1;
+    }
+
+    .medai-input {
+        width: 100%;
+        border: none;
+        background: transparent;
+        padding: 8px 12px;
+        font-size: 14px;
+        color: #1f2937;
+        outline: none;
+        resize: none;
+    }
+
+    .medai-input::placeholder {
+        color: #9ca3af;
+    }
+
+    .medai-send-btn {
+        background: #9ca3af;
+        border: none;
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: not-allowed;
+        flex-shrink: 0;
+        transition: all 0.2s;
+        opacity: 0.6;
+    }
+
+    .medai-send-btn.active {
+        background: #2563eb;
+        cursor: pointer;
+        opacity: 1;
+        transform: scale(1.05);
+    }
+
+    .medai-send-btn.active:hover:not(:disabled) {
+        background: #1d4ed8;
+        transform: scale(1.1);
+    }
+
+    .medai-send-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: scale(1);
+    }
+
+    .medai-uploads-preview {
+        display: flex;
+        gap: 8px;
+        padding: 8px 12px;
+        flex-wrap: wrap;
+        max-height: 120px;
+        overflow-y: auto;
+    }
+
+    .medai-upload-item {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: #f3f4f6;
+        padding: 6px 10px;
+        border-radius: 8px;
+        font-size: 12px;
+        color: #374151;
+    }
+
+    .upload-preview-img {
+        width: 40px;
+        height: 40px;
+        object-fit: cover;
+        border-radius: 6px;
+    }
+
+    .upload-file-icon {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #e5e7eb;
+        border-radius: 6px;
+    }
+
+    .upload-file-name {
+        max-width: 150px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .upload-remove-btn {
+        background: none;
+        border: none;
+        padding: 2px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0.6;
+        transition: opacity 0.2s;
+    }
+
+    .upload-remove-btn:hover {
+        opacity: 1;
+    }
+
+    /* Scrollbar styling */
+    .medai-content::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .medai-content::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .medai-content::-webkit-scrollbar-thumb {
+        background: #d1d5db;
+        border-radius: 3px;
+    }
+
+    .medai-content::-webkit-scrollbar-thumb:hover {
+        background: #9ca3af;
+    }
+</style>
+
+@code {
+    private readonly List<ChatMessage> _messages = new();
+    private ChatFormModel _formModel = new();
+    private bool _isBusy;
+    private string? _error;
+    private bool _isMinimized = false;
+    private List<UploadedFile> _uploadedFiles = new();
+
+    private Dictionary<string, CheXNetPredictionResponse>? _chexnetContext;
+    private BioBertResponse? _bioBertContext;
+    private LungAICtResponse? _lungAIContext;
+
+    private bool HasActiveInput => !string.IsNullOrWhiteSpace(_formModel.Input) || _uploadedFiles.Any();
+
+    private async Task HandleSendClick()
+    {
+        if (HasActiveInput && !_isBusy)
+        {
+            await SendAsync();
+        }
+    }
+
+
+    protected override void OnInitialized()
+    {
+        LoadCheXNetContext();
+        
+        if (_messages.Count == 0)
+        {
+            var intro = (_chexnetContext is not null || _bioBertContext is not null || _lungAIContext is not null)
+                ? "I have access to your current analysis: X-ray (CheXNet), clinical text (BioBERT), and CT scan (LungAI). I can explain pathologies, lung cancer classification, and clinical context for all three. How can I assist you?"
+                : "I'm your medical AI assistant. I can explain thoracic pathologies, lung cancer types, and clinical findings from X-ray, text, and CT. Run analysis on the Home page first for context.";
+            
+            _messages.Add(new ChatMessage { Role = "assistant", Content = intro });
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await ScrollToBottom();
+    }
+
+    private async Task ScrollToBottom()
+    {
+        try
+        {
+            await Task.Delay(50);
+            await JSRuntime.InvokeVoidAsync("eval", "document.getElementById('chat-messages')?.scrollTo({ top: document.getElementById('chat-messages')?.scrollHeight, behavior: 'smooth' })");
+        }
+        catch { }
+    }
+
+    private void LoadCheXNetContext()
+    {
+        _chexnetContext = StateService.CurrentResults;
+        _bioBertContext = StateService.CurrentBioBertResults;
+        _lungAIContext = StateService.CurrentLungAIResults;
+        StateService.ResultsChanged += OnResultsChanged;
+    }
+
+    private void OnResultsChanged()
+    {
+        _chexnetContext = StateService.CurrentResults;
+        _bioBertContext = StateService.CurrentBioBertResults;
+        _lungAIContext = StateService.CurrentLungAIResults;
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        StateService.ResultsChanged -= OnResultsChanged;
+    }
+
+    private void SetInput(string text)
+    {
+        _formModel.Input = text;
+    }
+
+    private void ToggleMinimize()
+    {
+        _isMinimized = !_isMinimized;
+    }
+
+    private void CloseChat()
+    {
+        Navigation.NavigateTo("/");
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey && HasActiveInput && !_isBusy)
+        {
+            await SendAsync();
+        }
+    }
+
+    private async Task HandleFileUpload(InputFileChangeEventArgs e)
+    {
+        foreach (var file in e.GetMultipleFiles(10))
+        {
+            try
+            {
+                if (file.Size > 10 * 1024 * 1024) // 10MB limit
+                {
+                    _error = $"{file.Name} is too large (max 10MB)";
+                    continue;
+                }
+
+                var uploadedFile = new UploadedFile
+                {
+                    FileName = file.Name,
+                    ContentType = file.ContentType,
+                    Size = file.Size
+                };
+
+                // Check if it's an image
+                if (file.ContentType.StartsWith("image/"))
+                {
+                    uploadedFile.IsImage = true;
+                    await using var stream = file.OpenReadStream(10 * 1024 * 1024);
+                    using var ms = new MemoryStream();
+                    await stream.CopyToAsync(ms);
+                    var imageBytes = ms.ToArray();
+                    uploadedFile.PreviewUrl = $"data:{file.ContentType};base64,{Convert.ToBase64String(imageBytes)}";
+                    uploadedFile.FileBytes = imageBytes;
+                }
+                else
+                {
+                    uploadedFile.IsImage = false;
+                    await using var stream = file.OpenReadStream(10 * 1024 * 1024);
+                    using var ms = new MemoryStream();
+                    await stream.CopyToAsync(ms);
+                    uploadedFile.FileBytes = ms.ToArray();
+                }
+
+                _uploadedFiles.Add(uploadedFile);
+            }
+            catch (Exception ex)
+            {
+                _error = $"Error uploading {file.Name}: {ex.Message}";
+            }
+        }
+
+        StateHasChanged();
+    }
+
+    private void RemoveFile(UploadedFile file)
+    {
+        _uploadedFiles.Remove(file);
+        StateHasChanged();
+    }
+
+    private async Task SendAsync()
+    {
+        if (!HasActiveInput || _isBusy) return;
+
+        var userText = _formModel.Input?.Trim() ?? "";
+        var filesInfo = _uploadedFiles.Any() 
+            ? $"\n\n[Attached {_uploadedFiles.Count} file(s): {string.Join(", ", _uploadedFiles.Select(f => f.FileName))}]"
+            : "";
+
+        _formModel.Input = string.Empty;
+        var filesToSend = _uploadedFiles.ToList();
+        _uploadedFiles.Clear();
+        _error = null;
+
+        // Add message with file info
+        var fullMessage = userText + filesInfo;
+        _messages.Add(new ChatMessage { Role = "user", Content = fullMessage });
+        
+        // TODO: Handle file uploads to backend if needed
+        // For now, we'll just send the file names in the message
+        
+        _isBusy = true;
+        StateHasChanged();
+
+        try
+        {
+            var historyForModel = BuildHistoryForModel();
+            var reply = await ChatService.SendAsync(historyForModel, _chexnetContext, _bioBertContext, _lungAIContext);
+
+            _messages.Add(new ChatMessage { Role = "assistant", Content = reply });
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            _messages.Add(new ChatMessage { Role = "assistant", Content = $"Error: {ex.Message}" });
+        }
+        finally
+        {
+            _isBusy = false;
+            StateHasChanged();
+            await ScrollToBottom();
+        }
+    }
+
+    private string ProcessMessage(string content)
+    {
+        // Highlight important medical terms and numbers
+        content = System.Text.RegularExpressions.Regex.Replace(
+            content, 
+            @"(\d+mm|\d+%|\d+\.\d+%|\d+mm\s+\w+|\d+%\s+\w+)", 
+            "<strong>$1</strong>",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase
+        );
+        
+        // Replace newlines with <br/>
+        content = content.Replace("\n", "<br/>");
+        
+        return content;
+    }
+
+    private IList<ChatMessage> BuildHistoryForModel()
+    {
+        // Detect language from the LAST user message (the current one being sent)
+        var lastUserMessage = _messages.LastOrDefault(m => m.Role == "user");
+        bool isArabic = false;
+        
+        if (lastUserMessage != null && !string.IsNullOrWhiteSpace(lastUserMessage.Content))
+        {
+            isArabic = LanguageDetectionService.IsArabic(lastUserMessage.Content);
+        }
+        
+        var systemPrompt = isArabic 
+            ? GetArabicSystemPrompt()
+            : GetEnglishSystemPrompt();
+        
+        string languageEnforcement = isArabic 
+            ? "⚠️ CRITICAL LANGUAGE REQUIREMENT: The user wrote in Arabic. You MUST respond ONLY in Arabic. Every single word must be in Arabic. Do not use English or any other language.\n\n"
+            : "⚠️ CRITICAL LANGUAGE REQUIREMENT: The user wrote in English. You MUST respond ONLY in English. Every single word must be in English. Do not use Arabic or any other language.\n\n";
+        
+        systemPrompt = languageEnforcement + systemPrompt;
+
+        var history = new List<ChatMessage> { new() { Role = "system", Content = systemPrompt } };
+        history.AddRange(_messages.Where(m => m.Role is "user" or "assistant"));
+        return history;
+    }
+
+    private static string GetEnglishSystemPrompt()
+    {
+        return @"You are a medical AI assistant integrated with three models: CheXNet (X-ray), BioBERT (clinical text), and LungAI (CT lung cancer).
+
+CRITICAL RESPONSE REQUIREMENTS:
+1. ANSWER STRUCTURE: Always structure your response logically:
+   - Start with a direct answer to the question
+   - Then provide supporting details in a clear order
+   - Use bullet points or numbered lists for multiple items
+   - End with a brief summary if the answer is complex
+
+2. LOGICAL FLOW: Ensure your response follows a logical sequence:
+   - Most important information first
+   - Related concepts grouped together
+   - Clear transitions between ideas
+   - No random jumping between topics
+
+3. CLARITY AND PRECISION:
+   - Answer the specific question asked
+   - Be concise but complete
+   - Use proper medical terminology
+   - Explain complex terms when helpful
+   - Avoid repetition and redundancy
+
+4. CONTEXT AWARENESS:
+   - Reference relevant findings from X-ray, text, or CT when applicable
+   - Explain pathologies and lung cancer classes (e.g., Adenocarcinoma, Squamous Cell)
+   - Provide clinical context when relevant
+   - Always remind users that final diagnosis must be made by qualified medical professionals
+
+5. LANGUAGE REQUIREMENT (CRITICAL): 
+   - The user's message is in English
+   - You MUST respond entirely in English - every word, every sentence
+   - Do NOT use Arabic, French, or any other language
+   - If you detect the user wrote in English, respond ONLY in English
+   - Maintain professional English throughout your entire response
+
+EXAMPLE OF GOOD RESPONSE STRUCTURE:
+Question: ""What does Atelectasis mean?""
+Good Answer: ""Atelectasis refers to the collapse or incomplete expansion of lung tissue. [Clear definition]
+
+Key points:
+- It can affect part or all of a lung
+- Common causes include obstruction, compression, or loss of surfactant
+- On X-rays, it appears as increased opacity
+
+In your case, if CheXNet detected atelectasis, it suggests areas of collapsed lung tissue visible on the scan. [Context-specific information]
+
+Note: This is an AI interpretation. Please consult with a qualified medical professional for diagnosis.""
+
+Remember: Be logical, organized, and directly answer what was asked.";
+    }
+
+    private static string GetArabicSystemPrompt()
+    {
+        return @"أنت مساعد طبي ذكي متكامل مع ثلاثة نماذج: CheXNet (الأشعة السينية)، BioBERT (النص السريري)، وLungAI (التصوير المقطعي للرئة).
+
+متطلبات الاستجابة الحرجة:
+1. هيكل الإجابة: قم دائمًا بتنظيم إجابتك بشكل منطقي:
+   - ابدأ بإجابة مباشرة على السؤال
+   - ثم قدم التفاصيل الداعمة بترتيب واضح
+   - استخدم النقاط أو القوائم المرقمة للعناصر المتعددة
+   - أنهِ بملخص موجز إذا كانت الإجابة معقدة
+
+2. التدفق المنطقي: تأكد من أن إجابتك تتبع تسلسلًا منطقيًا:
+   - المعلومات الأكثر أهمية أولاً
+   - المفاهيم ذات الصلة مجمعة معًا
+   - انتقالات واضحة بين الأفكار
+   - لا تقفز عشوائيًا بين المواضيع
+
+3. الوضوح والدقة:
+   - أجب على السؤال المحدد المطروح
+   - كن مختصرًا ولكن كاملاً
+   - استخدم المصطلحات الطبية المناسبة
+   - اشرح المصطلحات المعقدة عند الحاجة
+   - تجنب التكرار والازدواجية
+
+4. الوعي السياقي:
+   - أشر إلى النتائج ذات الصلة من الأشعة السينية أو النص أو التصوير المقطعي عند الاقتضاء
+   - اشرح الأمراض وأنواع سرطان الرئة (مثل: الأدينوكارسينوما، سرطان الخلايا الحرشفية)
+   - قدم السياق السريري عند الاقتضاء
+   - ذكر المستخدمين دائمًا أن التشخيص النهائي يجب أن يتم من قبل المتخصصين الطبيين المؤهلين
+
+5. متطلب اللغة (حرج):
+   - رسالة المستخدم بالعربية
+   - يجب أن ترد بالكامل بالعربية - كل كلمة، كل جملة
+   - لا تستخدم الإنجليزية أو الفرنسية أو أي لغة أخرى
+   - إذا لاحظت أن المستخدم كتب بالعربية، رد فقط بالعربية
+   - حافظ على اللغة العربية المهنية طوال إجابتك بالكامل
+
+مثال على هيكل الاستجابة الجيد:
+السؤال: ""ماذا يعني الاسترواح الصدري؟""
+الإجابة الجيدة: ""الاسترواح الصدري يشير إلى انهيار أو التوسع غير الكامل لأنسجة الرئة. [تعريف واضح]
+
+النقاط الرئيسية:
+- يمكن أن يؤثر على جزء أو كل الرئة
+- الأسباب الشائعة تشمل الانسداد أو الضغط أو فقدان السطحي
+- في الأشعة السينية، يظهر كزيادة في العتامة
+
+في حالتك، إذا اكتشف CheXNet استرواحًا صدريًا، فهذا يشير إلى مناطق من أنسجة الرئة المنهارة المرئية على الفحص. [معلومات سياقية محددة]
+
+ملاحظة: هذا تفسير ذكي. يرجى استشارة متخصص طبي مؤهل للتشخيص.""
+
+تذكر: كن منطقيًا ومنظمًا وأجب مباشرة على ما تم سؤاله.";
+    }
+
+    private class ChatFormModel { public string Input { get; set; } = string.Empty; }
+
+    private class UploadedFile
+    {
+        public string FileName { get; set; } = string.Empty;
+        public string ContentType { get; set; } = string.Empty;
+        public long Size { get; set; }
+        public bool IsImage { get; set; }
+        public string? PreviewUrl { get; set; }
+        public byte[]? FileBytes { get; set; }
+    }
+}

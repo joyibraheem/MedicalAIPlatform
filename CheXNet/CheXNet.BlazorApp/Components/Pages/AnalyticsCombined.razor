@@ -1,0 +1,187 @@
+@page "/analytics/combined"
+@rendermode InteractiveServer
+
+@using CheXNet.BlazorApp.Models
+@inject CheXNet.BlazorApp.Services.CheXNetStateService StateService
+@inject NavigationManager Navigation
+
+<PageTitle>Combined Analysis - Diagnostic Command Center</PageTitle>
+
+<link href="css/analytics.css" rel="stylesheet" />
+
+<div class="analytics-container">
+    <div class="analytics-background"></div>
+    
+    <div class="analytics-overlay">
+        <!-- Patient Information Header -->
+        <div class="patient-header">
+            <button class="back-button" @onclick="NavigateBack">
+                <i class="bi bi-arrow-left"></i>
+            </button>
+            <div class="patient-info">
+                <div class="patient-name">John Doe | ID: #PX-9928</div>
+                <div class="patient-details">Male, 64 years old</div>
+            </div>
+        </div>
+
+        <!-- Diagnostic Command Center Title -->
+        <div class="command-center-title">
+            <h1>Diagnostic Command Center</h1>
+            <p>Multi-modal AI Analysis System</p>
+        </div>
+
+        @if (StateService.CurrentResults is null && StateService.CurrentBioBertResults is null && StateService.CurrentLungAIResults is null)
+        {
+            <div class="results-card">
+                <p>No analysis results available. Please go back and run an analysis.</p>
+                <button class="action-btn btn-xray" @onclick="NavigateBack">Go Back</button>
+            </div>
+        }
+        else
+        {
+            <!-- X-Ray Results -->
+            @if (StateService.CurrentResults is not null && StateService.CurrentResults.ContainsKey("CheXNet"))
+            {
+                var xrayResult = StateService.CurrentResults["CheXNet"];
+                <div class="results-card">
+                    <h2 class="findings-title">Findings Reports</h2>
+                    <a class="model-link" href="#">X-Ray-CheXNet:CheXNet</a>
+
+                    <div class="row mt-4">
+                        <div class="col-lg-6">
+                            <div class="mb-3">
+                                <span class="small fw-bold text-slate-500">Pathology Probabilities</span>
+                                <span class="small text-muted float-end">Confidence Index</span>
+                            </div>
+                            <ul class="pathology-list">
+                                @foreach (var item in xrayResult.Probabilities.OrderByDescending(kv => kv.Value))
+                                {
+                                    var percentage = item.Value * 100;
+                                    <li class="pathology-item">
+                                        <div class="pathology-label">
+                                            <span class="pathology-name">@item.Key</span>
+                                            <span class="pathology-percentage">@percentage.ToString("F0")%</span>
+                                        </div>
+                                        <div class="pathology-bar">
+                                            <div class="pathology-bar-fill" style="width: @percentage%"></div>
+                                        </div>
+                                    </li>
+                                }
+                            </ul>
+                        </div>
+
+                        <div class="col-lg-6">
+                            @if (!string.IsNullOrEmpty(StateService.XRayImageDataUrl))
+                            {
+                                <div class="xray-display">
+                                    <img src="@StateService.XRayImageDataUrl" class="xray-image" alt="Chest X-Ray" />
+                                    @if (!string.IsNullOrEmpty(xrayResult.Heatmap.DataUrl))
+                                    {
+                                        <img src="@xrayResult.Heatmap.DataUrl" 
+                                             class="heatmap-overlay-img" 
+                                             style="opacity: @(_heatmapOpacity / 100.0)" 
+                                             alt="Heatmap" />
+                                    }
+                                </div>
+                                <div class="heatmap-control">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <label class="small fw-bold">Heatmap Opacity</label>
+                                        <span class="badge bg-light text-dark">@_heatmapOpacity%</span>
+                                    </div>
+                                    <input type="range" 
+                                           class="heatmap-slider" 
+                                           min="0" 
+                                           max="100" 
+                                           @bind="_heatmapOpacity" 
+                                           @bind:event="oninput" />
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- Text Results -->
+            @if (StateService.CurrentBioBertResults is not null)
+            {
+                <div class="results-card">
+                    <h2 class="findings-title">Findings Reports</h2>
+                    <a class="model-link" href="#">Clinical Text-BioBERT(NLP)</a>
+
+                    <div class="mt-4">
+                        <h3 class="findings-title" style="font-size: 1.1rem; margin-bottom: 1rem;">Key Medical Entities</h3>
+                        <div class="entities-container">
+                            @foreach (var entity in StateService.CurrentBioBertResults.Entities.OrderByDescending(e => e.Score))
+                            {
+                                <div class="entity-badge">
+                                    <span class="entity-name">@entity.Word</span>
+                                    <span class="entity-type">@entity.EntityGroup</span>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- CT Results -->
+            @if (StateService.CurrentLungAIResults is not null && string.IsNullOrEmpty(StateService.CurrentLungAIResults.Error))
+            {
+                <div class="results-card">
+                    <h2 class="findings-title">Findings Reports</h2>
+                    <a class="model-link" href="#">CT Scan-ChestAI (Chest Clarification)</a>
+
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <div class="predicted-class">
+                                <div class="predicted-class-label">Predicted Class</div>
+                                <div class="predicted-class-value">@StateService.CurrentLungAIResults.PredictedClass</div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="class-probabilities">
+                                <div class="predicted-class-label mb-3">Class Probabilities</div>
+                                @foreach (var kv in StateService.CurrentLungAIResults.Probabilities.OrderByDescending(x => x.Value))
+                                {
+                                    var percentage = kv.Value * 100;
+                                    <div class="class-prob-item">
+                                        <div class="class-prob-label">
+                                            <span class="class-prob-name">@kv.Key</span>
+                                            <span class="class-prob-percentage">@percentage.ToString("F0")%</span>
+                                        </div>
+                                        <div class="class-prob-bar">
+                                            <div class="class-prob-bar-fill" style="width: @percentage%"></div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(StateService.CTImageDataUrl))
+                    {
+                        <div class="mt-4">
+                            <h3 class="findings-title" style="font-size: 1.1rem; margin-bottom: 1rem;">CT Scan Image</h3>
+                            <div class="xray-display">
+                                <img src="@StateService.CTImageDataUrl" class="xray-image" alt="CT Scan" />
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        }
+    </div>
+
+    <button class="settings-btn">
+        <i class="bi bi-gear"></i>
+    </button>
+</div>
+
+@code {
+    private int _heatmapOpacity = 50;
+
+    private void NavigateBack()
+    {
+        Navigation.NavigateTo("/analytics");
+    }
+}

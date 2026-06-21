@@ -2,6 +2,7 @@
     ViewData["Title"] = "Text Analysis";
     Layout = "_DoctorLayout";
 }
+@using MedicalAIPlatform.Models
 @using MedicalAIPlatform.Services
 @inject AnalyticsStateService StateService
 
@@ -53,6 +54,8 @@
                         </div>
                     </div>
                 }
+
+                <partial name="_ClinicalPredictionFeedback" model="ClinicalFeedbackVmBuilder.FromBio(StateService.CurrentBioBertResults)" />
             </div>
         }
         else

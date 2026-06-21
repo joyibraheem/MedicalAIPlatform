@@ -1,0 +1,415 @@
+@page "/analytics"
+@rendermode InteractiveServer
+
+@using CheXNet.BlazorApp.Models
+@using Microsoft.JSInterop
+@inject CheXNet.BlazorApp.Services.CheXNetApiClient CheXNetApi
+@inject CheXNet.BlazorApp.Services.BioBertApiClient BioBertApi
+@inject CheXNet.BlazorApp.Services.LungAIApiClient LungAIApi
+@inject CheXNet.BlazorApp.Services.CheXNetStateService StateService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@implements IAsyncDisposable
+
+<PageTitle>Analytics - Diagnostic Command Center</PageTitle>
+
+<link href="css/analytics.css" rel="stylesheet" />
+
+<div class="analytics-container">
+    <!-- Background with medical imagery -->
+    <div class="analytics-background"></div>
+    
+    <!-- Main Content Overlay -->
+    <div class="analytics-overlay">
+        <!-- Patient Information Header -->
+        <div class="patient-header">
+            <button class="back-button" @onclick="NavigateBack">
+                <i class="bi bi-arrow-left"></i>
+            </button>
+            <div class="patient-info">
+                <div class="patient-name">John Doe | ID: #PX-9928</div>
+                <div class="patient-details">Male, 64 years old</div>
+            </div>
+        </div>
+
+        <!-- Diagnostic Command Center Title -->
+        <div class="command-center-title">
+            <h1>Diagnostic Command Center</h1>
+            <p>Multi-modal AI Analysis System</p>
+        </div>
+
+        <!-- Case Input Section -->
+        <div class="case-input-card">
+            <h2 class="section-title">Case Input</h2>
+            
+            <!-- 1. Radiology Scan (X-Ray) -->
+            <div class="input-section">
+                <label class="input-label">Radiology Scan (X-Ray)</label>
+                <label class="upload-zone" for="xrayFileInput">
+                    <i class="bi bi-cloud-arrow-up upload-icon"></i>
+                    <div class="upload-text">@(_hasImage ? _imageFileName : "Upload Chest X-Ray")</div>
+                    <div class="upload-hint">DICOM, PNG or JPG Supported</div>
+                    <InputFile id="xrayFileInput" OnChange="OnFileSelected" accept="image/png,image/jpeg,image/dicom" class="d-none" />
+                </label>
+                @if (_imageBytes is not null)
+                {
+                    <div class="file-preview">
+                        <img src="@_imageDataUrl" alt="X-Ray Preview" />
+                        <button class="remove-file" @onclick="() => { _imageBytes = null; _imageDataUrl = null; }">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    </div>
+                }
+            </div>
+
+            <!-- 2. Clinical Presentation -->
+            <div class="input-section">
+                <label class="input-label">Clinical Presentation</label>
+                <textarea class="clinical-textarea" 
+                          placeholder="Enter Patient symptoms, history, or specific complaints for BioBERT analysis...."
+                          @bind="_clinicalNote"
+                          rows="4"></textarea>
+            </div>
+
+            <!-- 3. CT Scan -->
+            <div class="input-section">
+                <label class="input-label">CT Scan-ChestAI</label>
+                <label class="upload-zone" for="ctFileInput">
+                    <i class="bi bi-cloud-arrow-up upload-icon"></i>
+                    <div class="upload-text">@(_hasCtImage ? _ctFileName : "Upload CT Scan")</div>
+                    <div class="upload-hint">PNG or JPG Supported</div>
+                    <InputFile id="ctFileInput" OnChange="OnCtFileSelected" accept="image/png,image/jpeg" class="d-none" />
+                </label>
+                @if (_ctBytes is not null)
+                {
+                    <div class="file-preview">
+                        <img src="@_ctDataUrl" alt="CT Preview" />
+                        <button class="remove-file" @onclick="ClearCtImage">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    </div>
+                }
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+                <div class="button-row">
+                    <button class="action-btn btn-xray" 
+                            disabled="@(!_hasImage || _isBusy)"
+                            @onclick="NavigateToXRay">
+                        X-Ray
+                    </button>
+                    <button class="action-btn btn-text" 
+                            disabled="@(string.IsNullOrWhiteSpace(_clinicalNote) || _isBusy)"
+                            @onclick="NavigateToText">
+                        Text
+                    </button>
+                    <button class="action-btn btn-ct" 
+                            disabled="@(!_hasCtImage || _isBusy)"
+                            @onclick="NavigateToCT">
+                        CT
+                    </button>
+                </div>
+                <button class="combined-btn" 
+                        disabled="@((!_hasImage && string.IsNullOrWhiteSpace(_clinicalNote) && !_hasCtImage) || _isBusy)"
+                        @onclick="NavigateToCombined">
+                    @if (_isBusy)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2"></span>
+                        Analyzing...
+                    }
+                    else
+                    {
+                        Combined Results
+                    }
+                </button>
+            </div>
+
+            <!-- Download All Files Section -->
+            <div class="download-section">
+                <h3 class="download-title">Download Files</h3>
+                <div class="download-buttons">
+                    @if (_hasImage)
+                    {
+                        <button class="download-btn" @onclick="DownloadXRay">
+                            <i class="bi bi-download"></i> Download X-Ray
+                        </button>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(_clinicalNote))
+                    {
+                        <button class="download-btn" @onclick="DownloadText">
+                            <i class="bi bi-download"></i> Download Text
+                        </button>
+                    }
+                    @if (_hasCtImage)
+                    {
+                        <button class="download-btn" @onclick="DownloadCT">
+                            <i class="bi bi-download"></i> Download CT
+                        </button>
+                    }
+                    @if ((_hasImage || !string.IsNullOrWhiteSpace(_clinicalNote) || _hasCtImage) && !_isBusy)
+                    {
+                        <button class="download-btn download-all" @onclick="DownloadAll">
+                            <i class="bi bi-download"></i> Download All Files
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Button -->
+    <button class="settings-btn">
+        <i class="bi bi-gear"></i>
+    </button>
+</div>
+
+@code {
+    private bool _isBusy;
+    private string? _error;
+
+    // Inputs
+    private byte[]? _imageBytes;
+    private string? _imageDataUrl;
+    private string _imageFileName = "xray.jpg";
+    private string _imageContentType = "image/jpeg";
+    private string _clinicalNote = "";
+
+    private byte[]? _ctBytes;
+    private string? _ctDataUrl;
+    private string _ctFileName = "ct.jpg";
+    private string _ctContentType = "image/jpeg";
+
+    private bool _hasImage => _imageBytes is { Length: > 0 };
+    private bool _hasCtImage => _ctBytes is { Length: > 0 };
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        _error = null;
+        var file = e.File;
+        if (file.Size > 10 * 1024 * 1024)
+        {
+            _error = "File is too large (max 10MB).";
+            return;
+        }
+
+        await using var stream = file.OpenReadStream(10 * 1024 * 1024);
+        using var ms = new MemoryStream();
+        await stream.CopyToAsync(ms);
+        _imageBytes = ms.ToArray();
+        _imageFileName = file.Name;
+        _imageContentType = file.ContentType;
+        _imageDataUrl = $"data:{_imageContentType};base64,{Convert.ToBase64String(_imageBytes)}";
+    }
+
+    private async Task OnCtFileSelected(InputFileChangeEventArgs e)
+    {
+        _error = null;
+        var file = e.File;
+        if (file.Size > 10 * 1024 * 1024)
+        {
+            _error = "CT file is too large (max 10MB).";
+            return;
+        }
+        await using var stream = file.OpenReadStream(10 * 1024 * 1024);
+        using var ms = new MemoryStream();
+        await stream.CopyToAsync(ms);
+        _ctBytes = ms.ToArray();
+        _ctFileName = file.Name;
+        _ctContentType = file.ContentType;
+        _ctDataUrl = $"data:{_imageContentType};base64,{Convert.ToBase64String(_ctBytes)}";
+    }
+
+    private void ClearCtImage()
+    {
+        _ctBytes = null;
+        _ctDataUrl = null;
+    }
+
+    private async Task NavigateToXRay()
+    {
+        if (!_hasImage || _imageBytes is null) return;
+        _isBusy = true;
+        try
+        {
+            var results = await CheXNetApi.PredictAsync(
+                imageBytes: _imageBytes,
+                fileName: _imageFileName,
+                contentType: _imageContentType,
+                models: "CheXNet",
+                topK: 14);
+            StateService.SetResults(results, null, null, _imageDataUrl, null, null);
+            Navigation.NavigateTo("/analytics/xray");
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private async Task NavigateToText()
+    {
+        if (string.IsNullOrWhiteSpace(_clinicalNote)) return;
+        _isBusy = true;
+        try
+        {
+            var results = await BioBertApi.PredictAsync(_clinicalNote);
+            StateService.SetResults(null, results, null, null, null, _clinicalNote);
+            Navigation.NavigateTo("/analytics/text");
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private async Task NavigateToCT()
+    {
+        if (!_hasCtImage || _ctBytes is null) return;
+        _isBusy = true;
+        try
+        {
+            var results = await LungAIApi.PredictCtAsync(_ctBytes, _ctFileName, _ctContentType);
+            StateService.SetResults(null, null, results, null, _ctDataUrl, null);
+            Navigation.NavigateTo("/analytics/ct");
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private async Task NavigateToCombined()
+    {
+        _isBusy = true;
+        try
+        {
+            Task<Dictionary<string, CheXNetPredictionResponse>>? chexTask = null;
+            Task<BioBertResponse>? bertTask = null;
+            Task<LungAICtResponse>? ctTask = null;
+
+            if (_hasImage && _imageBytes is not null)
+            {
+                chexTask = CheXNetApi.PredictAsync(
+                    imageBytes: _imageBytes,
+                    fileName: _imageFileName,
+                    contentType: _imageContentType,
+                    models: "CheXNet",
+                    topK: 14);
+            }
+
+            if (!string.IsNullOrWhiteSpace(_clinicalNote))
+            {
+                bertTask = BioBertApi.PredictAsync(_clinicalNote);
+            }
+
+            if (_hasCtImage && _ctBytes is not null)
+            {
+                ctTask = LungAIApi.PredictCtAsync(_ctBytes, _ctFileName, _ctContentType);
+            }
+
+            var toWait = new List<Task>();
+            if (chexTask is not null) toWait.Add(chexTask);
+            if (bertTask is not null) toWait.Add(bertTask);
+            if (ctTask is not null) toWait.Add(ctTask);
+            
+            if (toWait.Count > 0)
+            {
+                await Task.WhenAll(toWait);
+                
+                Dictionary<string, CheXNetPredictionResponse>? chexResults = null;
+                BioBertResponse? bioBertResults = null;
+                LungAICtResponse? lungAIResults = null;
+
+                if (chexTask is not null) chexResults = await chexTask;
+                if (bertTask is not null) bioBertResults = await bertTask;
+                if (ctTask is not null) lungAIResults = await ctTask;
+
+                StateService.SetResults(chexResults, bioBertResults, lungAIResults, _imageDataUrl, _ctDataUrl, _clinicalNote);
+                Navigation.NavigateTo("/analytics/combined");
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private void NavigateBack()
+    {
+        Navigation.NavigateTo("/");
+    }
+
+    private async Task DownloadXRay()
+    {
+        if (_imageBytes is null) return;
+        await DownloadFile(_imageBytes, _imageFileName, _imageContentType);
+    }
+
+    private async Task DownloadText()
+    {
+        if (string.IsNullOrWhiteSpace(_clinicalNote)) return;
+        var bytes = System.Text.Encoding.UTF8.GetBytes(_clinicalNote);
+        await DownloadFile(bytes, "clinical_notes.txt", "text/plain");
+    }
+
+    private async Task DownloadCT()
+    {
+        if (_ctBytes is null) return;
+        await DownloadFile(_ctBytes, _ctFileName, _ctContentType);
+    }
+
+    private async Task DownloadAll()
+    {
+        // Download all files sequentially
+        if (_hasImage && _imageBytes is not null)
+        {
+            await DownloadXRay();
+            await Task.Delay(500); // Small delay between downloads
+        }
+        if (!string.IsNullOrWhiteSpace(_clinicalNote))
+        {
+            await DownloadText();
+            await Task.Delay(500);
+        }
+        if (_hasCtImage && _ctBytes is not null)
+        {
+            await DownloadCT();
+        }
+    }
+
+    private async Task DownloadFile(byte[] fileBytes, string fileName, string contentType)
+    {
+        try
+        {
+            var base64 = Convert.ToBase64String(fileBytes);
+            await JSRuntime.InvokeVoidAsync("downloadFile", base64, fileName, contentType);
+        }
+        catch (Exception ex)
+        {
+            _error = $"Download failed: {ex.Message}";
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        // Cleanup if needed
+        await Task.CompletedTask;
+    }
+}

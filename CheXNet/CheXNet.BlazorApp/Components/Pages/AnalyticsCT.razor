@@ -1,0 +1,104 @@
+@page "/analytics/ct"
+@rendermode InteractiveServer
+
+@using CheXNet.BlazorApp.Models
+@inject CheXNet.BlazorApp.Services.CheXNetStateService StateService
+@inject NavigationManager Navigation
+
+<PageTitle>CT Analysis - Diagnostic Command Center</PageTitle>
+
+<link href="css/analytics.css" rel="stylesheet" />
+
+<div class="analytics-container">
+    <div class="analytics-background"></div>
+    
+    <div class="analytics-overlay">
+        <!-- Patient Information Header -->
+        <div class="patient-header">
+            <button class="back-button" @onclick="NavigateBack">
+                <i class="bi bi-arrow-left"></i>
+            </button>
+            <div class="patient-info">
+                <div class="patient-name">John Doe | ID: #PX-9928</div>
+                <div class="patient-details">Male, 64 years old</div>
+            </div>
+        </div>
+
+        <!-- Diagnostic Command Center Title -->
+        <div class="command-center-title">
+            <h1>Diagnostic Command Center</h1>
+            <p>Multi-modal AI Analysis System</p>
+        </div>
+
+        @if (StateService.CurrentLungAIResults is null)
+        {
+            <div class="results-card">
+                <p>No CT scan analysis results available. Please go back and analyze a CT scan.</p>
+                <button class="action-btn btn-ct" @onclick="NavigateBack">Go Back</button>
+            </div>
+        }
+        else if (!string.IsNullOrEmpty(StateService.CurrentLungAIResults.Error))
+        {
+            <div class="results-card">
+                <div class="alert alert-danger">@StateService.CurrentLungAIResults.Error</div>
+                <button class="action-btn btn-ct" @onclick="NavigateBack">Go Back</button>
+            </div>
+        }
+        else
+        {
+            <div class="results-card">
+                <h2 class="findings-title">Findings Reports</h2>
+                <a class="model-link" href="#">CT Scan-ChestAI (Chest Clarification)</a>
+
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <div class="predicted-class">
+                            <div class="predicted-class-label">Predicted Class</div>
+                            <div class="predicted-class-value">@StateService.CurrentLungAIResults.PredictedClass</div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="class-probabilities">
+                            <div class="predicted-class-label mb-3">Class Probabilities</div>
+                            @foreach (var kv in StateService.CurrentLungAIResults.Probabilities.OrderByDescending(x => x.Value))
+                            {
+                                var percentage = kv.Value * 100;
+                                <div class="class-prob-item">
+                                    <div class="class-prob-label">
+                                        <span class="class-prob-name">@kv.Key</span>
+                                        <span class="class-prob-percentage">@percentage.ToString("F0")%</span>
+                                    </div>
+                                    <div class="class-prob-bar">
+                                        <div class="class-prob-bar-fill" style="width: @percentage%"></div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(StateService.CTImageDataUrl))
+                {
+                    <div class="mt-4">
+                        <h3 class="findings-title" style="font-size: 1.1rem; margin-bottom: 1rem;">CT Scan Image</h3>
+                        <div class="xray-display">
+                            <img src="@StateService.CTImageDataUrl" class="xray-image" alt="CT Scan" />
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    <button class="settings-btn">
+        <i class="bi bi-gear"></i>
+    </button>
+</div>
+
+@code {
+    private void NavigateBack()
+    {
+        Navigation.NavigateTo("/analytics");
+    }
+}

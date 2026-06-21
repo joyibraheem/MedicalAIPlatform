@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using MedicalAIPlatform.Models;
 using MedicalAIPlatform.Models.Dicom;
 using MedicalAIPlatform.Services;
@@ -7,17 +8,22 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 namespace MedicalAIPlatform.Controllers;
 
-[Authorize]
+[Authorize(Policy = "VerifiedMedicalUser")]
 public sealed class AnalyticsController : Controller
 {
+    private sealed record ChexNetResolveOutcome(
+        Dictionary<string, CheXNetPredictionResponse> Map,
+        List<string> PipelineNotes);
+
     private const long MaxAnalyticsUploadBytes = 512L * 1024 * 1024;
 
     private readonly CheXNetApiClient _cheXNetApi;
     private readonly BioBertApiClient _bioBertApi;
-    private readonly LungAIApiClient _lungAIApi;
     private readonly AnalyticsStateService _stateService;
+    private readonly AnalyticsSessionLoader _sessionLoader;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly DicomInferencePipelineOrchestrator _dicomPipeline;
+    private readonly AnalyticsCtInferenceExecutor _ctInference;
     private readonly ILogger<AnalyticsController> _logger;
 
     private static readonly DicomAggregationMethod DefaultSliceAggregation = DicomAggregationMethod.MaxPooling;
@@ -25,18 +31,20 @@ public sealed class AnalyticsController : Controller
     public AnalyticsController(
         CheXNetApiClient cheXNetApi,
         BioBertApiClient bioBertApi,
-        LungAIApiClient lungAIApi,
         AnalyticsStateService stateService,
+        AnalyticsSessionLoader sessionLoader,
         UserManager<ApplicationUser> userManager,
         DicomInferencePipelineOrchestrator dicomPipeline,
+        AnalyticsCtInferenceExecutor ctInference,
         ILogger<AnalyticsController> logger)
     {
         _cheXNetApi = cheXNetApi;
         _bioBertApi = bioBertApi;
-        _lungAIApi = lungAIApi;
         _stateService = stateService;
+        _sessionLoader = sessionLoader;
         _userManager = userManager;
         _dicomPipeline = dicomPipeline;
+        _ctInference = ctInference;
         _logger = logger;
     }
 
@@ -73,7 +81,8 @@ public sealed class AnalyticsController : Controller
         {
             LogUpload("AnalyzeXRay", xrayFile);
             var bytes = await ReadAllBytesAsync(xrayFile, cancellationToken).ConfigureAwait(false);
-            var results = await ResolveCheXNetPredictionAsync(xrayFile, bytes, cancellationToken).ConfigureAwait(false);
+            var outcome = await ResolveCheXNetPredictionAsync(xrayFile, bytes, cancellationToken).ConfigureAwait(false);
+            var results = outcome.Map;
 
             string? previewUrl = null;
             if (!AnalyticsDicomRouting.IsDicomUpload(xrayFile))
@@ -81,7 +90,7 @@ public sealed class AnalyticsController : Controller
             else if (results.TryGetValue("CheXNet", out var chex) && !string.IsNullOrEmpty(chex.PreviewImageDataUrl))
                 previewUrl = chex.PreviewImageDataUrl;
 
-            _stateService.SetResults(results, null, null, previewUrl, null, null);
+            _stateService.SetResults(results, null, null, previewUrl, null, null, outcome.PipelineNotes);
 
             return Json(new { success = true, redirect = Url.Action("XRay") });
         }
@@ -153,7 +162,7 @@ public sealed class AnalyticsController : Controller
         clinicalText = string.IsNullOrWhiteSpace(clinicalText) ? null : clinicalText.Trim();
         try
         {
-            Task<Dictionary<string, CheXNetPredictionResponse>>? chexTask = null;
+            Task<ChexNetResolveOutcome>? chexTask = null;
             Task<BioBertResponse>? bertTask = null;
 
             byte[]? xRayBytes = null;
@@ -182,6 +191,7 @@ public sealed class AnalyticsController : Controller
             // they share the scoped DicomInferencePipelineOrchestrator and fo-dicom/renderer state — parallel
             // RunAsync causes races and random failures only when both X-Ray + CT DICOM slots are filled.
             Dictionary<string, CheXNetPredictionResponse>? chexResults = null;
+            ChexNetResolveOutcome? chexOutcome = null;
             Exception? chexFault = null;
             LungAICtResponse? lungRaw = null;
             Exception? lungFault = null;
@@ -190,7 +200,8 @@ public sealed class AnalyticsController : Controller
             {
                 if (chexTask is not null)
                 {
-                    (chexResults, chexFault) = await ConsumeTaskMaybe(chexTask).ConfigureAwait(false);
+                    (chexOutcome, chexFault) = await ConsumeTaskMaybe(chexTask).ConfigureAwait(false);
+                    chexResults = chexOutcome?.Map;
                 }
 
                 // Start CT DICOM pipeline only after chest branch finishes — avoids overlapping RunAsync on scoped pipeline.
@@ -267,7 +278,14 @@ public sealed class AnalyticsController : Controller
             else if (lungResults != null && !string.IsNullOrEmpty(lungResults.PreviewImageDataUrl))
                 ctDataUrl = lungResults.PreviewImageDataUrl;
 
-            _stateService.SetResults(chexResults, bioResults, lungResults, xrayDataUrl, ctDataUrl, clinicalText);
+            _stateService.SetResults(
+                chexResults,
+                bioResults,
+                lungResults,
+                xrayDataUrl,
+                ctDataUrl,
+                clinicalText,
+                chexOutcome?.PipelineNotes ?? []);
 
             if (warnings.Count > 0)
                 TempData["CombinedWarnings"] = string.Join(" • ", warnings);
@@ -297,11 +315,14 @@ public sealed class AnalyticsController : Controller
         }
     }
 
-    public async Task<IActionResult> XRay()
+    public async Task<IActionResult> XRay(Guid? jobId)
     {
-        if (_stateService.CurrentResults == null || !_stateService.CurrentResults.ContainsKey("CheXNet"))
+        if (!await TryPrepareResultPageAsync(jobId, snap =>
+                snap.CurrentResults?.ContainsKey("CheXNet") == true))
         {
-            TempData["Error"] = "No X-Ray analysis results available. Please analyze an X-Ray image first.";
+            TempData["Error"] = jobId.HasValue
+                ? "This X-Ray result is unavailable or belongs to another session. Please re-run the analysis."
+                : "No X-Ray analysis results available. Please analyze an X-Ray image first.";
             return RedirectToAction("Index");
         }
 
@@ -309,11 +330,13 @@ public sealed class AnalyticsController : Controller
         return View();
     }
 
-    public async Task<IActionResult> Text()
+    public async Task<IActionResult> Text(Guid? jobId)
     {
-        if (_stateService.CurrentBioBertResults == null)
+        if (!await TryPrepareResultPageAsync(jobId, snap => snap.CurrentBioBertResults is not null))
         {
-            TempData["Error"] = "No text analysis results available. Please analyze clinical text first.";
+            TempData["Error"] = jobId.HasValue
+                ? "This text analysis result is unavailable or belongs to another session. Please re-run the analysis."
+                : "No text analysis results available. Please analyze clinical text first.";
             return RedirectToAction("Index");
         }
 
@@ -321,11 +344,13 @@ public sealed class AnalyticsController : Controller
         return View();
     }
 
-    public async Task<IActionResult> CT()
+    public async Task<IActionResult> CT(Guid? jobId)
     {
-        if (_stateService.CurrentLungAIResults == null)
+        if (!await TryPrepareResultPageAsync(jobId, snap => snap.CurrentLungAIResults is not null))
         {
-            TempData["Error"] = "No CT scan analysis results available. Please analyze a CT scan first.";
+            TempData["Error"] = jobId.HasValue
+                ? "This CT result is unavailable or belongs to another session. Please re-run the analysis."
+                : "No CT scan analysis results available. Please analyze a CT scan first.";
             return RedirectToAction("Index");
         }
 
@@ -333,18 +358,37 @@ public sealed class AnalyticsController : Controller
         return View();
     }
 
-    public async Task<IActionResult> Combined()
+    public async Task<IActionResult> Combined(Guid? jobId)
     {
-        if (_stateService.CurrentResults == null &&
-            _stateService.CurrentBioBertResults == null &&
-            _stateService.CurrentLungAIResults == null)
+        if (!await TryPrepareResultPageAsync(jobId, snap =>
+                snap.CurrentResults is not null
+                || snap.CurrentBioBertResults is not null
+                || snap.CurrentLungAIResults is not null))
         {
-            TempData["Error"] = "No analysis results available. Please run an analysis first.";
+            TempData["Error"] = jobId.HasValue
+                ? "This combined result is unavailable or belongs to another session. Please re-run the analysis."
+                : "No analysis results available. Please run an analysis first.";
             return RedirectToAction("Index");
         }
 
         await SetDoctorName();
         return View();
+    }
+
+    private async Task<bool> TryPrepareResultPageAsync(Guid? jobId,
+        Func<AnalyticsSessionSnapshot, bool> isValid)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return false;
+
+        var snapshot = await _sessionLoader.LoadAsync(userId, jobId, HttpContext.RequestAborted)
+            .ConfigureAwait(false);
+        if (snapshot is null || !isValid(snapshot))
+            return false;
+
+        _stateService.HydrateForRequest(snapshot);
+        return true;
     }
 
     private void LogUpload(string context, IFormFile file)
@@ -369,7 +413,7 @@ public sealed class AnalyticsController : Controller
     }
 
     /// <summary>CheXNet path: slice-based pipeline for DICOM, otherwise direct HTTP PNG/JPEG.</summary>
-    private async Task<Dictionary<string, CheXNetPredictionResponse>> ResolveCheXNetPredictionAsync(
+    private async Task<ChexNetResolveOutcome> ResolveCheXNetPredictionAsync(
         IFormFile fileMeta,
         byte[] fileBytes,
         CancellationToken cancellationToken)
@@ -386,17 +430,21 @@ public sealed class AnalyticsController : Controller
                 .ConfigureAwait(false);
 
             var viewModel = AnalyticsDicomRouting.ToCheXNetPrediction(pipe);
-            return new Dictionary<string, CheXNetPredictionResponse>(StringComparer.OrdinalIgnoreCase)
+            var notes = pipe.Metadata?.StudyNotes is { Count: > 0 } list
+                ? new List<string>(list)
+                : new List<string>();
+            var map = new Dictionary<string, CheXNetPredictionResponse>(StringComparer.OrdinalIgnoreCase)
             {
                 ["CheXNet"] = viewModel,
             };
+            return new ChexNetResolveOutcome(map, notes);
         }
 
         _logger.LogInformation(
             "Processing raster chest image → CheXNet HTTP endpoint; file={File}",
             SafeFileName(fileMeta));
 
-        return await _cheXNetApi.PredictAsync(
+        var rasterMap = await _cheXNetApi.PredictAsync(
             fileBytes,
             SafeFileName(fileMeta),
             string.IsNullOrWhiteSpace(fileMeta.ContentType) ? "application/octet-stream" : fileMeta.ContentType,
@@ -404,38 +452,20 @@ public sealed class AnalyticsController : Controller
             heatmapClass: null,
             topK: 14,
             cancellationToken).ConfigureAwait(false);
+
+        return new ChexNetResolveOutcome(rasterMap, []);
     }
 
     /// <summary>CT path: slice pipeline for volumetric DICOM, otherwise LungAI JPEG/PNG endpoint.</summary>
-    private async Task<LungAICtResponse> ResolveCtPredictionAsync(
+    private Task<LungAICtResponse> ResolveCtPredictionAsync(
         IFormFile fileMeta,
         byte[] fileBytes,
-        CancellationToken cancellationToken)
-    {
-        if (AnalyticsDicomRouting.IsDicomUpload(fileMeta))
-        {
-            _logger.LogInformation(
-                "Processing DICOM CT upload → slice-based pipeline (ChestAI per slice); file={File}",
-                SafeFileName(fileMeta));
-
-            await using var dicomMs = new MemoryStream(fileBytes, writable: false);
-            var pipe = await _dicomPipeline
-                .RunAsync(dicomMs, DefaultSliceAggregation, DicomInferenceBackend.HttpLungCtClassifier, cancellationToken)
-                .ConfigureAwait(false);
-
-            return AnalyticsDicomRouting.ToLungCtPrediction(pipe);
-        }
-
-        _logger.LogInformation(
-            "Processing raster CT slice → LungAI /predict/ct; file={File}",
-            SafeFileName(fileMeta));
-
-        return await _lungAIApi.PredictCtAsync(
+        CancellationToken cancellationToken) =>
+        _ctInference.PredictCtAsync(
             fileBytes,
             SafeFileName(fileMeta),
-            string.IsNullOrWhiteSpace(fileMeta.ContentType) ? "application/octet-stream" : fileMeta.ContentType,
-            cancellationToken).ConfigureAwait(false);
-    }
+            string.IsNullOrWhiteSpace(fileMeta.ContentType) ? "application/octet-stream" : fileMeta.ContentType.Trim(),
+            cancellationToken);
 
     private static string MakeDataUrl(ReadOnlySpan<byte> bytes, string? contentType)
     {

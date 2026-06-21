@@ -1,0 +1,115 @@
+@page "/analytics/xray"
+@rendermode InteractiveServer
+
+@using CheXNet.BlazorApp.Models
+@inject CheXNet.BlazorApp.Services.CheXNetStateService StateService
+@inject NavigationManager Navigation
+
+<PageTitle>X-Ray Analysis - Diagnostic Command Center</PageTitle>
+
+<link href="css/analytics.css" rel="stylesheet" />
+
+<div class="analytics-container">
+    <div class="analytics-background"></div>
+    
+    <div class="analytics-overlay">
+        <!-- Patient Information Header -->
+        <div class="patient-header">
+            <button class="back-button" @onclick="NavigateBack">
+                <i class="bi bi-arrow-left"></i>
+            </button>
+            <div class="patient-info">
+                <div class="patient-name">John Doe | ID: #PX-9928</div>
+                <div class="patient-details">Male, 64 years old</div>
+            </div>
+        </div>
+
+        <!-- Diagnostic Command Center Title -->
+        <div class="command-center-title">
+            <h1>Diagnostic Command Center</h1>
+            <p>Multi-modal AI Analysis System</p>
+        </div>
+
+        @if (StateService.CurrentResults is null || !StateService.CurrentResults.ContainsKey("CheXNet"))
+        {
+            <div class="results-card">
+                <p>No X-Ray analysis results available. Please go back and analyze an X-Ray image.</p>
+                <button class="action-btn btn-xray" @onclick="NavigateBack">Go Back</button>
+            </div>
+        }
+        else
+        {
+            var result = StateService.CurrentResults["CheXNet"];
+            
+            <div class="results-card">
+                <h2 class="findings-title">Findings Reports</h2>
+                <a class="model-link" href="#">X-Ray-CheXNet:CheXNet</a>
+
+                <div class="row">
+                    <div class="col-lg-6">
+                        <div class="mb-3">
+                            <span class="small fw-bold text-slate-500">Pathology Probabilities</span>
+                            <span class="small text-muted float-end">Confidence Index</span>
+                        </div>
+                        <ul class="pathology-list">
+                            @foreach (var item in result.Probabilities.OrderByDescending(kv => kv.Value))
+                            {
+                                var percentage = item.Value * 100;
+                                <li class="pathology-item">
+                                    <div class="pathology-label">
+                                        <span class="pathology-name">@item.Key</span>
+                                        <span class="pathology-percentage">@percentage.ToString("F0")%</span>
+                                    </div>
+                                    <div class="pathology-bar">
+                                        <div class="pathology-bar-fill" style="width: @percentage%"></div>
+                                    </div>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+
+                    <div class="col-lg-6">
+                        <div class="xray-display">
+                            @if (!string.IsNullOrEmpty(StateService.XRayImageDataUrl))
+                            {
+                                <img src="@StateService.XRayImageDataUrl" class="xray-image" alt="Chest X-Ray" />
+                                @if (!string.IsNullOrEmpty(result.Heatmap.DataUrl))
+                                {
+                                    <img src="@result.Heatmap.DataUrl" 
+                                         class="heatmap-overlay-img" 
+                                         style="opacity: @(_heatmapOpacity / 100.0)" 
+                                         alt="Heatmap" />
+                                }
+                            }
+                        </div>
+                        <div class="heatmap-control">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="small fw-bold">Heatmap Opacity</label>
+                                <span class="badge bg-light text-dark">@_heatmapOpacity%</span>
+                            </div>
+                            <input type="range" 
+                                   class="heatmap-slider" 
+                                   min="0" 
+                                   max="100" 
+                                   @bind="_heatmapOpacity" 
+                                   @bind:event="oninput" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <button class="settings-btn">
+        <i class="bi bi-gear"></i>
+    </button>
+</div>
+
+@code {
+    private int _heatmapOpacity = 50;
+
+    private void NavigateBack()
+    {
+        Navigation.NavigateTo("/analytics");
+    }
+}

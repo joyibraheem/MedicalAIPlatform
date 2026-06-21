@@ -1,0 +1,38 @@
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.db
+
+# Build outputs
+bin/
+obj/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# ML / Models
+*.pth
+*.pt
+*.tar
+*.onnx
+
+# Executables
+*.exe
+
+# Logs
+*.log
+*.txt
+
+
+# OS
+.DS_Store
+Thumbs.db
+
+# .NET build folders
+bin/
+obj/
+
+.dotnet_cli/

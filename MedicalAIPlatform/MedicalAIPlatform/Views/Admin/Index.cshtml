@@ -1,158 +1,344 @@
 @model MedicalAIPlatform.Models.AdminDashboardViewModel
+@using System
+@using System.Text.Json
+@using System.Text.Json.Serialization
 @{
     ViewData["Title"] = "Admin Dashboard";
     Layout = "_DoctorLayout";
+    var chartJson = JsonSerializer.Serialize(Model.Charts, new JsonSerializerOptions
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+    });
 }
 
-<link rel="stylesheet" href="~/css/doctor-dashboard.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/css/admin-dashboard.css" asp-append-version="true" />
 
-<!-- Page Header (Greeting) -->
-<div class="dash-header">
-    <div class="user-greeting">
-        <img src="https://ui-avatars.com/api/?name=Admin&background=1D4581&color=fff" class="user-avatar-small" alt="Admin Profile">
-        <div class="greeting-text">
-            <h2><span data-i18n="dashboard_good_morning">Good Morning</span> Admin</h2>
-            <p>Welcome to the Admin Dashboard</p>
-        </div>
-    </div>
-    <!-- Actions -->
-    <div class="header-actions">
-        <button class="icon-btn" title="Notifications">
-            <i class="bi bi-bell-fill" style="color:#1e293b;"></i>
-        </button>
-    </div>
-</div>
-
-<!-- Stats Stack -->
-<div class="stats-stack">
-    <!-- Active Doctors -->
-    <div class="dash-stat-card">
-        <div class="stat-icon-circle bg-icon-blue">
-            <i class="bi bi-people-fill"></i>
-        </div>
-        <div class="stat-content">
-            <h3>@Model.ActiveDoctorsCount.ToString("00")</h3>
-            <p>Active Doctors</p>
-        </div>
-    </div>
-
-    <!-- Patients -->
-    <div class="dash-stat-card">
-        <div class="stat-icon-circle bg-icon-green">
-            <i class="bi bi-person-heart"></i>
-        </div>
-        <div class="stat-content">
-            <h3>@Model.PatientsCount.ToString("00")</h3>
-            <p>Patients</p>
-        </div>
-    </div>
-
-    <!-- Accuracy Rate -->
-    <div class="dash-stat-card">
-        <div class="stat-icon-circle bg-icon-purple">
-            <i class="bi bi-graph-up-arrow"></i>
-        </div>
-        <div class="stat-content">
-            <h3>@Model.AccuracyRate.ToString("0.0")%</h3>
-            <p>Accuracy Rate</p>
-        </div>
-    </div>
-</div>
-
-<!-- Accuracy Progress Bar -->
-<div class="upload-card" style="margin-bottom: 2rem;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-        <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600; color: #1e293b;">System Accuracy</h3>
-        <span style="font-size: 1.5rem; font-weight: 700; color: #1D4581;">@Model.AccuracyRate%</span>
-    </div>
-    <div class="progress-container" style="background: rgba(255, 255, 255, 0.5); border-radius: 12px; height: 12px; overflow: hidden;">
-        <div class="progress-fill" style="background: linear-gradient(90deg, #1D4581 0%, #127FEC 100%); height: 100%; width: @Model.AccuracyRate%; border-radius: 12px; transition: width 0.3s ease;"></div>
-    </div>
-</div>
-
-<!-- Pending Approvals Section -->
-<div class="latest-scans-section">
-    <div class="scans-header">
-        <h4>Pending Approvals</h4>
-        @if (Model.PendingDoctors.Any())
-        {
-            <a asp-controller="Admin" asp-action="PendingDoctors" class="link-see-all">View all</a>
-        }
-    </div>
-
-    @if (Model.PendingDoctors.Any())
+<div class="admin-dash-root">
+    @if (Model.Alerts.Count > 0)
     {
-        @foreach (var doctor in Model.PendingDoctors)
-        {
-            <div class="scan-list-item" style="background: rgba(255, 255, 255, 0.45); border: 1px solid rgba(255, 255, 255, 0.5); border-radius: 16px; padding: 1rem; margin-bottom: 0.75rem;">
-                <div class="scan-user-info">
-                    <img src="https://ui-avatars.com/api/?name=@doctor.FullName&background=random&color=fff" class="scan-avatar" alt="@doctor.FullName">
-                    <div class="scan-text">
-                        <h5 style="margin: 0; font-size: 1rem; font-weight: 600; color: #1e293b;">Dr. @doctor.FullName</h5>
-                        <p style="margin: 4px 0 0; font-size: 0.85rem; color: #64748b;">@doctor.Specialization</p>
+        <div class="admin-alert-stack mb-4">
+            @foreach (var alert in Model.Alerts)
+            {
+                <div class="admin-alert admin-alert-@alert.Severity" role="status">
+                    <div class="admin-alert-icon"><i class="bi bi-exclamation-triangle-fill"></i></div>
+                    <div>
+                        <div class="admin-alert-title">@alert.Title</div>
+                        <div class="admin-alert-detail">@alert.Detail</div>
                     </div>
                 </div>
-                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                    <form asp-controller="Admin" asp-action="RejectDoctor" method="post" style="margin: 0;">
-                        <input type="hidden" name="userId" value="@doctor.Id" />
-                        <button type="submit" class="icon-btn" style="background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.3);" title="Reject">
-                            <i class="bi bi-x-lg" style="color: #ef4444;"></i>
-                        </button>
-                    </form>
-                    <form asp-controller="Admin" asp-action="ApproveDoctor" method="post" style="margin: 0;">
-                        <input type="hidden" name="userId" value="@doctor.Id" />
-                        <button type="submit" style="background: linear-gradient(135deg, #1D4581 0%, #127FEC 100%); color: white; border: none; border-radius: 12px; padding: 0.5rem 1.25rem; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.3s ease;">
-                            Approve
-                        </button>
-                    </form>
-                </div>
-            </div>
-        }
-    }
-    else
-    {
-        <div class="text-center" style="opacity: 0.6; padding: 2rem; color: #64748b;">
-            <i class="bi bi-check-circle-fill" style="font-size: 2rem; margin-bottom: 0.5rem; display: block; color: #10b981;"></i>
-            <p style="margin: 0;">No pending approvals</p>
+            }
         </div>
     }
-</div>
 
-<!-- System Activity Section -->
-<div class="upload-card" style="margin-top: 2rem;">
-    <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem; font-weight: 600; color: #1e293b;">System Activity</h3>
-    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-        <div style="display: flex; align-items: center; gap: 0.75rem;">
-            <span class="dot @(Model.IsSystemWorking ? "green" : "red")" style="width: 12px; height: 12px; border-radius: 50%; display: inline-block;"></span>
-            <span style="color: #64748b; font-size: 0.9rem;">@(Model.IsSystemWorking ? "The system is working" : "The system is not working")</span>
+    <header class="admin-dash-header">
+        <div>
+            <p class="admin-dash-kicker">Operations · AI oversight</p>
+            <h1 class="admin-dash-title">Clinical intelligence dashboard</h1>
+            <p class="admin-dash-lead">
+                Live signals across inference throughput, QA backlog, and clinician workflows.
+            </p>
         </div>
-        @if (!Model.IsSystemWorking)
+        <div class="admin-dash-header-meta">
+            <span class="admin-pill @(Model.IsSystemWorking ? "admin-pill-success" : "admin-pill-danger")">
+                <i class="bi bi-activity"></i>
+                @(Model.IsSystemWorking ? "Pipelines nominal" : "Investigate failures")
+            </span>
+            <span class="admin-pill admin-pill-muted">
+                <i class="bi bi-inboxes-fill"></i>
+                @Model.PendingFeedbackReviewsCount queue · @Model.PendingDoctorRegistrationsCount enroll
+            </span>
+        </div>
+    </header>
+
+    <!-- KPI row -->
+    <div class="row g-3 mb-4 admin-kpi-row">
+        @{
+            var kpis = new[] { Model.DoctorsCard, Model.PatientsCard, Model.AccuracyCard };
+        }
+        @foreach (var k in kpis)
         {
-            <div style="display: flex; align-items: center; gap: 0.75rem;">
-                <span class="dot green" style="width: 12px; height: 12px; border-radius: 50%; display: inline-block;"></span>
-                <span style="color: #64748b; font-size: 0.9rem;">The system is working</span>
+            <div class="col-12 col-md-4">
+                <article class="admin-kpi-card">
+                    <div class="admin-kpi-icon"><i class="bi @k.IconBi"></i></div>
+                    <div class="admin-kpi-body">
+                        <p class="admin-kpi-label">@k.Title</p>
+                        <div class="admin-kpi-value-row">
+                            <span class="admin-kpi-value">@k.ValueDisplay</span>
+                            <span class="admin-kpi-trend admin-kpi-trend-@k.TrendVariant" title="@k.TrendContext">
+                                <span class="admin-kpi-arrow">@k.TrendLabel</span>
+                            </span>
+                        </div>
+                        <p class="admin-kpi-context">@k.TrendContext</p>
+                    </div>
+                </article>
             </div>
         }
     </div>
+
+    <!-- Quick actions -->
+    <section class="admin-card admin-quick-actions mb-4">
+        <div class="admin-card-head">
+            <div class="admin-card-head-icon"><i class="bi bi-lightning-charge-fill"></i></div>
+            <div>
+                <h2 class="admin-card-title">Quick actions</h2>
+                <p class="admin-card-desc">Jump into high-frequency clinical workflows.</p>
+            </div>
+        </div>
+        <div class="admin-quick-grid">
+            <a class="admin-qbtn admin-qbtn-primary" asp-controller="Analytics" asp-action="Index">
+                <i class="bi bi-cloud-upload-fill"></i><span>Upload scan</span>
+            </a>
+            <a class="admin-qbtn" asp-controller="Analytics" asp-action="Combined">
+                <i class="bi bi-bezier2"></i><span>Analyze case</span>
+            </a>
+            <a class="admin-qbtn" asp-controller="Patient" asp-action="Index" title="Open a patient chart to generate structured reports">
+                <i class="bi bi-file-earmark-medical-fill"></i><span>Generate report</span>
+            </a>
+            <a class="admin-qbtn" asp-controller="Patient" asp-action="Index" title="Browse and manage patient records">
+                <i class="bi bi-people-fill"></i><span>View patients</span>
+            </a>
+        </div>
+    </section>
+
+    <div class="row g-4 mb-4">
+        <div class="col-12 col-xl-8">
+            <section class="admin-card admin-chart-card h-100">
+                <div class="admin-card-head">
+                    <div class="admin-card-head-icon admin-icon-blue"><i class="bi bi-graph-up"></i></div>
+                    <div>
+                        <h2 class="admin-card-title">AI calibration trend</h2>
+                        <p class="admin-card-desc">Blended reviewer acceptance + inference volume (7-day window).</p>
+                    </div>
+                </div>
+                <div class="admin-chart-canvas-wrap">
+                    <canvas id="adminChartAccuracy" aria-label="Accuracy trend chart"></canvas>
+                </div>
+            </section>
+        </div>
+        <div class="col-12 col-xl-4">
+            <section class="admin-card admin-chart-card h-100">
+                <div class="admin-card-head">
+                    <div class="admin-card-head-icon admin-icon-teal"><i class="bi bi-pie-chart-fill"></i></div>
+                    <div>
+                        <h2 class="admin-card-title">Case distribution</h2>
+                        <p class="admin-card-desc">Top thoracic labels (30d, completed jobs).</p>
+                    </div>
+                </div>
+                @if (Model.Charts.HasInferenceSamples)
+                {
+                    <div class="admin-chart-canvas-wrap admin-chart-canvas-wrap-compact">
+                        <canvas id="adminChartDistribution" aria-label="Case distribution chart"></canvas>
+                    </div>
+                }
+                else
+                {
+                    <div class="admin-empty-chart">
+                        <i class="bi bi-database-slash"></i>
+                        <p>No completed inference jobs yet — run an analysis to populate this chart.</p>
+                    </div>
+                }
+            </section>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-12">
+            <section class="admin-card admin-chart-card">
+                <div class="admin-card-head">
+                    <div class="admin-card-head-icon admin-icon-violet"><i class="bi bi-bar-chart-line-fill"></i></div>
+                    <div>
+                        <h2 class="admin-card-title">Inference throughput</h2>
+                        <p class="admin-card-desc">Completed CT / X-ray analyses per day (UTC).</p>
+                    </div>
+                </div>
+                <div class="admin-chart-canvas-wrap">
+                    <canvas id="adminChartActivity" aria-label="Daily analyses chart"></canvas>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-12 col-lg-7">
+            <section class="admin-card h-100">
+                <div class="admin-card-head">
+                    <div class="admin-card-head-icon admin-icon-amber"><i class="bi bi-hourglass-split"></i></div>
+                    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 w-100">
+                        <div>
+                            <h2 class="admin-card-title">Pending clinical reviews</h2>
+                            <p class="admin-card-desc mb-0">Accept / Modify submissions awaiting admin approval.</p>
+                        </div>
+                        <a asp-controller="Admin" asp-action="PredictionFeedbackReview" class="btn btn-sm admin-btn-outline">Open queue</a>
+                    </div>
+                </div>
+                @if (Model.PendingClinicalReviews.Count > 0)
+                {
+                    <div class="table-responsive admin-table-responsive">
+                        <table class="table admin-table align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Case</th>
+                                    <th>Prediction</th>
+                                    <th>Clinician action</th>
+                                    <th>Owner</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var row in Model.PendingClinicalReviews)
+                                {
+                                    <tr>
+                                        <td>
+                                            <div class="fw-semibold">@row.Modality</div>
+                                            <div class="admin-muted small">@row.CaseLabel</div>
+                                        </td>
+                                        <td><span class="admin-mono">@row.PredictionSnippet</span></td>
+                                        <td>
+                                            @if (string.Equals(row.DoctorActionDisplay, "Accept", StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                <span class="admin-badge admin-badge-success">Accept</span>
+                                            }
+                                            else if (string.Equals(row.DoctorActionDisplay, "Modify", StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                <span class="admin-badge admin-badge-warn">Modify</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="admin-badge admin-badge-muted">@row.DoctorActionDisplay</span>
+                                            }
+                                        </td>
+                                        <td class="small">@row.ClinicianDisplay</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="admin-empty-inline">
+                        <i class="bi bi-check2-circle"></i>
+                        <span>No pending QA rows — feedback queue is clear.</span>
+                    </div>
+                }
+            </section>
+        </div>
+        <div class="col-12 col-lg-5">
+            <section class="admin-card admin-insights-card h-100">
+                <div class="admin-card-head">
+                    <div class="admin-card-head-icon admin-icon-rose"><i class="bi bi-stars"></i></div>
+                    <div>
+                        <h2 class="admin-card-title">AI insights</h2>
+                        <p class="admin-card-desc">Signals surfaced from live inference traffic.</p>
+                    </div>
+                </div>
+                <div class="admin-insight-hero">
+                    <p class="admin-insight-label">Top detected theme today</p>
+                    <p class="admin-insight-value">@Model.TopConditionToday</p>
+                    <p class="admin-insight-sub">@Model.TopConditionSubtitle</p>
+                </div>
+                <ul class="admin-insight-list">
+                    @foreach (var line in Model.AiInsightBullets)
+                    {
+                        <li><i class="bi bi-dot"></i>@line</li>
+                    }
+                </ul>
+            </section>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-12 col-lg-6">
+            <section class="admin-card h-100">
+                <div class="admin-card-head">
+                    <div class="admin-card-head-icon admin-icon-slate"><i class="bi bi-clock-history"></i></div>
+                    <div>
+                        <h2 class="admin-card-title">Recent activity</h2>
+                        <p class="admin-card-desc">Latest inference, imaging, and documentation events.</p>
+                    </div>
+                </div>
+                @if (Model.RecentActivity.Count > 0)
+                {
+                    <ul class="admin-feed">
+                        @foreach (var ev in Model.RecentActivity)
+                        {
+                            <li class="admin-feed-item">
+                                <div class="admin-feed-icon"><i class="bi @ev.IconBi"></i></div>
+                                <div>
+                                    <p class="admin-feed-msg mb-0">@ev.Message</p>
+                                    <p class="admin-feed-time mb-0">@ev.Timestamp.LocalDateTime.ToString("MMM d, yyyy HH:mm")</p>
+                                </div>
+                            </li>
+                        }
+                    </ul>
+                }
+                else
+                {
+                    <div class="admin-empty-inline">
+                        <i class="bi bi-inbox"></i>
+                        <span>No telemetry yet — activity will appear after clinicians run workflows.</span>
+                    </div>
+                }
+            </section>
+        </div>
+        <div class="col-12 col-lg-6">
+            <section class="admin-card h-100">
+                <div class="admin-card-head">
+                    <div class="admin-card-head-icon admin-icon-blue"><i class="bi bi-person-check-fill"></i></div>
+                    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 w-100">
+                        <div>
+                            <h2 class="admin-card-title">Physician enrollments</h2>
+                            <p class="admin-card-desc mb-0">Accounts awaiting credentialing approval.</p>
+                        </div>
+                        @if (Model.PendingDoctors.Any())
+                        {
+                            <a asp-controller="Admin" asp-action="PendingDoctors" class="btn btn-sm admin-btn-outline">View all</a>
+                        }
+                    </div>
+                </div>
+                @if (Model.PendingDoctors.Any())
+                {
+                    @foreach (var doctor in Model.PendingDoctors)
+                    {
+                        <div class="admin-enroll-row">
+                            <div class="d-flex align-items-center gap-3">
+                                <img src="https://ui-avatars.com/api/?name=@Uri.EscapeDataString(doctor.FullName ?? doctor.UserName ?? "?")&background=1e293b&color=fff&size=64"
+                                     alt="" class="admin-enroll-avatar" width="48" height="48" />
+                                <div>
+                                    <div class="fw-semibold">Dr. @(doctor.FullName ?? doctor.UserName)</div>
+                                    <div class="admin-muted small">@(doctor.Specialization ?? "Specialization pending")</div>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                                <a asp-controller="Admin" asp-action="DoctorDetails" asp-route-userId="@doctor.Id"
+                                   class="btn btn-sm btn-primary rounded-3">Review</a>
+                            </div>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="admin-empty-inline">
+                        <i class="bi bi-patch-check-fill"></i>
+                        <span>No pending physician enrollments.</span>
+                    </div>
+                }
+            </section>
+        </div>
+    </div>
+
+    <footer class="admin-dash-footer">
+        <span><strong>Medical AI Platform</strong> · Admin telemetry refreshes on page load.</span>
+        @if (Model.FailedInferenceJobsLast24h > 0)
+        {
+            <span class="text-danger-emphasis">@Model.FailedInferenceJobsLast24h pipeline failure(s) · 24h</span>
+        }
+    </footer>
 </div>
 
-<style>
-    .dot.red {
-        background-color: #ef4444;
-        box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
-    }
-    
-    .dot.green {
-        background-color: #10b981;
-        box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
-    }
-    
-    .bg-icon-green {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-    }
-    
-    .bg-icon-purple {
-        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-    }
-</style>
+<script type="application/json" id="admin-chart-data">@Html.Raw(chartJson)</script>
 
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js" crossorigin="anonymous"></script>
+    <script src="~/js/admin-dashboard.js" asp-append-version="true"></script>
+}

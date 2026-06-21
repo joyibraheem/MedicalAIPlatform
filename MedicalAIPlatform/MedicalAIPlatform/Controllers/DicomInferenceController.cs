@@ -8,7 +8,7 @@ namespace MedicalAIPlatform.Controllers;
 /// <summary>Hospital-style DICOM upload → slice inference → aggregation JSON.</summary>
 [ApiController]
 [Route("api/dicom")]
-[Authorize(Roles = "Doctor,Admin")]
+[Authorize(Policy = "VerifiedMedicalUser")]
 public sealed class DicomInferenceController : ControllerBase
 {
     private readonly DicomInferencePipelineOrchestrator _pipeline;

@@ -4,7 +4,36 @@ let xrayFile = null;
 let ctFile = null;
 let clinicalText = '';
 
-// X-Ray file handling
+/** Keep in-memory File refs aligned with native file inputs (e.g. after refresh/back navigation). */
+function syncFileStateFromInputs() {
+    const xrayInput = document.getElementById('xrayFileInput');
+    const ctInput = document.getElementById('ctFileInput');
+    const clinicalEl = document.getElementById('clinicalText');
+
+    xrayFile = xrayInput?.files?.[0] ?? null;
+    ctFile = ctInput?.files?.[0] ?? null;
+    clinicalText = clinicalEl ? clinicalEl.value : '';
+}
+
+function updateActionButtons() {
+    syncFileStateFromInputs();
+    const hasXray = !!xrayFile;
+    const hasText = !!clinicalText.trim();
+    const hasCt = !!ctFile;
+    const hasAny = hasXray || hasText || hasCt;
+
+    const btnXRay = document.getElementById('btnXRay');
+    const btnText = document.getElementById('btnText');
+    const btnCT = document.getElementById('btnCT');
+    const btnCombined = document.getElementById('btnCombined');
+
+    if (btnXRay) btnXRay.disabled = !hasXray;
+    if (btnText) btnText.disabled = !hasText;
+    if (btnCT) btnCT.disabled = !hasCt;
+    if (btnCombined) btnCombined.disabled = !hasAny;
+
+    updateDownloadAllButton();
+}
 document.getElementById('xrayFileInput')?.addEventListener('change', function(e) {
     const file = e.target.files[0];
     if (file) {
@@ -27,7 +56,7 @@ document.getElementById('xrayFileInput')?.addEventListener('change', function(e)
             document.getElementById('xrayPreview').style.display = 'block';
         }
         document.getElementById('btnDownloadXRay').style.display = 'inline-flex';
-        updateDownloadAllButton();
+        updateActionButtons();
     }
 });
 
@@ -54,7 +83,7 @@ document.getElementById('ctFileInput')?.addEventListener('change', function(e) {
             document.getElementById('ctPreview').style.display = 'block';
         }
         document.getElementById('btnDownloadCT').style.display = 'inline-flex';
-        updateDownloadAllButton();
+        updateActionButtons();
     }
 });
 
@@ -66,7 +95,7 @@ document.getElementById('clinicalText')?.addEventListener('input', function(e) {
     } else {
         document.getElementById('btnDownloadText').style.display = 'none';
     }
-    updateDownloadAllButton();
+    updateActionButtons();
 });
 
 function clearXRay() {
@@ -89,7 +118,7 @@ function clearXRay() {
         if (el) el.textContent = 'Upload Chest X-Ray';
     }
     document.getElementById('btnDownloadXRay').style.display = 'none';
-    updateDownloadAllButton();
+    updateActionButtons();
 }
 
 function clearCT() {
@@ -112,12 +141,28 @@ function clearCT() {
         if (el) el.textContent = 'Upload CT Scan';
     }
     document.getElementById('btnDownloadCT').style.display = 'none';
-    updateDownloadAllButton();
+    updateActionButtons();
 }
 
 function updateDownloadAllButton() {
+    syncFileStateFromInputs();
     const hasAny = xrayFile || clinicalText.trim() || ctFile;
-    document.getElementById('btnDownloadAll').style.display = hasAny ? 'inline-flex' : 'none';
+    const btn = document.getElementById('btnDownloadAll');
+    if (btn) btn.style.display = hasAny ? 'inline-flex' : 'none';
+}
+
+function ctAnalyzeHint() {
+    syncFileStateFromInputs();
+    if (xrayFile && clinicalText.trim()) {
+        return 'No CT scan uploaded. Use Combined Results for X-ray + clinical text, or upload a CT file first.';
+    }
+    if (xrayFile) {
+        return 'No CT scan uploaded. Click X-Ray to analyze your chest image, or upload a CT file first.';
+    }
+    if (clinicalText.trim()) {
+        return 'No CT scan uploaded. Click Text for BioBERT analysis, or upload a CT file first.';
+    }
+    return 'Upload a CT scan file in the CT section above, then click CT.';
 }
 
 /**
@@ -171,27 +216,71 @@ async function readAnalyticsPostResult(response) {
 }
 
 async function analyzeXRay() {
+    syncFileStateFromInputs();
     if (!xrayFile) {
-        showError('Please upload an X-Ray image.');
+        showError('Please upload an X-Ray image in the Radiology Scan section above.');
         return;
     }
 
     setLoading('btnXRay', true);
     const formData = new FormData();
     formData.append('xrayFile', xrayFile);
+    const fileName = xrayFile.name || 'Chest X-ray';
 
     try {
-        const response = await fetch('/Analytics/AnalyzeXRay', {
+        const response = await fetch('/api/job/analyze-xray', {
             method: 'POST',
             body: formData,
             credentials: 'same-origin'
         });
 
-        const result = await readAnalyticsPostResult(response);
-        if (result.success) {
-            window.location.href = result.redirect;
+        const text = await response.text();
+        let data = null;
+        if (text) {
+            try {
+                data = JSON.parse(text);
+            } catch {
+                /* non-JSON error body */
+            }
+        }
+
+        if (response.status === 401 || response.status === 403) {
+            showError(
+                (data && data.error) ||
+                    'Not signed in or session expired. Refresh and log in again.'
+            );
+            return;
+        }
+
+        if (response.status === 413) {
+            showError(
+                (data && data.error) ||
+                    'Upload is too large for the server. Try a smaller file.'
+            );
+            return;
+        }
+
+        if (!response.ok) {
+            showError(
+                (data && data.error) ||
+                    'Could not start X-ray analysis (' + response.status + ').'
+            );
+            return;
+        }
+
+        if (
+            data &&
+            data.jobId &&
+            window.MedicalAiAssistantChat &&
+            typeof window.MedicalAiAssistantChat.startXRayJobPolling === 'function'
+        ) {
+            window.MedicalAiAssistantChat.startXRayJobPolling(data.jobId, fileName);
+        } else if (data && data.jobId && window.MedicalAiAssistantChat) {
+            window.MedicalAiAssistantChat.startCtJobPolling(data.jobId, fileName);
+        } else if (data && data.jobId) {
+            showError('Assistant UI failed to load. Job id: ' + data.jobId);
         } else {
-            showError(result.error || 'Analysis failed.');
+            showError('Unexpected response from analysis server.');
         }
     } catch (error) {
         showError('Network error: ' + error.message);
@@ -232,27 +321,64 @@ async function analyzeText() {
 }
 
 async function analyzeCT() {
+    syncFileStateFromInputs();
     if (!ctFile) {
-        showError('Please upload a CT scan image.');
+        showError(ctAnalyzeHint());
         return;
     }
 
     setLoading('btnCT', true);
     const formData = new FormData();
     formData.append('ctFile', ctFile);
+    const fileName = ctFile.name || 'CT scan';
 
     try {
-        const response = await fetch('/Analytics/AnalyzeCT', {
+        const response = await fetch('/api/job/analyze-ct', {
             method: 'POST',
             body: formData,
             credentials: 'same-origin'
         });
 
-        const result = await readAnalyticsPostResult(response);
-        if (result.success) {
-            window.location.href = result.redirect;
+        const text = await response.text();
+        let data = null;
+        if (text) {
+            try {
+                data = JSON.parse(text);
+            } catch {
+                /* non-JSON error body */
+            }
+        }
+
+        if (response.status === 401 || response.status === 403) {
+            showError(
+                (data && data.error) ||
+                    'Not signed in or session expired. Refresh and log in again.'
+            );
+            return;
+        }
+
+        if (response.status === 413) {
+            showError(
+                (data && data.error) ||
+                    'Upload is too large for the server. Try a smaller file.'
+            );
+            return;
+        }
+
+        if (!response.ok) {
+            showError(
+                (data && data.error) ||
+                    'Could not start CT analysis (' + response.status + ').'
+            );
+            return;
+        }
+
+        if (data && data.jobId && window.MedicalAiAssistantChat && typeof window.MedicalAiAssistantChat.startCtJobPolling === 'function') {
+            window.MedicalAiAssistantChat.startCtJobPolling(data.jobId, fileName);
+        } else if (data && data.jobId) {
+            showError('Assistant UI failed to load. Job id: ' + data.jobId);
         } else {
-            showError(result.error || 'Analysis failed.');
+            showError('Unexpected response from analysis server.');
         }
     } catch (error) {
         showError('Network error: ' + error.message);
@@ -262,6 +388,7 @@ async function analyzeCT() {
 }
 
 async function analyzeCombined() {
+    syncFileStateFromInputs();
     const clinicalEl = document.getElementById('clinicalText');
     const clinicalTrim = clinicalEl ? clinicalEl.value.trim() : '';
     if (clinicalEl) clinicalText = clinicalEl.value;
@@ -373,4 +500,9 @@ function downloadAll() {
     setTimeout(() => {
         if (ctFile) downloadCT();
     }, 600);
+}
+
+document.addEventListener('DOMContentLoaded', updateActionButtons);
+if (document.readyState !== 'loading') {
+    updateActionButtons();
 }

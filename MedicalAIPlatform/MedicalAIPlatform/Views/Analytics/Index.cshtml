@@ -60,9 +60,9 @@
                           rows="4"></textarea>
             </div>
 
-            <!-- 3. CT Scan -->
+            <!-- 3. CT Scan (optional — only required for CT-only analysis) -->
             <div class="input-section">
-                <label class="input-label" data-i18n="analytics_ct_scan">CT Scan-ChestAI</label>
+                <label class="input-label" data-i18n="analytics_ct_scan">CT Scan (LungAI)</label>
                 <label class="upload-zone" for="ctFileInput">
                     <i class="bi bi-cloud-arrow-up upload-icon"></i>
                     <div class="upload-text" id="ctFileName" data-i18n="analytics_upload_ct">Upload CT Scan</div>
@@ -89,6 +89,7 @@
                     <button class="action-btn btn-ct" id="btnCT" onclick="analyzeCT()" data-i18n="analytics_btn_ct">CT</button>
                 </div>
                 <button class="combined-btn" id="btnCombined" onclick="analyzeCombined()" data-i18n="analytics_btn_combined">Combined Results</button>
+                <p class="upload-hint mt-2 mb-0">Upload one or more inputs above, then use the matching button or Combined Results. CT is not required for X-ray or clinical text analysis.</p>
             </div>
 
             <!-- Download All Files Section -->

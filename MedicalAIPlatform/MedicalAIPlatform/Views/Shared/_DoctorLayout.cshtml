@@ -1,4 +1,9 @@
+@using System.Security.Claims
 @{
+    var maiClinicalUserId = User.Identity?.IsAuthenticated == true
+        ? (User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty)
+        : string.Empty;
+
     var isDarkMode = true; // Default to Dark Mode
     if (Context.Request.Cookies.TryGetValue("Settings_DarkMode", out var darkModeVal))
     {
@@ -75,6 +80,7 @@
     <link rel="stylesheet" href="~/css/doctor-dashboard.css" asp-append-version="true" />
     <!-- Site CSS for global overrides -->
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/medical-ai-assistant-chat.css" asp-append-version="true" />
     <style>
         #darkOverlay {
             position: fixed;
@@ -119,10 +125,11 @@
                 <nav class="main-nav">
                     <a asp-controller="Home" asp-action="Index" class="nav-link" data-i18n="nav_home">Home</a>
                     <a asp-controller="Patient" asp-action="Index" class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Patient" ? "active" : "")" data-i18n="nav_patients">Patients</a>
-                    <a asp-controller="FollowUp" asp-action="Index" class="nav-link @(ViewData["Title"] == "Follow Up" ? "active" : "")" data-i18n="nav_follow_up">Follow up</a>
-                    <a asp-controller="PatientCalendar" asp-action="Index" class="nav-link @(ViewData["Title"] == "Calendar" ? "active" : "")" data-i18n="nav_calendar">Calendar</a>
-                    <a asp-controller="Analytics" asp-action="Index" class="nav-link @(ViewData["Title"] == "Analytics" ? "active" : "")" data-i18n="nav_analytics">Analytics</a>
-                    <a asp-controller="AIAssistant" asp-action="Index" class="nav-link @(ViewData["Title"] == "AI Assistant" ? "active" : "")" data-i18n="nav_ai_assistant">AI Assistant</a>
+                    <a asp-controller="FollowUp" asp-action="Index" class="nav-link @(ViewData["Title"]?.ToString() == "Follow Up" ? "active" : "")" data-i18n="nav_follow_up">Follow up</a>
+                    <a asp-controller="PatientCalendar" asp-action="Index" class="nav-link @(ViewData["Title"]?.ToString() == "Calendar" ? "active" : "")" data-i18n="nav_calendar">Calendar</a>
+                    <a asp-controller="Analytics" asp-action="Index" class="nav-link @(ViewData["Title"]?.ToString() == "Analytics" ? "active" : "")" data-i18n="nav_analytics">Analytics</a>
+                    <a asp-controller="CtScan" asp-action="Index" class="nav-link @(ViewData["Title"]?.ToString() == "CT Scan" ? "active" : "")">CT Scan</a>
+                    <a asp-controller="AIAssistant" asp-action="Index" class="nav-link @(ViewData["Title"]?.ToString() == "AI Assistant" ? "active" : "")" data-i18n="nav_ai_assistant">AI Assistant</a>
                 </nav>
             </div>
             
@@ -149,8 +156,23 @@
         <i class="bi bi-gear-wide-connected"></i>
     </a>
 
+    <script>
+        window.__maiClinicalUserId = @System.Text.Json.JsonSerializer.Serialize(maiClinicalUserId);
+        window.__maiSendMessageUrl = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Url.Action("SendMessage", "AIAssistant") ?? "/AIAssistant/SendMessage"));
+        window.__maiAssistantEnqueueUrl = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Url.Content("~/api/assistant/chat/enqueue")));
+        window.__maiChatMessagesUrl = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Url.Content("~/api/assistant/chat/messages")));
+        window.__maiAssistantHubUrl = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Url.Content("~/hubs/assistant")));
+        window.__maiJobStatusUrlPrefix = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Url.Content("~/api/job/status/")));
+        window.__maiChestIconUrl = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Url.Content("~/images/chest-icon.png")));
+        window.__maiFeedbackSubmitUrl = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Url.Content("~/api/feedback/submit")));
+    </script>
+    <partial name="_MedicalAiAssistantChat" />
+
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@@microsoft/signalr@@8.0.7/dist/browser/signalr.min.js" crossorigin="anonymous"></script>
+    <script src="~/js/chestai-signalr.js" asp-append-version="true"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/clinical-feedback.js" asp-append-version="true"></script>
     <script src="~/js/i18n.js" asp-append-version="true"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)

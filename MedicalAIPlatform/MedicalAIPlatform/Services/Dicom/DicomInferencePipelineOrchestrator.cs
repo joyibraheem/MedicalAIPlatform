@@ -68,6 +68,19 @@ public sealed class DicomInferencePipelineOrchestrator
         var scoreRows = new List<Dictionary<string, double>>();
         byte[]? repVizJpeg = null;
         var repVizCrit = -1d;
+        double? repSegEnergy = null;
+
+        var seriesBlob = $"{clinical.SeriesDescription} {clinical.StudyDescription}";
+        var isSegLike = string.Equals(clinical.Modality, "SEG", StringComparison.OrdinalIgnoreCase)
+                        || seriesBlob.Contains("segmentation", StringComparison.OrdinalIgnoreCase);
+
+        if (isSegLike)
+        {
+            notes.Add(
+                "This file is DICOM Segmentation (SEG): it stores a lesion/contour mask, not the underlying CT grayscale. " +
+                "CheXNet is tuned for projection/semi-natural chest images — scores here are exploratory only. " +
+                "For true anatomy, open the referenced CT series from the same study.");
+        }
 
         long prepMs = 0;
         long inferMs = 0;
@@ -125,11 +138,23 @@ public sealed class DicomInferencePipelineOrchestrator
 
                     if (jpeg.Length > 0)
                     {
-                        double maxProb = probs.Count == 0 ? 0 : probs.Values.Max();
-                        if (maxProb > repVizCrit || repVizJpeg is null)
+                        if (isSegLike)
                         {
-                            repVizCrit = maxProb;
-                            repVizJpeg = (byte[])jpeg.Clone();
+                            var energy = DicomSliceDisplayEnhancement.TotalRgbEnergy(frame.Pixels);
+                            if (repSegEnergy is null || energy > repSegEnergy.Value)
+                            {
+                                repSegEnergy = energy;
+                                repVizJpeg = (byte[])jpeg.Clone();
+                            }
+                        }
+                        else
+                        {
+                            double maxProb = probs.Count == 0 ? 0 : probs.Values.Max();
+                            if (maxProb > repVizCrit || repVizJpeg is null)
+                            {
+                                repVizCrit = maxProb;
+                                repVizJpeg = (byte[])jpeg.Clone();
+                            }
                         }
                     }
                 }

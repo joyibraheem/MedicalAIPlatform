@@ -1,0 +1,79 @@
+@model MedicalReportResponseDto
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Medical Report — Print</title>
+    <link rel="stylesheet" href="~/css/medical-report.css" asp-append-version="true" />
+</head>
+<body class="mr-print-body">
+<div class="mr-page mr-print-root">
+    <header class="mr-header">
+        <div class="mr-title-block">
+            <h1 class="mr-title">Medical Report</h1>
+            <div class="mr-meta">
+                Generated (UTC): @Model.GeneratedAt.ToString("yyyy-MM-dd HH:mm")
+                @if (Model.DoctorModifiedAt is { } dm)
+                {
+                    <span> · Physician edit (UTC): @dm.ToString("yyyy-MM-dd HH:mm")</span>
+                }
+            </div>
+        </div>
+        <div class="mr-badge @(Model.StatusBadge == "doctor_modified" ? "mr-badge-modified" : "mr-badge-ai")">
+            @(Model.StatusBadge == "doctor_modified" ? "Physician modified" : "AI baseline")
+        </div>
+    </header>
+
+    <section class="mr-card">
+        <h2 class="mr-card-title">Patient</h2>
+        <p><strong>@Model.PatientDisplayName</strong> — Chart #@Model.PatientId</p>
+    </section>
+
+    <section class="mr-card">
+        <h2 class="mr-card-title">Confidence</h2>
+        <p>@Model.Confidence.ToString("P1") — @Model.ConfidenceMethod</p>
+    </section>
+
+    @{
+        var pai = Model.AiAnalysis;
+    }
+    @if (pai.ChexnetProbabilities.Count > 0 || pai.CtProbabilities.Count > 0 || !string.IsNullOrWhiteSpace(pai.TopConditionLabel))
+    {
+        <section class="mr-card">
+            <h2 class="mr-card-title">AI analysis</h2>
+            <p><strong>Primary:</strong> @(string.IsNullOrWhiteSpace(pai.TopConditionLabel) ? "—" : pai.TopConditionLabel) — @pai.TopConditionProbability.ToString("P0") · <strong>Risk tier:</strong> @pai.RiskTier</p>
+            @if (pai.ChexnetProbabilities.Count > 0)
+            {
+                <p class="mr-print-model-head">CheXNet</p>
+                <pre class="mr-pre">@string.Join("\n", pai.ChexnetProbabilities.Select(r => $"{r.Label}: {r.Probability:P0} ({r.Source})"))</pre>
+            }
+            @if (pai.CtProbabilities.Count > 0)
+            {
+                <p class="mr-print-model-head">LungAI</p>
+                <pre class="mr-pre">@string.Join("\n", pai.CtProbabilities.Select(r => $"{r.Label}: {r.Probability:P0} ({r.Source})"))</pre>
+            }
+        </section>
+    }
+
+    <section class="mr-card">
+        <h2 class="mr-card-title">Findings</h2>
+        <pre class="mr-pre">@Model.Findings</pre>
+    </section>
+    <section class="mr-card">
+        <h2 class="mr-card-title">Impression</h2>
+        <pre class="mr-pre">@Model.Impression</pre>
+    </section>
+    <section class="mr-card">
+        <h2 class="mr-card-title">Recommendations</h2>
+        <pre class="mr-pre">@Model.Recommendations</pre>
+    </section>
+
+    <p class="mr-disclaimer">AI-assisted drafting — physician-reviewed narrative required for clinical decisions.</p>
+</div>
+<script>window.addEventListener('load', function () { window.print(); });</script>
+</body>
+</html>

@@ -1,0 +1,82 @@
+@page "/analytics/text"
+@rendermode InteractiveServer
+
+@using CheXNet.BlazorApp.Models
+@inject CheXNet.BlazorApp.Services.CheXNetStateService StateService
+@inject NavigationManager Navigation
+
+<PageTitle>Text Analysis - Diagnostic Command Center</PageTitle>
+
+<link href="css/analytics.css" rel="stylesheet" />
+
+<div class="analytics-container">
+    <div class="analytics-background"></div>
+    
+    <div class="analytics-overlay">
+        <!-- Patient Information Header -->
+        <div class="patient-header">
+            <button class="back-button" @onclick="NavigateBack">
+                <i class="bi bi-arrow-left"></i>
+            </button>
+            <div class="patient-info">
+                <div class="patient-name">John Doe | ID: #PX-9928</div>
+                <div class="patient-details">Male, 64 years old</div>
+            </div>
+        </div>
+
+        <!-- Diagnostic Command Center Title -->
+        <div class="command-center-title">
+            <h1>Diagnostic Command Center</h1>
+            <p>Multi-modal AI Analysis System</p>
+        </div>
+
+        @if (StateService.CurrentBioBertResults is null)
+        {
+            <div class="results-card">
+                <p>No text analysis results available. Please go back and analyze clinical text.</p>
+                <button class="action-btn btn-text" @onclick="NavigateBack">Go Back</button>
+            </div>
+        }
+        else
+        {
+            <div class="results-card">
+                <h2 class="findings-title">Findings Reports</h2>
+                <a class="model-link" href="#">Clinical Text-BioBERT(NLP)</a>
+
+                <div class="mt-4">
+                    <h3 class="findings-title" style="font-size: 1.1rem; margin-bottom: 1rem;">Key Medical Entities</h3>
+                    <div class="entities-container">
+                        @foreach (var entity in StateService.CurrentBioBertResults.Entities.OrderByDescending(e => e.Score))
+                        {
+                            <div class="entity-badge">
+                                <span class="entity-name">@entity.Word</span>
+                                <span class="entity-type">@entity.EntityGroup</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(StateService.ClinicalText))
+                {
+                    <div class="mt-4">
+                        <h3 class="findings-title" style="font-size: 1.1rem; margin-bottom: 1rem;">Clinical Text</h3>
+                        <div class="p-3 bg-light rounded" style="background: rgba(255, 255, 255, 0.3) !important;">
+                            <p style="color: #0f172a; margin: 0;">@StateService.ClinicalText</p>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    <button class="settings-btn">
+        <i class="bi bi-gear"></i>
+    </button>
+</div>
+
+@code {
+    private void NavigateBack()
+    {
+        Navigation.NavigateTo("/analytics");
+    }
+}

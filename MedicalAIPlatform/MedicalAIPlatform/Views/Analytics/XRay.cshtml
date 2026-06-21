@@ -2,6 +2,7 @@
     ViewData["Title"] = "X-Ray Analysis";
     Layout = "_DoctorLayout";
 }
+@using MedicalAIPlatform.Models
 @using MedicalAIPlatform.Services
 @inject AnalyticsStateService StateService
 
@@ -24,6 +25,16 @@
             <h1 data-i18n="analytics_diagnostic_command_center">Diagnostic Command Center</h1>
             <p data-i18n="analytics_multi_modal_system">Multi-modal AI Analysis System</p>
         </div>
+
+        @if (StateService.PipelineNotes.Count > 0)
+        {
+            <div class="alert alert-info border-info results-card mb-3" role="status">
+                @foreach (var note in StateService.PipelineNotes)
+                {
+                    <div class="small mb-1">@note</div>
+                }
+            </div>
+        }
 
         @if (StateService.CurrentResults != null && StateService.CurrentResults.ContainsKey("CheXNet"))
         {
@@ -126,6 +137,8 @@
                         }
                     </div>
                 </div>
+
+                <partial name="_ClinicalPredictionFeedback" model="ClinicalFeedbackVmBuilder.FromCheXNet(result)" />
             </div>
         }
         else

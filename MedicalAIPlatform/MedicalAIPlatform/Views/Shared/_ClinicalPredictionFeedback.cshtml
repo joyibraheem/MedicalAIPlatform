@@ -1,0 +1,31 @@
+@model MedicalAIPlatform.Models.ClinicalFeedbackPanelVm
+<link rel="stylesheet" href="~/css/clinical-feedback.css" asp-append-version="true" />
+
+<div class="clinical-feedback-panel mt-4 pt-3 border-top border-secondary border-opacity-25"
+     data-fbcorr="@Model.CorrelationId"
+     data-json-id="fb-json-@Model.CorrelationId.ToString("N")"
+     data-modality="@Model.Modality"
+     data-model="@Model.ModelKey"
+     data-related-job="@(Model.RelatedJobId?.ToString() ?? "")"
+     data-study="@(Model.StudyInstanceUid ?? "")"
+     data-series="@(Model.SeriesInstanceUid ?? "")">
+    <h4 class="h6 fw-semibold mb-1">Clinical validation</h4>
+    <p class="small text-muted mb-3">
+        Accept if the AI output is correct, or modify it. Submissions are reviewed before use in training — models are not retrained inside this app.
+    </p>
+    <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+        <button type="button" class="btn btn-success btn-sm clinical-fb-accept">Accept prediction</button>
+        <button type="button" class="btn btn-outline-primary btn-sm clinical-fb-modify">Modify</button>
+        <span class="clinical-fb-status small text-muted ms-md-2" aria-live="polite"></span>
+    </div>
+</div>
+
+<script type="application/json" id="fb-json-@Model.CorrelationId.ToString("N")">
+@Html.Raw(Model.PredictionJson)
+</script>
+<script>
+(function () {
+    window.__clinicalFeedbackClassLists = window.__clinicalFeedbackClassLists || {};
+    window.__clinicalFeedbackClassLists['@Model.CorrelationId'] = @Html.Raw(Model.ClassNamesJson);
+})();
+</script>

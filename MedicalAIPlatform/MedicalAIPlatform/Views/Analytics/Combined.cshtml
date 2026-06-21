@@ -2,6 +2,7 @@
     ViewData["Title"] = "Combined Analysis";
     Layout = "_DoctorLayout";
 }
+@using MedicalAIPlatform.Models
 @using MedicalAIPlatform.Services
 @inject AnalyticsStateService StateService
 
@@ -33,6 +34,16 @@
             <div class="alert alert-warning results-card mb-3" role="status">
                 <strong>Partial combined run:</strong>
                 <span class="ms-1">@combinedWarnings</span>
+            </div>
+        }
+
+        @if (StateService.PipelineNotes.Count > 0)
+        {
+            <div class="alert alert-info border-info results-card mb-3" role="status">
+                @foreach (var note in StateService.PipelineNotes)
+                {
+                    <div class="small mb-1">@note</div>
+                }
             </div>
         }
 
@@ -146,6 +157,8 @@
                             }
                         </div>
                     </div>
+
+                    <partial name="_ClinicalPredictionFeedback" model="ClinicalFeedbackVmBuilder.FromCheXNet(xrayResult)" />
                 </div>
             }
 
@@ -178,6 +191,8 @@
                             </div>
                         }
                     </div>
+
+                    <partial name="_ClinicalPredictionFeedback" model="ClinicalFeedbackVmBuilder.FromBio(StateService.CurrentBioBertResults)" />
                 </div>
             }
 
@@ -240,6 +255,8 @@
                             </div>
                         </div>
                     }
+
+                    <partial name="_ClinicalPredictionFeedback" model="ClinicalFeedbackVmBuilder.FromLung(StateService.CurrentLungAIResults!)" />
                 </div>
             }
         }

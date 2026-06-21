@@ -10,12 +10,16 @@ public static class AnalyticsDicomRouting
     public static bool IsDicomUpload(IFormFile? file)
     {
         if (file == null || file.Length == 0) return false;
+        return IsDicomUpload(file.FileName, file.ContentType);
+    }
 
-        var fn = file.FileName;
-        if (!string.IsNullOrEmpty(fn) && HasDicomExtension(fn.AsSpan()))
+    /// <summary>Detect DICOM uploads using filename extension / MIME (for buffered uploads without <see cref="IFormFile"/>).</summary>
+    public static bool IsDicomUpload(string? fileName, string? contentType)
+    {
+        if (!string.IsNullOrEmpty(fileName) && HasDicomExtension(fileName.AsSpan()))
             return true;
 
-        var ct = (file.ContentType ?? string.Empty).Trim();
+        var ct = (contentType ?? string.Empty).Trim();
         return ContentTypeLooksLikeDicom(ct);
     }
 

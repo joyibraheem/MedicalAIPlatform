@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace MedicalAIPlatform.Controllers
 {
-    [Authorize(Roles = "Admin,Doctor")]
+    [Authorize(Policy = "VerifiedMedicalUser")]
     public class AIAlertsController : Controller
     {
         public IActionResult Index()

@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace MedicalAIPlatform.Controllers
 {
-    [Authorize]
+    [Authorize(Policy = "VerifiedMedicalUser")]
     public class FollowUpController : Controller
     {
         public IActionResult Index()
