@@ -1,0 +1,17 @@
+.clinical-feedback-panel {
+    border-radius: 10px;
+    padding-left: 0.25rem;
+}
+
+.clinical-fb-status.feedback-ok {
+    color: var(--bs-success);
+}
+
+.clinical-fb-status.feedback-err {
+    color: var(--bs-danger);
+}
+
+#clinicalFbModifyModal .modal-body label {
+    font-size: 0.85rem;
+    font-weight: 600;
+}

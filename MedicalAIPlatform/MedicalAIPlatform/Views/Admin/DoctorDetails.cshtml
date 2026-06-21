@@ -1,0 +1,103 @@
+@model MedicalAIPlatform.Models.DoctorRegistrationDetailsViewModel
+@using MedicalAIPlatform.Models
+@{
+    ViewData["Title"] = "Doctor registration review";
+    Layout = "_DoctorLayout";
+    var isPending = Model.DoctorStatus == DoctorRegistrationStatuses.Pending;
+}
+
+<link rel="stylesheet" href="~/css/admin-dashboard.css" asp-append-version="true" />
+
+<div class="admin-dash-root">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h1 class="h3 mb-1">Registration review</h1>
+            <p class="text-muted mb-0">@Model.FullName · @Model.Email</p>
+        </div>
+        <a asp-action="PendingDoctors" class="btn btn-sm admin-btn-outline">← All pending requests</a>
+    </div>
+
+    @if (TempData["AdminError"] is string err)
+    {
+        <div class="alert alert-danger">@err</div>
+    }
+
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="admin-card h-100">
+                <div class="admin-card-head mb-3">
+                    <div class="admin-card-head-icon admin-icon-blue"><i class="bi bi-person-vcard"></i></div>
+                    <div>
+                        <h2 class="admin-card-title mb-0">Profile details</h2>
+                        <p class="admin-card-desc mb-0">Submitted @Model.ProfileSubmittedAt?.ToString("yyyy-MM-dd HH:mm UTC")</p>
+                    </div>
+                </div>
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Full name</dt>
+                    <dd class="col-sm-8">@(Model.FullName ?? "—")</dd>
+                    <dt class="col-sm-4">Email</dt>
+                    <dd class="col-sm-8">@Model.Email</dd>
+                    <dt class="col-sm-4">Specialty</dt>
+                    <dd class="col-sm-8">@(Model.Specialization ?? "—")</dd>
+                    <dt class="col-sm-4">Hospital / organization</dt>
+                    <dd class="col-sm-8">@(Model.HospitalOrganization ?? "—")</dd>
+                    <dt class="col-sm-4">Medical license</dt>
+                    <dd class="col-sm-8"><code>@(Model.MedicalLicenseNumber ?? "—")</code></dd>
+                    <dt class="col-sm-4">Phone</dt>
+                    <dd class="col-sm-8">@(Model.PhoneNumber ?? "—")</dd>
+                    <dt class="col-sm-4">Status</dt>
+                    <dd class="col-sm-8"><span class="badge bg-secondary">@Model.DoctorStatus</span></dd>
+                    @if (!string.IsNullOrWhiteSpace(Model.RegistrationNotes))
+                    {
+                        <dt class="col-sm-4">Notes</dt>
+                        <dd class="col-sm-8">@Model.RegistrationNotes</dd>
+                    }
+                    @if (Model.ApprovedAt is not null)
+                    {
+                        <dt class="col-sm-4">Approved</dt>
+                        <dd class="col-sm-8">@Model.ApprovedAt?.ToString("yyyy-MM-dd HH:mm UTC") by @(Model.ApprovedByAdminName ?? "admin")</dd>
+                    }
+                    @if (Model.RejectedAt is not null)
+                    {
+                        <dt class="col-sm-4">Rejected</dt>
+                        <dd class="col-sm-8">@Model.RejectedAt?.ToString("yyyy-MM-dd HH:mm UTC") by @(Model.RejectedByAdminName ?? "admin")</dd>
+                        <dt class="col-sm-4">Reason</dt>
+                        <dd class="col-sm-8 text-danger">@(Model.RejectionReason ?? "—")</dd>
+                    }
+                </dl>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            @if (isPending && Model.ProfileSubmittedAt is not null)
+            {
+                <div class="admin-card mb-4">
+                    <h3 class="h6 fw-semibold mb-3">Approve registration</h3>
+                    <p class="small text-muted">Assigns the Doctor role and sends an approval email.</p>
+                    <form asp-action="ApproveDoctor" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="userId" value="@Model.UserId" />
+                        <button type="submit" class="btn btn-success w-100">Approve doctor</button>
+                    </form>
+                </div>
+                <div class="admin-card">
+                    <h3 class="h6 fw-semibold mb-3">Reject registration</h3>
+                    <form asp-action="RejectDoctor" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="UserId" value="@Model.UserId" />
+                        <div class="mb-3">
+                            <label class="form-label" for="RejectionReason">Rejection reason</label>
+                            <textarea class="form-control" id="RejectionReason" name="RejectionReason" rows="4" required placeholder="Explain why this request was rejected…"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-outline-danger w-100">Reject request</button>
+                    </form>
+                </div>
+            }
+            else if (!isPending)
+            {
+                <div class="admin-card">
+                    <p class="mb-0 text-muted small">This registration is <strong>@Model.DoctorStatus</strong> and cannot be modified here.</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>

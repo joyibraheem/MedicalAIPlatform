@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace MedicalAIPlatform.Migrations
 {
+    [Migration("20260208000000_AddPatientModels")]
     /// <inheritdoc />
     public partial class AddPatientModels : Migration
     {

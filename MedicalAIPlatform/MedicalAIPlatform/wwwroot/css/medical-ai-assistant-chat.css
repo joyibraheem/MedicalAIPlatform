@@ -1,0 +1,1343 @@
+/* ChestAI floating assistant — production messenger-grade UI */
+
+.mai-chat-root {
+    position: fixed;
+    bottom: 100px;
+    right: 28px;
+    z-index: 11000;
+    font-family:
+        'Inter',
+        system-ui,
+        -apple-system,
+        'Segoe UI',
+        sans-serif;
+    --mai-bg: rgba(15, 23, 42, 0.97);
+    --mai-bg-elevated: rgba(30, 41, 59, 0.92);
+    --mai-border: rgba(148, 163, 184, 0.18);
+    --mai-border-strong: rgba(99, 102, 241, 0.35);
+    --mai-bubble-user: linear-gradient(145deg, #0ea5e9 0%, #2563eb 48%, #1d4ed8 100%);
+    --mai-bubble-ai: rgba(51, 65, 85, 0.72);
+    --mai-bubble-ai-border: rgba(148, 163, 184, 0.22);
+    --mai-text: #f8fafc;
+    --mai-muted: #94a3b8;
+    --mai-accent: #38bdf8;
+    --mai-success: #34d399;
+    --mai-danger: #fb7185;
+    --mai-card-success-bg: rgba(16, 185, 129, 0.09);
+    --mai-card-danger-bg: rgba(244, 63, 94, 0.08);
+    --mai-shadow-msg: 0 4px 14px rgba(0, 0, 0, 0.18);
+    --mai-radius-panel: 20px;
+    --mai-radius-msg: 18px;
+}
+
+html[data-theme='light'] .mai-chat-root,
+body.light-mode .mai-chat-root {
+    --mai-bg: rgba(255, 255, 255, 0.98);
+    --mai-bg-elevated: #f8fafc;
+    --mai-border: rgba(15, 23, 42, 0.1);
+    --mai-border-strong: rgba(37, 99, 235, 0.28);
+    --mai-bubble-ai: #ffffff;
+    --mai-bubble-ai-border: rgba(15, 23, 42, 0.08);
+    --mai-text: #0f172a;
+    --mai-muted: #64748b;
+    --mai-accent: #0284c7;
+    --mai-card-success-bg: rgba(16, 185, 129, 0.12);
+    --mai-card-danger-bg: rgba(244, 63, 94, 0.1);
+    --mai-shadow-msg: 0 4px 18px rgba(15, 23, 42, 0.08);
+}
+
+/* ─── Launcher FAB (premium entry point) ─── */
+.mai-chat-launcher {
+    position: relative;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    background: linear-gradient(148deg, #2dd4bf 0%, #0ea5e9 42%, #2563eb 88%);
+    box-shadow:
+        0 4px 12px rgba(0, 0, 0, 0.14),
+        0 14px 36px rgba(14, 165, 233, 0.44),
+        0 0 0 1px rgba(255, 255, 255, 0.18) inset,
+        0 -8px 28px rgba(45, 212, 191, 0.18) inset;
+    transition:
+        transform 0.38s cubic-bezier(0.34, 1.35, 0.64, 1),
+        box-shadow 0.32s ease,
+        filter 0.28s ease;
+}
+
+/* Idle: gentle attention without distraction */
+.mai-chat-root:not(:has(.mai-chat-panel.is-open))
+    .mai-chat-launcher:not(.mai-chat-is-busy):not(:hover):not(:focus-visible) {
+    animation: mai-launcher-float 3.8s ease-in-out infinite;
+}
+
+@keyframes mai-launcher-float {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-5px);
+    }
+}
+
+.mai-chat-launcher:hover {
+    animation: none;
+    transform: translateY(-7px) scale(1.06);
+    filter: brightness(1.06) saturate(1.08);
+    box-shadow:
+        0 8px 22px rgba(0, 0, 0, 0.15),
+        0 22px 52px rgba(14, 165, 233, 0.52),
+        0 0 0 1px rgba(255, 255, 255, 0.26) inset,
+        0 0 48px rgba(45, 212, 191, 0.35);
+}
+
+.mai-chat-launcher:active {
+    animation: none;
+    transform: translateY(-3px) scale(1.02);
+}
+
+/* Docked near panel when chat is open — reads as one control */
+.mai-chat-root:has(.mai-chat-panel.is-open) .mai-chat-launcher {
+    animation: none;
+    transform: translateY(-10px) scale(0.93);
+    box-shadow:
+        0 3px 14px rgba(0, 0, 0, 0.12),
+        0 10px 28px rgba(14, 165, 233, 0.28),
+        0 0 0 1px rgba(255, 255, 255, 0.14) inset;
+}
+
+.mai-chat-root:has(.mai-chat-panel.is-open) .mai-chat-launcher:hover {
+    transform: translateY(-14px) scale(0.96);
+}
+
+.mai-chat-launcher:focus-visible {
+    outline: 3px solid rgba(125, 211, 252, 0.95);
+    outline-offset: 4px;
+}
+
+/* Soft highlight sweep */
+.mai-chat-launcher-shine {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    pointer-events: none;
+    background: radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.42), transparent 52%);
+    opacity: 0.62;
+    animation: mai-launcher-shine-breathe 4.5s ease-in-out infinite;
+}
+
+.mai-chat-root:has(.mai-chat-panel.is-open) .mai-chat-launcher-shine,
+.mai-chat-launcher.mai-chat-is-busy .mai-chat-launcher-shine {
+    animation-play-state: paused;
+    opacity: 0.38;
+}
+
+@keyframes mai-launcher-shine-breathe {
+    0%,
+    100% {
+        opacity: 0.45;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.72;
+        transform: scale(1.04);
+    }
+}
+
+.mai-chat-launcher-ring {
+    position: absolute;
+    inset: -5px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.mai-chat-launcher.mai-chat-has-unread .mai-chat-launcher-ring {
+    opacity: 1;
+    border-color: rgba(251, 191, 36, 0.88);
+    animation: mai-ring-pulse 2s ease-out infinite;
+}
+
+@keyframes mai-ring-pulse {
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 0.88;
+    }
+    50% {
+        transform: scale(1.09);
+        opacity: 0.38;
+    }
+}
+
+/* Thinking: dashed orbit */
+.mai-chat-launcher-orbit {
+    position: absolute;
+    inset: -7px;
+    border-radius: 50%;
+    pointer-events: none;
+    opacity: 0;
+    border: 2px dashed rgba(255, 255, 255, 0.42);
+    animation: mai-orbit-spin 2.2s linear infinite;
+}
+
+.mai-chat-launcher.mai-chat-is-busy .mai-chat-launcher-orbit {
+    opacity: 1;
+}
+
+@keyframes mai-orbit-spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.mai-chat-launcher-glow {
+    position: absolute;
+    inset: -8px;
+    border-radius: 50%;
+    opacity: 0;
+    pointer-events: none;
+    border: 2px solid rgba(94, 234, 212, 0.45);
+    transition: opacity 0.2s ease;
+}
+
+.mai-chat-launcher.mai-chat-is-busy .mai-chat-launcher-glow {
+    opacity: 1;
+    animation: mai-busy-glow 1.15s ease-in-out infinite;
+}
+
+@keyframes mai-busy-glow {
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 0.48;
+        border-color: rgba(94, 234, 212, 0.38);
+    }
+    50% {
+        transform: scale(1.12);
+        opacity: 1;
+        border-color: rgba(56, 189, 248, 0.65);
+    }
+}
+
+/* Click / tap micro-feedback */
+.mai-chat-launcher-ripple {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    pointer-events: none;
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.55);
+    opacity: 0;
+}
+
+.mai-chat-launcher.mai-chat-launcher--tap .mai-chat-launcher-ripple {
+    animation: mai-launcher-tap-ripple 0.42s ease-out;
+}
+
+@keyframes mai-launcher-tap-ripple {
+    0% {
+        opacity: 0.75;
+        box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.45);
+    }
+    100% {
+        opacity: 0;
+        box-shadow: 0 0 0 22px rgba(255, 255, 255, 0);
+    }
+}
+
+.mai-chat-launcher-icon {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.22));
+}
+
+.mai-chat-root:not(:has(.mai-chat-panel.is-open))
+    .mai-chat-launcher:not(.mai-chat-is-busy)
+    .mai-chat-launcher-icon {
+    animation: mai-launcher-icon-nudge 3.8s ease-in-out infinite;
+}
+
+.mai-chat-launcher:hover .mai-chat-launcher-icon,
+.mai-chat-root:has(.mai-chat-panel.is-open) .mai-chat-launcher-icon,
+.mai-chat-launcher.mai-chat-is-busy .mai-chat-launcher-icon {
+    animation: none;
+}
+
+@keyframes mai-launcher-icon-nudge {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-1.5px);
+    }
+}
+
+.mai-chat-launcher-svg {
+    display: block;
+}
+
+.mai-chat-launcher-insight {
+    filter: drop-shadow(0 0 4px rgba(253, 224, 71, 0.75));
+    animation: mai-insight-twinkle 2.6s ease-in-out infinite;
+}
+
+.mai-chat-launcher.mai-chat-is-busy .mai-chat-launcher-insight {
+    animation: mai-insight-twinkle 0.85s ease-in-out infinite;
+}
+
+@keyframes mai-insight-twinkle {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.55;
+    }
+}
+
+.mai-chat-launcher.mai-chat-is-busy .mai-chat-launcher-svg {
+    animation: mai-svg-thinking 1.1s ease-in-out infinite;
+}
+
+@keyframes mai-svg-thinking {
+    0%,
+    100% {
+        transform: rotate(0deg) scale(1);
+    }
+    35% {
+        transform: rotate(-5deg) scale(1.04);
+    }
+    70% {
+        transform: rotate(5deg) scale(1.04);
+    }
+}
+
+/* Hover tooltip (cleaner than native title) */
+.mai-chat-launcher-tip {
+    position: absolute;
+    bottom: calc(100% + 14px);
+    left: 50%;
+    transform: translateX(-50%) translateY(8px);
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1.35;
+    white-space: nowrap;
+    color: #f8fafc;
+    background: rgba(15, 23, 42, 0.94);
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+        opacity 0.22s ease,
+        transform 0.26s cubic-bezier(0.34, 1.25, 0.64, 1),
+        visibility 0.22s;
+    z-index: 3;
+}
+
+html[data-theme='light'] .mai-chat-launcher-tip,
+body.light-mode .mai-chat-launcher-tip {
+    color: #0f172a;
+    background: rgba(255, 255, 255, 0.97);
+    border-color: rgba(15, 23, 42, 0.1);
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
+}
+
+.mai-chat-launcher-tip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 7px solid transparent;
+    border-top-color: rgba(15, 23, 42, 0.94);
+}
+
+html[data-theme='light'] .mai-chat-launcher-tip::after,
+body.light-mode .mai-chat-launcher-tip::after {
+    border-top-color: rgba(255, 255, 255, 0.97);
+}
+
+.mai-chat-launcher:hover .mai-chat-launcher-tip,
+.mai-chat-launcher:focus-visible .mai-chat-launcher-tip {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+}
+
+@media (max-width: 480px) {
+    .mai-chat-launcher-tip {
+        white-space: normal;
+        max-width: min(220px, 72vw);
+        text-align: center;
+        font-size: 0.7rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .mai-chat-launcher,
+    .mai-chat-launcher-icon,
+    .mai-chat-launcher-shine,
+    .mai-chat-launcher-ring,
+    .mai-chat-launcher-orbit,
+    .mai-chat-launcher-glow,
+    .mai-chat-launcher-insight,
+    .mai-chat-launcher-svg,
+    .mai-chat-badge {
+        animation: none !important;
+        transition-duration: 0.05s !important;
+    }
+
+    .mai-chat-root:not(:has(.mai-chat-panel.is-open)) .mai-chat-launcher:not(.mai-chat-is-busy) {
+        animation: none !important;
+    }
+
+    .mai-chat-root:has(.mai-chat-panel.is-open) .mai-chat-launcher {
+        transform: translateY(-6px) scale(0.95);
+    }
+}
+
+.mai-chat-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    border-radius: 11px;
+    background: linear-gradient(145deg, #fb7185 0%, #dc2626 52%, #b91c1c 100%);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 22px;
+    text-align: center;
+    box-shadow: 0 3px 14px rgba(220, 38, 38, 0.58);
+    border: 2px solid rgba(15, 23, 42, 0.88);
+    transition: transform 0.18s cubic-bezier(0.34, 1.45, 0.64, 1);
+    z-index: 4;
+}
+
+html[data-theme='light'] .mai-chat-badge,
+body.light-mode .mai-chat-badge {
+    border-color: #fff;
+}
+
+.mai-chat-badge.mai-chat-badge--arrive {
+    animation: mai-badge-arrive 0.68s cubic-bezier(0.34, 1.45, 0.64, 1);
+}
+
+@keyframes mai-badge-arrive {
+    0% {
+        transform: scale(0.48) translateY(10px);
+        opacity: 0.85;
+    }
+    45% {
+        transform: scale(1.16) translateY(-8px);
+        opacity: 1;
+    }
+    68% {
+        transform: scale(0.96) translateY(3px);
+    }
+    85% {
+        transform: scale(1.04) translateY(-2px);
+    }
+    100% {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+    }
+}
+
+/* ─── Panel shell ─── */
+.mai-chat-panel {
+    position: absolute;
+    bottom: 82px;
+    right: 0;
+    width: min(384px, calc(100vw - 36px));
+    max-height: min(560px, calc(100vh - 132px));
+    display: flex;
+    flex-direction: column;
+    background: var(--mai-bg);
+    color: var(--mai-text);
+    border: 1px solid var(--mai-border);
+    border-radius: var(--mai-radius-panel);
+    box-shadow:
+        0 28px 64px rgba(0, 0, 0, 0.42),
+        0 0 0 1px rgba(255, 255, 255, 0.06) inset;
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(14px) scale(0.94);
+    pointer-events: none;
+    transition:
+        opacity 0.26s ease,
+        transform 0.34s cubic-bezier(0.34, 1.25, 0.64, 1),
+        width 0.28s ease,
+        max-height 0.28s ease;
+}
+
+.mai-chat-panel.is-open {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+}
+
+.mai-chat-panel--wide {
+    width: min(480px, calc(100vw - 28px));
+}
+
+.mai-chat-panel--minimized {
+    max-height: none;
+}
+
+.mai-chat-panel--minimized .mai-chat-body,
+.mai-chat-panel--minimized .mai-chat-footer {
+    display: none;
+}
+
+.mai-chat-panel--minimized .mai-chat-subtitle {
+    display: none;
+}
+
+.mai-chat-panel--minimized .mai-chat-header {
+    border-bottom: none;
+}
+
+/* ─── Header ─── */
+.mai-chat-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 14px 12px;
+    border-bottom: 1px solid var(--mai-border);
+    background: linear-gradient(180deg, rgba(14, 165, 233, 0.1) 0%, transparent 100%);
+}
+
+html[data-theme='light'] .mai-chat-header,
+body.light-mode .mai-chat-header {
+    background: linear-gradient(180deg, rgba(14, 165, 233, 0.06) 0%, transparent 100%);
+}
+
+.mai-chat-header-brand {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    min-width: 0;
+}
+
+.mai-chat-header-avatar {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+    border: 1px solid var(--mai-border);
+}
+
+.mai-chat-header-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.mai-chat-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.mai-chat-title {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.mai-chat-live-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--mai-accent);
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: rgba(56, 189, 248, 0.12);
+    border: 1px solid rgba(56, 189, 248, 0.28);
+}
+
+.mai-chat-live-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--mai-success);
+    box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.28);
+    animation: mai-live-pulse 2s ease-in-out infinite;
+}
+
+@keyframes mai-live-pulse {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.55;
+    }
+}
+
+.mai-chat-subtitle {
+    margin: 4px 0 0;
+    font-size: 0.76rem;
+    color: var(--mai-muted);
+    line-height: 1.35;
+}
+
+.mai-chat-header-actions {
+    display: flex;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+.mai-chat-icon-btn {
+    border: none;
+    background: transparent;
+    color: var(--mai-muted);
+    font-size: 1.35rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition:
+        background 0.15s ease,
+        color 0.15s ease;
+}
+
+.mai-chat-icon-btn:hover {
+    color: var(--mai-text);
+    background: rgba(148, 163, 184, 0.14);
+}
+
+.mai-chat-icon-btn[aria-pressed='true'] {
+    color: var(--mai-accent);
+    background: rgba(56, 189, 248, 0.12);
+}
+
+.mai-chat-icon-btn--close {
+    font-size: 1.5rem;
+}
+
+/* ─── Body & scroll ─── */
+.mai-chat-body {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.mai-chat-scroll-area {
+    position: relative;
+    flex: 1;
+    min-height: 220px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.mai-chat-scroll-area.mai-chat-highlight-flash {
+    animation: mai-area-flash 1.1s ease;
+}
+
+@keyframes mai-area-flash {
+    0% {
+        box-shadow: inset 0 0 0 0 rgba(56, 189, 248, 0);
+    }
+    35% {
+        box-shadow: inset 0 0 0 2px rgba(56, 189, 248, 0.35);
+    }
+    100% {
+        box-shadow: inset 0 0 0 0 rgba(56, 189, 248, 0);
+    }
+}
+
+.mai-chat-messages {
+    min-height: 140px;
+    padding: 16px 14px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    scroll-behavior: smooth;
+}
+
+.mai-chat-panel--wide .mai-chat-scroll-area {
+    max-height: min(520px, calc(100vh - 200px));
+}
+
+.mai-chat-panel:not(.mai-chat-panel--wide) .mai-chat-scroll-area {
+    max-height: min(440px, calc(100vh - 200px));
+}
+
+/* Skeleton */
+.mai-chat-skeleton {
+    position: absolute;
+    inset: 16px 14px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    pointer-events: none;
+    z-index: 2;
+    transition: opacity 0.25s ease;
+}
+
+.mai-chat-skeleton[hidden] {
+    display: none !important;
+}
+
+.mai-chat-skeleton-line {
+    height: 14px;
+    border-radius: 8px;
+    background: linear-gradient(
+        90deg,
+        rgba(148, 163, 184, 0.12) 0%,
+        rgba(148, 163, 184, 0.22) 45%,
+        rgba(148, 163, 184, 0.12) 90%
+    );
+    background-size: 220% 100%;
+    animation: mai-shimmer 1.1s ease-in-out infinite;
+}
+
+.mai-chat-skeleton-line--short {
+    width: 42%;
+}
+
+.mai-chat-skeleton-line--medium {
+    width: 72%;
+}
+
+.mai-chat-skeleton-line--tiny {
+    width: 28%;
+    height: 10px;
+}
+
+@keyframes mai-shimmer {
+    0% {
+        background-position: 100% 0;
+    }
+    100% {
+        background-position: -100% 0;
+    }
+}
+
+/* Empty / onboarding */
+.mai-chat-onboarding {
+    padding: 20px 18px 24px;
+    text-align: center;
+}
+
+.mai-chat-onboarding[hidden] {
+    display: none !important;
+}
+
+.mai-chat-onboarding-visual {
+    position: relative;
+    width: 88px;
+    height: 88px;
+    margin: 0 auto 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mai-chat-onboarding-glow {
+    position: absolute;
+    inset: 0;
+    border-radius: 28px;
+    background: radial-gradient(circle at 35% 30%, rgba(56, 189, 248, 0.35), transparent 62%);
+    opacity: 0.85;
+}
+
+.mai-chat-onboarding-icon {
+    position: relative;
+    width: 52px;
+    height: 52px;
+    color: var(--mai-accent);
+}
+
+.mai-chat-onboarding-kicker {
+    margin: 0;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--mai-muted);
+}
+
+.mai-chat-onboarding-title {
+    margin: 8px 0 6px;
+    font-size: 1.15rem;
+    font-weight: 700;
+}
+
+.mai-chat-onboarding-copy {
+    margin: 0 auto 18px;
+    max-width: 280px;
+    font-size: 0.84rem;
+    color: var(--mai-muted);
+    line-height: 1.55;
+}
+
+.mai-chat-quick-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 18px;
+}
+
+.mai-chip {
+    border: 1px solid var(--mai-border);
+    background: var(--mai-bg-elevated);
+    color: var(--mai-text);
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 8px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition:
+        transform 0.15s ease,
+        border-color 0.15s ease,
+        box-shadow 0.15s ease;
+}
+
+.mai-chip:hover {
+    transform: translateY(-1px);
+    border-color: var(--mai-border-strong);
+    box-shadow: var(--mai-shadow-msg);
+}
+
+.mai-chip--accent {
+    background: linear-gradient(145deg, rgba(14, 165, 233, 0.22), rgba(37, 99, 235, 0.18));
+    border-color: rgba(56, 189, 248, 0.45);
+    color: var(--mai-text);
+}
+
+.mai-chat-suggest-label {
+    margin: 0 0 10px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--mai-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.mai-chat-suggestions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.mai-suggestion {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    text-align: left;
+    padding: 11px 14px;
+    border-radius: 14px;
+    border: 1px dashed var(--mai-border);
+    background: rgba(148, 163, 184, 0.06);
+    color: var(--mai-text);
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition:
+        background 0.15s ease,
+        border-color 0.15s ease;
+}
+
+.mai-suggestion:hover {
+    background: rgba(56, 189, 248, 0.1);
+    border-color: rgba(56, 189, 248, 0.35);
+}
+
+.mai-suggestion-arrow {
+    color: var(--mai-accent);
+    font-weight: 700;
+}
+
+/* ─── Message rows ─── */
+.mai-chat-day-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 18px 0 14px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--mai-muted);
+}
+
+.mai-chat-day-divider::before,
+.mai-chat-day-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--mai-border), transparent);
+}
+
+.mai-chat-day-divider:first-child {
+    margin-top: 4px;
+}
+
+.mai-chat-msg-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+    margin-bottom: 10px;
+    animation: mai-msg-row-in 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes mai-msg-row-in {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.mai-chat-msg-row--user {
+    justify-content: flex-end;
+}
+
+.mai-chat-msg-row--system {
+    justify-content: center;
+}
+
+.mai-chat-msg-row--fresh .mai-chat-msg {
+    animation: mai-msg-new-glow 1s ease;
+}
+
+@keyframes mai-msg-new-glow {
+    0% {
+        box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.55);
+    }
+    100% {
+        box-shadow: 0 0 0 8px rgba(56, 189, 248, 0);
+    }
+}
+
+.mai-chat-avatar {
+    flex-shrink: 0;
+    width: 30px;
+    height: 30px;
+    border-radius: 10px;
+    overflow: hidden;
+    align-self: flex-end;
+    margin-bottom: 4px;
+    border: 1px solid var(--mai-border);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.mai-chat-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.mai-chat-msg {
+    max-width: min(85%, 300px);
+    padding: 11px 14px 9px;
+    border-radius: var(--mai-radius-msg);
+    font-size: 0.898rem;
+    line-height: 1.48;
+    color: var(--mai-text);
+    box-shadow: var(--mai-shadow-msg);
+}
+
+.mai-chat-msg-body {
+    color: inherit;
+}
+
+.mai-chat-msg-body a {
+    color: var(--mai-accent);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.mai-chat-msg-body a:hover {
+    text-decoration: underline;
+}
+
+.mai-chat-msg-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.mai-chat-msg-time {
+    font-size: 0.65rem;
+    opacity: 0.62;
+    font-weight: 500;
+}
+
+/* AI bubble */
+.mai-chat-msg-row--ai .mai-chat-msg {
+    align-self: flex-start;
+    background: var(--mai-bubble-ai);
+    border: 1px solid var(--mai-bubble-ai-border);
+    border-bottom-left-radius: 6px;
+}
+
+/* User bubble */
+.mai-chat-msg.user {
+    background: var(--mai-bubble-user);
+    color: #fff;
+    border: none;
+    border-bottom-right-radius: 6px;
+}
+
+.mai-chat-msg.user .mai-chat-msg-body {
+    color: #fff;
+}
+
+.mai-chat-msg.user .mai-chat-msg-body a {
+    color: #bfdbfe;
+}
+
+.mai-chat-msg.user .mai-chat-msg-time {
+    color: rgba(255, 255, 255, 0.82);
+}
+
+/* System */
+.mai-chat-msg-row--system .mai-chat-msg {
+    max-width: 92%;
+    padding: 9px 14px;
+    font-size: 0.8rem;
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px dashed rgba(99, 102, 241, 0.35);
+    border-radius: 14px;
+    box-shadow: none;
+}
+
+html[data-theme='light'] .mai-chat-msg-row--system .mai-chat-msg,
+body.light-mode .mai-chat-msg-row--system .mai-chat-msg {
+    background: rgba(79, 70, 229, 0.06);
+}
+
+/* Status pill (queued, etc.) */
+.mai-chat-msg--pill {
+    border-style: solid;
+    border-left: 3px solid var(--mai-accent);
+    background: rgba(56, 189, 248, 0.08);
+}
+
+.mai-chat-msg--pill-queue .mai-chat-msg-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.68rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--mai-accent);
+    margin-bottom: 6px;
+}
+
+.mai-chat-msg--pill-queue .mai-chat-msg-label::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--mai-accent);
+    animation: mai-queue-blink 1s ease-in-out infinite;
+}
+
+@keyframes mai-queue-blink {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.35;
+    }
+}
+
+/* Result cards */
+.mai-chat-msg--card {
+    max-width: min(92%, 340px);
+    padding: 0;
+    overflow: hidden;
+    border-radius: 16px;
+}
+
+.mai-chat-msg--card-success {
+    border: 1px solid rgba(52, 211, 153, 0.35);
+    background: linear-gradient(165deg, var(--mai-card-success-bg), var(--mai-bubble-ai));
+}
+
+.mai-chat-msg--card-danger {
+    border: 1px solid rgba(251, 113, 133, 0.45);
+    background: linear-gradient(165deg, var(--mai-card-danger-bg), var(--mai-bubble-ai));
+}
+
+.mai-chat-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 14px;
+    font-size: 0.68rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+}
+
+.mai-chat-msg--card-success .mai-chat-card-head {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--mai-success);
+}
+
+.mai-chat-msg--card-danger .mai-chat-card-head {
+    background: rgba(244, 63, 94, 0.14);
+    color: var(--mai-danger);
+}
+
+.mai-chat-card-body {
+    padding: 12px 14px 14px;
+}
+
+.mai-chat-msg--card .mai-chat-msg-meta {
+    padding: 0 14px 12px;
+    margin-top: 0;
+}
+
+.mai-chat-msg-actions {
+    margin-top: 10px;
+}
+
+.mai-chat-msg-actions a {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: rgba(56, 189, 248, 0.14);
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    color: var(--mai-accent) !important;
+}
+
+.mai-chat-msg-actions a:hover {
+    background: rgba(56, 189, 248, 0.22);
+    text-decoration: none !important;
+}
+
+/* Media attachment strip */
+.mai-chat-msg-media {
+    margin: -4px -14px 12px;
+    border-radius: 12px 12px 0 0;
+    overflow: hidden;
+    border-bottom: 1px solid var(--mai-border);
+    background: rgba(0, 0, 0, 0.18);
+}
+
+.mai-chat-msg-media img {
+    display: block;
+    width: 100%;
+    max-height: 140px;
+    object-fit: cover;
+}
+
+/* Typing indicator */
+.mai-chat-typing-anchor {
+    padding: 4px 14px 12px;
+    flex-shrink: 0;
+}
+
+.mai-chat-typing-bubble {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 18px;
+    border-bottom-left-radius: 5px;
+    background: var(--mai-bubble-ai);
+    border: 1px solid var(--mai-bubble-ai-border);
+    box-shadow: var(--mai-shadow-msg);
+    max-width: 88%;
+}
+
+.mai-chat-typing-label {
+    font-size: 0.78rem;
+    color: var(--mai-muted);
+    font-weight: 500;
+}
+
+.mai-chat-typing-dots {
+    display: inline-flex;
+    gap: 5px;
+}
+
+.mai-chat-typing-dots span {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: linear-gradient(180deg, #38bdf8, #2563eb);
+    animation: mai-dot-bounce 1.15s ease infinite;
+}
+
+.mai-chat-typing-dots span:nth-child(2) {
+    animation-delay: 0.18s;
+}
+
+.mai-chat-typing-dots span:nth-child(3) {
+    animation-delay: 0.34s;
+}
+
+@keyframes mai-dot-bounce {
+    0%,
+    70%,
+    100% {
+        transform: translateY(0);
+        opacity: 0.35;
+    }
+    35% {
+        transform: translateY(-6px);
+        opacity: 1;
+    }
+}
+
+/* Footer */
+.mai-chat-footer {
+    padding: 10px 14px 14px;
+    border-top: 1px solid var(--mai-border);
+    background: rgba(0, 0, 0, 0.06);
+}
+
+html[data-theme='light'] .mai-chat-footer,
+body.light-mode .mai-chat-footer {
+    background: rgba(248, 250, 252, 0.95);
+}
+
+.mai-chat-sound-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    font-size: 0.72rem;
+    color: var(--mai-muted);
+    user-select: none;
+}
+
+.mai-chat-sound-row input {
+    margin-top: 2px;
+    accent-color: #0ea5e9;
+}
+
+.mai-chat-disclaimer {
+    margin: 0;
+    font-size: 0.65rem;
+    color: var(--mai-muted);
+    line-height: 1.45;
+    opacity: 0.92;
+}
+
+/* SignalR toast */
+.mai-hub-toast {
+    position: fixed;
+    right: 100px;
+    bottom: 104px;
+    z-index: 10050;
+    max-width: min(340px, calc(100vw - 128px));
+    padding: 14px 16px;
+    border-radius: 16px;
+    background: rgba(15, 23, 42, 0.96);
+    color: #f8fafc;
+    box-shadow: 0 16px 44px rgba(0, 0, 0, 0.38);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 0.84rem;
+    line-height: 1.4;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(10px) scale(0.97);
+    transition:
+        opacity 0.28s ease,
+        transform 0.34s cubic-bezier(0.34, 1.25, 0.64, 1);
+}
+
+.mai-hub-toast--visible {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0) scale(1);
+    cursor: pointer;
+}
+
+.mai-hub-toast--ok {
+    border-color: rgba(52, 211, 153, 0.38);
+}
+
+.mai-hub-toast--err {
+    border-color: rgba(251, 113, 133, 0.42);
+}
+
+.mai-hub-toast-body {
+    margin-top: 6px;
+    font-weight: 400;
+    opacity: 0.9;
+}
+
+html[data-theme='light'] .mai-hub-toast,
+body.light-mode .mai-hub-toast {
+    background: rgba(255, 255, 255, 0.98);
+    color: #0f172a;
+    border-color: rgba(15, 23, 42, 0.1);
+}
+
+@media (max-width: 480px) {
+    .mai-chat-root {
+        right: 14px;
+        bottom: 84px;
+    }
+
+    .mai-chat-panel {
+        width: calc(100vw - 22px);
+        right: -6px;
+    }
+
+    .mai-hub-toast {
+        right: 16px;
+        bottom: 92px;
+        max-width: calc(100vw - 32px);
+    }
+}

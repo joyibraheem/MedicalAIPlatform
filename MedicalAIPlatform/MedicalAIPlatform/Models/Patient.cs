@@ -74,5 +74,6 @@ namespace MedicalAIPlatform.Models
 
         public virtual ICollection<PatientHistory> HistoryEntries { get; set; } = new List<PatientHistory>();
         public virtual ICollection<PatientScan> Scans { get; set; } = new List<PatientScan>();
+        public virtual ICollection<ClinicalMedicalReport> MedicalReports { get; set; } = new List<ClinicalMedicalReport>();
     }
 }

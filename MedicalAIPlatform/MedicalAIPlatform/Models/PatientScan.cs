@@ -39,27 +39,6 @@ namespace MedicalAIPlatform.Models
         // Link to patient history entry if this scan is associated with a visit
         public int? PatientHistoryId { get; set; }
 
-        // AI Model Results Storage (JSON strings)
-        [StringLength(10000)]
-        public string? CheXNetResults { get; set; } // JSON serialized CheXNetPredictionResponse
-
-        [StringLength(10000)]
-        public string? BioBertResults { get; set; } // JSON serialized BioBertResponse
-
-        [StringLength(10000)]
-        public string? LungAIResults { get; set; } // JSON serialized LungAICtResponse
-
-        // Linked AI Models (comma-separated list of model names)
-        [StringLength(200)]
-        public string? LinkedModels { get; set; } // e.g., "CheXNet,BioBert,LungAI"
-
-        // Generated result summary
-        [StringLength(5000)]
-        public string? GeneratedResult { get; set; }
-
-        [DataType(DataType.DateTime)]
-        public DateTime? ResultGeneratedAt { get; set; }
-
         // Foreign key to doctor/user who uploaded this scan
         [StringLength(450)]
         public string? CreatedByUserId { get; set; }
@@ -75,5 +54,8 @@ namespace MedicalAIPlatform.Models
 
         [ForeignKey("CreatedByUserId")]
         public virtual ApplicationUser? CreatedByUser { get; set; }
+
+        /// <summary>Exactly one AI analysis row per scan (created when the scan is registered).</summary>
+        public virtual ScanAiAnalysis? AiAnalysis { get; set; }
     }
 }

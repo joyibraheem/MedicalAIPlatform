@@ -106,6 +106,20 @@
             </div>
         </div>
 
+        @if (TempData["MedicalReportMessage"] is string medicalReportMsg && !string.IsNullOrWhiteSpace(medicalReportMsg))
+        {
+            <div class="alert alert-info py-2 px-3 mb-3" role="status">@medicalReportMsg</div>
+        }
+
+        <div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
+            <a class="btn btn-outline-primary btn-sm fw-semibold" href="@Url.Action("LatestForPatient", "MedicalReport", new { patientId = Model.Patient.Id })">Latest medical report</a>
+            <form asp-controller="MedicalReport" asp-action="Generate" method="post" class="d-inline">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="patientId" value="@Model.Patient.Id" />
+                <button type="submit" class="btn btn-primary btn-sm">Generate structured report</button>
+            </form>
+        </div>
+
         <!-- Patient Information Card -->
         <div class="case-input-card mb-4">
             <h2 class="section-title">Patient Information</h2>
@@ -187,9 +201,12 @@
                     {
                         <div class="col-md-6 mb-4">
                             <div class="card">
-                                <div class="card-header d-flex justify-content-between">
+                                <div class="card-header d-flex justify-content-between align-items-center">
                                     <span><strong>@scan.ScanType</strong> - @scan.ScanDate.ToString("yyyy-MM-dd HH:mm")</span>
-                                    <span class="badge bg-info">@scan.FileName</span>
+                                    <div class="d-flex gap-2 align-items-center">
+                                        <span class="badge bg-secondary text-uppercase">@scan.AnalysisStatus</span>
+                                        <span class="badge bg-info">@scan.FileName</span>
+                                    </div>
                                 </div>
                                 <div class="card-body">
                                     @if (!string.IsNullOrEmpty(scan.ImageDataUrl))
@@ -218,6 +235,12 @@
                                     }
                                     
                                     <div class="btn-group">
+                                        @if (scan.ScanType == "CTScan")
+                                        {
+                                            <a class="btn btn-sm btn-outline-info" asp-controller="CtScan" asp-action="Index" asp-route-scanId="@scan.Id">
+                                                <i class="bi bi-box"></i> CT Viewer
+                                            </a>
+                                        }
                                         <button class="btn btn-sm btn-primary link-models-btn" 
                                                 data-patient-id="@Model.Patient.Id" 
                                                 data-scan-id="@scan.Id" 
@@ -231,6 +254,24 @@
                                                     data-scan-id="@scan.Id">
                                                 <i class="bi bi-magic"></i> Generate Result
                                             </button>
+                                        }
+                                        @if (scan.MedicalReportId.HasValue)
+                                        {
+                                            <a class="btn btn-sm btn-outline-primary"
+                                               href="@Url.Action("Details", "MedicalReport", new { id = scan.MedicalReportId.Value })">
+                                                View report
+                                            </a>
+                                        }
+                                        else if (scan.ScanAiAnalysisId.HasValue)
+                                        {
+                                            <form asp-controller="MedicalReport" asp-action="Generate" method="post" class="d-inline">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="patientId" value="@Model.Patient.Id" />
+                                                <input type="hidden" name="patientScanId" value="@scan.Id" />
+                                                <button type="submit" class="btn btn-sm btn-outline-success">
+                                                    Generate report
+                                                </button>
+                                            </form>
                                         }
                                     </div>
                                 </div>
@@ -292,6 +333,7 @@
                 </div>
             }
         </div>
+        <script>window.__maiPatientContextId = @Model.Patient.Id;</script>
     </div>
 </div>
 

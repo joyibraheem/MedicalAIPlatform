@@ -1,4 +1,5 @@
 using MedicalAIPlatform.Models;
+using MedicalAIPlatform.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -7,16 +8,18 @@ using Microsoft.EntityFrameworkCore;
 namespace MedicalAIPlatform.Controllers
 {
     [Route("Dashboard")]
-    [Authorize]
+    [Authorize(Policy = "VerifiedMedicalUser")]
     public class DashboardController : Controller
     {
         private readonly UserManager<ApplicationUser> _userManager;
-        private readonly RoleManager<IdentityRole> _roleManager;
+        private readonly AdminDashboardService _adminDashboard;
 
-        public DashboardController(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager)
+        public DashboardController(
+            UserManager<ApplicationUser> userManager,
+            AdminDashboardService adminDashboard)
         {
             _userManager = userManager;
-            _roleManager = roleManager;
+            _adminDashboard = adminDashboard;
         }
 
         [Route("")]
@@ -32,30 +35,7 @@ namespace MedicalAIPlatform.Controllers
             // Check for Admin Role
             if (await _userManager.IsInRoleAsync(user, "Admin"))
             {
-                // --- ADMIN DASHBOARD LOGIC ---
-                var activeDoctors = await _userManager.GetUsersInRoleAsync("Doctor");
-                var allUsers = await _userManager.Users.ToListAsync();
-                var admins = await _userManager.GetUsersInRoleAsync("Admin");
-                
-                var patientsCount = allUsers.Count - activeDoctors.Count - admins.Count; 
-                if (patientsCount < 0) patientsCount = 0; 
-
-                var pendingDoctors = await _userManager.Users
-                    .Where(u => u.DoctorStatus == "Pending")
-                    .OrderByDescending(u => u.CreatedAt) 
-                    .Take(5)
-                    .ToListAsync();
-
-                var adminModel = new AdminDashboardViewModel
-                {
-                    ActiveDoctorsCount = activeDoctors.Count,
-                    PatientsCount = patientsCount, 
-                    AccuracyRate = 98.4, 
-                    PendingDoctors = pendingDoctors,
-                    IsSystemWorking = true
-                };
-
-                // Return the Admin View
+                var adminModel = await _adminDashboard.BuildAsync(HttpContext.RequestAborted).ConfigureAwait(false);
                 return View("~/Views/Admin/Index.cshtml", adminModel);
             }
 

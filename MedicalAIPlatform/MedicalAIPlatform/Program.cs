@@ -1,19 +1,26 @@
 using MedicalAIPlatform.Controllers;
 using MedicalAIPlatform.Data;
+using MedicalAIPlatform.Hubs;
 using MedicalAIPlatform.Models;
 using MedicalAIPlatform.Options;
 using MedicalAIPlatform.Services;
 using MedicalAIPlatform.Services.Dicom;
+using MedicalAIPlatform.Authorization;
+using MedicalAIPlatform.Infrastructure;
 using FellowOakDicom;
 using FellowOakDicom.Imaging;
 using FellowOakDicom.Imaging.NativeCodec;
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -45,6 +52,8 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString));
 
+builder.Services.AddSignalR();
+
 builder.Services
     .AddIdentity<ApplicationUser, IdentityRole>(options =>
     {
@@ -72,40 +81,59 @@ builder.Services
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
 
-// Configure external authentication (Google only)
-builder.Services.AddAuthentication(options =>
+builder.Services.AddAuthorization(options =>
 {
-    options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = GoogleDefaults.AuthenticationScheme;
-})
-.AddCookie(options =>
+    options.AddPolicy("VerifiedMedicalUser", policy =>
+        policy.Requirements.Add(new VerifiedMedicalUserRequirement()));
+});
+builder.Services.AddScoped<IAuthorizationHandler, VerifiedMedicalUserHandler>();
+
+// Google external login only
+// AddIdentity already registers Identity.Application as the default scheme. A second cookie scheme
+// breaks POST JSON endpoints (fetch "Failed to fetch" / flaky auth after navigation).
+builder.Services.AddAuthentication()
+    .AddGoogle(options =>
+    {
+        options.ClientId = builder.Configuration["Authentication:Google:ClientId"] ?? string.Empty;
+        options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"] ?? string.Empty;
+        options.SignInScheme = IdentityConstants.ExternalScheme;
+    });
+
+builder.Services.ConfigureApplicationCookie(options =>
 {
-    // Configure cookie options for SameSite and Secure
     options.Cookie.SameSite = SameSiteMode.Lax;
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
-    
-    // Set Secure policy based on environment
+    options.AccessDeniedPath = "/Account/ApprovalPending";
+
     if (builder.Environment.IsDevelopment())
-    {
-        // In development, allow both HTTP and HTTPS
         options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
-    }
     else
-    {
-        // In production, always use Secure cookies (HTTPS only)
         options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-    }
-})
-.AddGoogle(options =>
-{
-    options.ClientId = builder.Configuration["Authentication:Google:ClientId"];
-    options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"];
-    options.SignInScheme = IdentityConstants.ExternalScheme;
+
+    options.Events.OnRedirectToLogin = context =>
+    {
+        var path = context.Request.Path.Value ?? string.Empty;
+        if (path.Equals("/AIAssistant/SendMessage", StringComparison.OrdinalIgnoreCase)
+            && HttpMethods.IsPost(context.Request.Method))
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            context.Response.ContentType = "application/json; charset=utf-8";
+            return context.Response.WriteAsync(
+                "{\"error\":\"Session expired. Please refresh the page and sign in again.\",\"loginRequired\":true}");
+        }
+
+        context.Response.Redirect(context.RedirectUri);
+        return Task.CompletedTask;
+    };
 });
 
-// Register email sender
-builder.Services.AddSingleton<IEmailSender, EmailSender>();
+// Email (logs in dev; swap for SMTP provider in production)
+builder.Services.AddSingleton<IEmailSender, LoggingEmailSender>();
+builder.Services.AddSingleton<IActionContextAccessor, ActionContextAccessor>();
+builder.Services.Configure<DoctorRegistrationOptions>(
+    builder.Configuration.GetSection(DoctorRegistrationOptions.SectionName));
+builder.Services.AddScoped<DoctorRegistrationService>();
 
 // Analytics API Services
 var chexnetApiBaseUrl = builder.Configuration["CheXNetApi:BaseUrl"] ?? "http://localhost:8000/";
@@ -141,9 +169,31 @@ builder.Services.AddScoped<DicomSlicePreprocessor>();
 builder.Services.AddScoped<PredictionAggregationEngine>();
 builder.Services.AddSingleton<OnnxSliceInferenceRunner>();
 builder.Services.AddScoped<DicomInferencePipelineOrchestrator>();
+builder.Services.AddScoped<AnalyticsCtInferenceExecutor>();
+builder.Services.AddScoped<AnalyticsXRayInferenceExecutor>();
+builder.Services.AddSingleton<AnalyticsJobQueueService>();
 
-// Analytics State Service
-builder.Services.AddSingleton<AnalyticsStateService>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddSingleton<IUserAnalyticsSessionStore, UserAnalyticsSessionStore>();
+builder.Services.AddScoped<AnalyticsStateService>();
+builder.Services.AddScoped<AnalyticsSessionLoader>();
+builder.Services.AddSingleton<ICtScanViewerSessionStore, CtScanViewerSessionStore>();
+builder.Services.AddScoped<CtScanViewerService>();
+
+builder.Services.AddScoped<PredictionFeedbackService>();
+builder.Services.AddScoped<AdminDashboardService>();
+
+builder.Services.AddScoped<MedicalReportService>();
+builder.Services.AddScoped<ScanAiAnalysisPipelineService>();
+builder.Services.AddScoped<MedicalReportPdfService>();
+
+builder.Services.Configure<DevelopmentSeedOptions>(
+    builder.Configuration.GetSection(DevelopmentSeedOptions.SectionName));
+builder.Services.AddScoped<IdentityDevelopmentSeeder>();
+
+builder.Services.Configure<DemoDataSeederOptions>(
+    builder.Configuration.GetSection(DemoDataSeederOptions.SectionName));
+builder.Services.AddScoped<MedicalPlatformDemoDataSeeder>();
 
 // Auto-start the local Python CheXNet API when the app starts
 builder.Services.AddHostedService<CheXNetApiHostedService>();
@@ -161,7 +211,15 @@ builder.Services.AddHttpClient<ChatService>(client =>
         new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
 });
 
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews(options =>
+{
+    options.Conventions.Add(new RemoveDevelopmentOnlyControllersConvention(builder.Environment));
+    options.Filters.Add<DevelopmentOnlyActionFilter>();
+});
+builder.Services.Configure<AntiforgeryOptions>(options =>
+{
+    options.HeaderName = "RequestVerificationToken";
+});
 
 // Configure global cookie policy
 builder.Services.Configure<CookiePolicyOptions>(options =>
@@ -176,93 +234,47 @@ var app = builder.Build();
 // fo-dicom resolves render/graph services from the host service provider
 DicomSetupBuilder.UseServiceProvider(app.Services);
 
-// Seed roles (Admin, Doctor) and initial users
+// Migrate database; seed roles always; dev accounts only in Development with env-based passwords
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
     try
     {
         var context = services.GetRequiredService<ApplicationDbContext>();
+        DatabaseMigrationBootstrap.PrepareLegacyDatabase(context);
         context.Database.Migrate();
 
         var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
-        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+        await IdentityDevelopmentSeeder.SeedRolesAsync(roleManager).ConfigureAwait(false);
 
-        string[] roleNames = { "Admin", "Doctor" };
-        foreach (var roleName in roleNames)
+        if (app.Environment.IsDevelopment())
         {
-            if (!await roleManager.RoleExistsAsync(roleName))
+            var devSeeder = services.GetRequiredService<IdentityDevelopmentSeeder>();
+            var configuration = services.GetRequiredService<IConfiguration>();
+            await devSeeder.SeedDevelopmentUsersAsync(configuration).ConfigureAwait(false);
+
+            var demoOpts = services.GetRequiredService<IOptions<DemoDataSeederOptions>>().Value;
+            if (demoOpts.RunOnStartup)
             {
-                await roleManager.CreateAsync(new IdentityRole(roleName));
+                var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+                var demoSeeder = services.GetRequiredService<MedicalPlatformDemoDataSeeder>();
+                var seedOpts = services.GetRequiredService<IOptions<DevelopmentSeedOptions>>().Value;
+                var seedActor = await userManager.FindByEmailAsync(seedOpts.DoctorEmail).ConfigureAwait(false)
+                                ?? await userManager.FindByEmailAsync(seedOpts.AdminEmail).ConfigureAwait(false);
+                if (seedActor != null)
+                {
+                    var demoResult = await demoSeeder.SeedAsync(false, seedActor.Id, CancellationToken.None)
+                        .ConfigureAwait(false);
+                    var demoLog = services.GetRequiredService<ILogger<MedicalPlatformDemoDataSeeder>>();
+                    if (demoResult.Skipped)
+                        demoLog.LogInformation("Demo data: {Message}", demoResult.Message);
+                    else
+                        demoLog.LogInformation(
+                            "Demo data seeded: patients={P}, historyRows={H}, scans={S}, reports={R}",
+                            demoResult.PatientsCreated, demoResult.HistoryEntriesCreated, demoResult.ScansCreated,
+                            demoResult.ReportsCreated);
+                }
             }
-        }
-
-        // Create initial admin user
-        const string adminEmail = "admin@medicalai.com";
-        const string adminPassword = "Admin@12345";
-        var adminUser = await userManager.FindByEmailAsync(adminEmail);
-
-        if (adminUser == null)
-        {
-            adminUser = new ApplicationUser
-            {
-                UserName = adminEmail,
-                Email = adminEmail,
-                EmailConfirmed = true,
-                FullName = "System Administrator",
-                Specialization = null,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            var createAdminResult = await userManager.CreateAsync(adminUser, adminPassword);
-            if (!createAdminResult.Succeeded)
-            {
-                var logger = services.GetRequiredService<ILogger<Program>>();
-                logger.LogError("Failed to create initial admin user {Email}. Errors: {Errors}",
-                    adminEmail, string.Join(", ", createAdminResult.Errors.Select(e => e.Description)));
-            }
-        }
-
-        if (adminUser != null && !await userManager.IsInRoleAsync(adminUser, "Admin"))
-        {
-            var addToRoleResult = await userManager.AddToRoleAsync(adminUser, "Admin");
-            if (!addToRoleResult.Succeeded)
-            {
-                var logger = services.GetRequiredService<ILogger<Program>>();
-                logger.LogError("Failed to assign Admin role to user {Email}. Errors: {Errors}",
-                    adminEmail, string.Join(", ", addToRoleResult.Errors.Select(e => e.Description)));
-            }
-        }
-
-        // Create initial doctor user
-        const string doctorEmail = "doctor@medicalai.com";
-        const string doctorPassword = "Doctor@12345";
-        var doctorUser = await userManager.FindByEmailAsync(doctorEmail);
-
-        if (doctorUser == null)
-        {
-            doctorUser = new ApplicationUser
-            {
-                UserName = doctorEmail,
-                Email = doctorEmail,
-                EmailConfirmed = true,
-                FullName = "Dr. Smith",
-                Specialization = "Cardiologist",
-                CreatedAt = DateTime.UtcNow
-            };
-
-            var createDoctorResult = await userManager.CreateAsync(doctorUser, doctorPassword);
-            if (!createDoctorResult.Succeeded)
-            {
-                var logger = services.GetRequiredService<ILogger<Program>>();
-                logger.LogError("Failed to create initial doctor user {Email}. Errors: {Errors}",
-                    doctorEmail, string.Join(", ", createDoctorResult.Errors.Select(e => e.Description)));
-            }
-        }
-
-        if (doctorUser != null && !await userManager.IsInRoleAsync(doctorUser, "Doctor"))
-        {
-            await userManager.AddToRoleAsync(doctorUser, "Doctor");
         }
     }
     catch (Exception ex)
@@ -295,6 +307,8 @@ app.UseRouting();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.MapHub<AssistantHub>("/hubs/assistant");
 
 app.MapControllers();
 

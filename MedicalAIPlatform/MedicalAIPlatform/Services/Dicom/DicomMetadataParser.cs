@@ -64,6 +64,16 @@ public sealed class DicomMetadataParser
                 _pipeline.DefaultCtWindowCenter, _pipeline.DefaultCtWindowWidth);
         }
 
+        if (RequiresFullRangePresentation(ds, m))
+        {
+            m.WindowCenter = null;
+            m.WindowWidth = null;
+            m.AdditionalTags["window_source"] = "full_range_segmentation_or_derived";
+            _log.LogInformation(
+                "Cleared VOI LUT window for segmentation/derived series so pixels are not collapsed (modality={Modality}).",
+                m.Modality);
+        }
+
         m.AdditionalTags["transfer_syntax_uid"] = file.FileMetaInfo?.TransferSyntax?.UID?.UID ?? "";
         m.AdditionalTags["implementation_version"] = file.FileMetaInfo?.Version?.ToString() ?? "";
 
@@ -143,6 +153,32 @@ public sealed class DicomMetadataParser
             return years >= 0 && years <= 130 ? years : null;
         }
         catch { return null; }
+    }
+
+    /// <summary>
+    /// SEG / segmentation-result objects are not conventional HU images; inherited WC/WW can hide mask pixels.
+    /// </summary>
+    private static bool RequiresFullRangePresentation(DicomDataset ds, PatientMedicalHistory m)
+    {
+        if (string.Equals(m.Modality, "SEG", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        var blob = $"{m.SeriesDescription} {m.StudyDescription}".ToLowerInvariant();
+        if (blob.Contains("segmentation", StringComparison.Ordinal))
+            return true;
+
+        try
+        {
+            var sop = ds.GetSingleValueOrDefault(DicomTag.SOPClassUID, "");
+            if (sop.Contains("1.2.840.10008.5.1.4.1.1.66.4", StringComparison.Ordinal))
+                return true;
+        }
+        catch
+        {
+            /* ignore */
+        }
+
+        return false;
     }
 
     private static bool TryReadWindow(DicomDataset ds, out double wc, out double ww)

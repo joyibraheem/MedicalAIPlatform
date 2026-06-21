@@ -104,6 +104,8 @@ public sealed class DicomSliceExtractionService
                             $"DICOM frame {i}: CloneAs<Rgb24> returned null (unexpected). Transfer syntax UID={xferUid}");
                     }
 
+                    DicomSliceDisplayEnhancement.EnhanceForWebDisplay(rgb24, _log);
+
                     yield return new SliceFrameRgb(i, instanceNumber, rgb24);
                 }
             }

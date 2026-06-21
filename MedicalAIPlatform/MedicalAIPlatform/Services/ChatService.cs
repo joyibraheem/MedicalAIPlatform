@@ -25,6 +25,7 @@ public sealed class ChatService
         Dictionary<string, CheXNetPredictionResponse>? chexnetContext = null,
         BioBertResponse? bioBertContext = null,
         LungAICtResponse? lungAIContext = null,
+        string? structuredMedicalReportJson = null,
         CancellationToken cancellationToken = default)
     {
         if (history is null || history.Count == 0)
@@ -78,6 +79,27 @@ public sealed class ChatService
                 Role = "system",
                 Content = enhancedBasePrompt
             });
+        }
+
+        if (!string.IsNullOrWhiteSpace(structuredMedicalReportJson))
+        {
+            const string guard =
+                "\n\nAUTHORITATIVE STRUCTURED MEDICAL REPORT (JSON). Use ONLY this content to explain or summarize. "
+                + "Do not invent imaging findings, diagnoses, or recommendations that are not supported by this JSON. "
+                + "If the user asks for something not covered, state that it is not documented in the report.\n\n";
+            var idx = messages.FindIndex(m => m.Role == "system");
+            if (idx >= 0)
+            {
+                messages[idx] = new ChatMessage
+                {
+                    Role = "system",
+                    Content = messages[idx].Content + guard + structuredMedicalReportJson.Trim()
+                };
+            }
+            else
+            {
+                messages.Insert(0, new ChatMessage { Role = "system", Content = guard + structuredMedicalReportJson.Trim() });
+            }
         }
 
         var payload = new

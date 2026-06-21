@@ -1,0 +1,171 @@
+@{
+    ViewData["Title"] = "CT Scan";
+    Layout = "_DoctorLayout";
+    var sessionId = ViewBag.SessionId as Guid?;
+    var hasSession = ViewBag.HasSession as bool? ?? false;
+}
+
+<link rel="stylesheet" href="~/css/ct-scan-viewer.css" asp-append-version="true" />
+
+<div class="ct-viewer-page" id="ctViewerRoot"
+     data-session-id="@(sessionId?.ToString() ?? "")"
+     data-has-session="@(hasSession.ToString().ToLowerInvariant())"
+     data-upload-url="@Url.Action("Upload", "CtScan")"
+     data-session-url="@Url.Action("Session", "CtScan")"
+     data-slice-url-base="@Url.Action("Slice", "CtScan")"
+     data-analyze-url="@Url.Action("Analyze", "CtScan")"
+     data-report-url="@Url.Action("DownloadReport", "CtScan")">
+
+    <header class="ct-viewer-header">
+        <div class="ct-viewer-header__left">
+            <button type="button" class="ct-icon-btn" id="btnBack" title="Back">
+                <i class="bi bi-arrow-left"></i>
+            </button>
+            <div>
+                <h1 class="ct-viewer-title">CT Scan Viewer</h1>
+                <p class="ct-viewer-subtitle">Medical image viewer with AI-assisted analysis</p>
+            </div>
+        </div>
+        <div class="ct-viewer-header__meta">
+            <span class="ct-meta-chip" id="studyPatient">—</span>
+            <span class="ct-meta-chip" id="studyModality">—</span>
+            <span class="ct-meta-chip" id="studySliceCount">0 slices</span>
+        </div>
+    </header>
+
+    <div class="ct-toolbar">
+        <div class="ct-toolbar__group">
+            <button type="button" class="ct-tool-btn" id="btnSeries" title="Series info">
+                <i class="bi bi-list-ul"></i><span>Series</span>
+            </button>
+            <button type="button" class="ct-tool-btn" id="btnPrev" disabled>
+                <i class="bi bi-chevron-left"></i><span>Previous</span>
+            </button>
+            <button type="button" class="ct-tool-btn" id="btnNext" disabled>
+                <span>Next</span><i class="bi bi-chevron-right"></i>
+            </button>
+            <button type="button" class="ct-tool-btn" id="btnPlay" disabled>
+                <i class="bi bi-play-fill"></i><span>Play</span>
+            </button>
+        </div>
+        <div class="ct-toolbar__group">
+            <button type="button" class="ct-tool-btn" id="btnZoomIn" disabled><i class="bi bi-zoom-in"></i><span>Zoom</span></button>
+            <button type="button" class="ct-tool-btn" id="btnZoomOut" disabled><i class="bi bi-zoom-out"></i></button>
+            <button type="button" class="ct-tool-btn" id="btnPanMode" disabled><i class="bi bi-arrows-move"></i><span>Pan</span></button>
+            <div class="dropdown">
+                <button type="button" class="ct-tool-btn dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-three-dots"></i><span>More</span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-dark ct-dropdown">
+                    <li>
+                        <label class="dropdown-item mb-0" for="ctUploadInput">
+                            <i class="bi bi-cloud-upload me-2"></i>Upload new scan
+                        </label>
+                        <input type="file" id="ctUploadInput" class="d-none"
+                               accept="image/png,image/jpeg,application/dicom,.dcm,.dicm" />
+                    </li>
+                    <li><button type="button" class="dropdown-item" id="btnDownloadReport" disabled><i class="bi bi-download me-2"></i>Download report</button></li>
+                    <li><button type="button" class="dropdown-item" id="btnResetViewer" disabled><i class="bi bi-arrow-counterclockwise me-2"></i>Reset viewer</button></li>
+                </ul>
+            </div>
+        </div>
+        <button type="button" class="ct-analyze-btn" id="btnAnalyzeScan" disabled>
+            <i class="bi bi-cpu"></i>
+            <span>Analyze Scan</span>
+        </button>
+    </div>
+
+    <div class="ct-viewer-body">
+        <aside class="ct-thumbs-panel" id="thumbsPanel" aria-label="Slice thumbnails">
+            <div class="ct-thumbs-panel__header">
+                <span>Slices</span>
+                <span id="thumbCounter">0 / 0</span>
+            </div>
+            <div class="ct-thumbs-list" id="thumbsList"></div>
+        </aside>
+
+        <main class="ct-main-panel">
+            <div class="ct-empty-state" id="emptyState">
+                <div class="ct-empty-state__icon"><i class="bi bi-images"></i></div>
+                <h2>No scan loaded</h2>
+                <p>Upload a DICOM (.dcm) or chest CT image (PNG/JPG) to begin review.</p>
+                <label class="ct-upload-hero" for="ctUploadInputHero">
+                    <i class="bi bi-cloud-arrow-up"></i>
+                    <span>Upload CT / DICOM</span>
+                </label>
+                <input type="file" id="ctUploadInputHero" class="d-none"
+                       accept="image/png,image/jpeg,application/dicom,.dcm,.dicm" />
+            </div>
+
+            <div class="ct-viewport-wrap d-none" id="viewportWrap">
+                <div class="ct-viewport-toolbar">
+                    <span id="currentSliceLabel">—</span>
+                    <span id="zoomLabel">100%</span>
+                </div>
+                <div class="ct-viewport" id="viewport">
+                    <img id="mainSliceImage" alt="CT slice" draggable="false" />
+                    <div class="ct-viewport-loading d-none" id="viewportLoading">
+                        <div class="ct-spinner"></div>
+                        <span>Loading slice…</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <aside class="ct-ai-panel" aria-label="AI analysis">
+            <div class="ct-ai-panel__header">
+                <i class="bi bi-activity"></i>
+                <span>AI Analysis</span>
+            </div>
+            <div class="ct-ai-panel__body" id="aiPanelBody">
+                <div class="ct-ai-placeholder" id="aiPlaceholder">
+                    <i class="bi bi-lightning-charge"></i>
+                    <p>Click <strong>Analyze Scan</strong> to run the DICOM pipeline and LungAI inference.</p>
+                </div>
+                <div class="ct-ai-results d-none" id="aiResults">
+                    <div class="ct-ai-metric">
+                        <span class="ct-ai-metric__label">Predicted disease</span>
+                        <span class="ct-ai-metric__value" id="aiPredicted">—</span>
+                    </div>
+                    <div class="ct-ai-metric">
+                        <span class="ct-ai-metric__label">Confidence score</span>
+                        <div class="ct-confidence-bar">
+                            <div class="ct-confidence-bar__fill" id="aiConfidenceBar"></div>
+                        </div>
+                        <span class="ct-ai-metric__value" id="aiConfidence">—</span>
+                    </div>
+                    <div class="ct-ai-metric">
+                        <span class="ct-ai-metric__label">Risk level</span>
+                        <span class="ct-risk-badge" id="aiRisk">—</span>
+                    </div>
+                    <div class="ct-ai-metric">
+                        <span class="ct-ai-metric__label">Model</span>
+                        <span class="ct-ai-model" id="aiModel">—</span>
+                    </div>
+                    <div class="ct-prob-list" id="aiProbList"></div>
+                </div>
+                <div class="ct-ai-analyzing d-none" id="aiAnalyzing">
+                    <div class="ct-spinner"></div>
+                    <p>Running DICOM pipeline &amp; LungAI…</p>
+                    <small>This may take a minute for multi-slice volumes.</small>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <div class="ct-series-drawer d-none" id="seriesDrawer">
+        <div class="ct-series-drawer__content">
+            <h3>Series information</h3>
+            <dl id="seriesMetaList"></dl>
+            <button type="button" class="ct-tool-btn" id="btnCloseSeries">Close</button>
+        </div>
+    </div>
+
+    <div class="ct-toast d-none" id="ctToast" role="alert"></div>
+</div>
+
+@Html.AntiForgeryToken()
+
+@section Scripts {
+    <script src="~/js/ct-scan-viewer.js" asp-append-version="true"></script>
+}

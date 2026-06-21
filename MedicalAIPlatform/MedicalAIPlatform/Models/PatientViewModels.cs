@@ -125,8 +125,11 @@ namespace MedicalAIPlatform.Models
         public DateTime ScanDate { get; set; }
         public string? FileName { get; set; }
         public string? ImageDataUrl { get; set; }
+        public int? ScanAiAnalysisId { get; set; }
+        public string AnalysisStatus { get; set; } = ScanAiAnalysisStatuses.Pending;
         public string? LinkedModels { get; set; }
         public string? GeneratedResult { get; set; }
         public DateTime? ResultGeneratedAt { get; set; }
+        public Guid? MedicalReportId { get; set; }
     }
 }

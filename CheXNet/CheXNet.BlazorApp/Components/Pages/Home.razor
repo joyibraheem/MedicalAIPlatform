@@ -1,0 +1,563 @@
+@page "/"
+@rendermode InteractiveServer
+
+@using CheXNet.BlazorApp.Models
+@inject CheXNet.BlazorApp.Services.CheXNetApiClient CheXNetApi
+@inject CheXNet.BlazorApp.Services.BioBertApiClient BioBertApi
+@inject CheXNet.BlazorApp.Services.LungAIApiClient LungAIApi
+@inject CheXNet.BlazorApp.Services.CheXNetStateService StateService
+@inject NavigationManager Navigation
+
+<PageTitle>MedAI Pro - Multi-Modal Analysis</PageTitle>
+
+<div class="container-fluid py-4 px-lg-5">
+    <!-- Header Section -->
+    <div class="mb-5 d-flex align-items-center justify-content-between animate-fade-in">
+        <div>
+            <h1 class="display-5 fw-bold mb-1 outfit text-primary">Diagnostic Command Center</h1>
+            <div class="text-secondary fs-5">
+                Multi-modal AI Analysis System <span class="badge bg-primary-light ms-2 rounded-pill outfit fs-6">v2.0 PRO</span>
+            </div>
+        </div>
+        <div class="glass-card p-3 d-none d-md-block">
+            <div class="d-flex align-items-center">
+                <div class="pulse-container me-3">
+                    <div class="pulse-dot"></div>
+                </div>
+                <div>
+                    <div class="small fw-bold text-slate-900">System Status</div>
+                    <div class="small text-success fw-medium">Neural Engines Online</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <div class="alert alert-danger border-0 shadow-lg rounded-4 mb-4 animate-fade-in" role="alert">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-exclamation-octagon-fill fs-4 me-3"></i>
+                <div>
+                    <div class="fw-bold">Analysis Interrupted</div>
+                    <div class="small">@_error</div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="row g-4 animate-fade-in" style="animation-delay: 0.1s">
+        <!-- Input Panel -->
+        <div class="col-xl-4 col-lg-5">
+            <div class="glass-card glass-card-hover h-100 p-4">
+                <div class="d-flex align-items-center mb-4">
+                    <div class="bg-primary text-white p-2 rounded-3 me-3">
+                        <i class="bi bi-input-cursor-text fs-5"></i>
+                    </div>
+                    <h5 class="mb-0 fw-bold outfit">Case Input</h5>
+                </div>
+                
+                <!-- 1. X-Ray Upload -->
+                <div class="mb-4">
+                    <label class="form-label small fw-bold text-uppercase text-slate-500 mb-2">1. Radiology Scan (X-Ray) – CheXNet</label>
+                    <label class="upload-zone d-block" for="fileInput">
+                        <i class="bi bi-cloud-arrow-up-fill fs-1 text-primary mb-2 d-xl-block"></i>
+                        <div class="fw-bold text-slate-900">@(_hasImage ? _imageFileName : "Upload Chest X-Ray")</div>
+                        <div class="small text-secondary">DICOM, PNG or JPG supported</div>
+                        <InputFile id="fileInput" OnChange="OnFileSelected" accept="image/png,image/jpeg" class="d-none" />
+                    </label>
+                </div>
+
+                @if (_imageBytes is not null)
+                {
+                    <div class="mb-4 position-relative rounded-4 overflow-hidden border shadow-sm bg-black" style="height: 250px;">
+                        <img src="@_imageDataUrl" class="w-100 h-100 object-fit-contain" alt="X-Ray Preview" />
+                        <button class="btn btn-sm btn-danger position-absolute top-0 end-0 m-2 rounded-circle" @onclick="() => { _imageBytes = null; _imageDataUrl = null; }">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    </div>
+                }
+
+                <!-- 2. Clinical Text -->
+                <div class="mb-4">
+                    <label class="form-label small fw-bold text-uppercase text-slate-500 mb-2">2. Clinical Presentation (Text) – BioBERT</label>
+                    <div class="position-relative">
+                        <textarea class="form-control rounded-4 p-3 border-0 bg-white shadow-sm" rows="4" 
+                                  placeholder="Enter patient symptoms, history, or specific complaints for BioBERT analysis..."
+                                  @bind="_clinicalNote"></textarea>
+                        <div class="position-absolute bottom-0 end-0 p-2 opacity-50 small">
+                            @(_clinicalNote?.Length ?? 0) chars
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. CT Scan Upload -->
+                <div class="mb-4">
+                    <label class="form-label small fw-bold text-uppercase text-slate-500 mb-2">3. CT Scan – LungAI</label>
+                    <label class="upload-zone d-block" for="ctFileInput">
+                        <i class="bi bi-cloud-arrow-up-fill fs-1 text-info mb-2 d-xl-block"></i>
+                        <div class="fw-bold text-slate-900">@(_hasCtImage ? _ctFileName : "Upload CT Scan")</div>
+                        <div class="small text-secondary">PNG or JPG supported</div>
+                        <InputFile id="ctFileInput" OnChange="OnCtFileSelected" accept="image/png,image/jpeg" class="d-none" />
+                    </label>
+                </div>
+
+                @if (_ctBytes is not null)
+                {
+                    <div class="mb-4 position-relative rounded-4 overflow-hidden border shadow-sm bg-black" style="height: 200px;">
+                        <img src="@_ctDataUrl" class="w-100 h-100 object-fit-contain" alt="CT Preview" />
+                        <button class="btn btn-sm btn-danger position-absolute top-0 end-0 m-2 rounded-circle" @onclick="ClearCtImage">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    </div>
+                }
+
+                <!-- Analysis Actions: individual + combined -->
+                <div class="d-grid gap-3">
+                    <div class="row g-2">
+                        <div class="col-4">
+                            <button class="btn btn-outline-premium w-100 py-2 d-flex align-items-center justify-content-center" 
+                                    disabled="@(!_hasImage || _isBusy)" 
+                                    @onclick="AnalyzeImageAsync">
+                                <i class="bi bi-image me-2"></i> X-Ray
+                            </button>
+                        </div>
+                        <div class="col-4">
+                            <button class="btn btn-outline-premium w-100 py-2 d-flex align-items-center justify-content-center" 
+                                    disabled="@(string.IsNullOrWhiteSpace(_clinicalNote) || _isBusy)" 
+                                    @onclick="AnalyzeTextAsync">
+                                <i class="bi bi-fonts me-2"></i> Text
+                            </button>
+                        </div>
+                        <div class="col-4">
+                            <button class="btn btn-outline-info w-100 py-2 d-flex align-items-center justify-content-center" 
+                                    disabled="@(!_hasCtImage || _isBusy)" 
+                                    @onclick="AnalyzeCtAsync">
+                                <i class="bi bi-braces me-2"></i> CT
+                            </button>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-premium btn-lg py-3 outfit shadow-lg d-flex align-items-center justify-content-center"
+                            disabled="@((!_hasImage && string.IsNullOrWhiteSpace(_clinicalNote) && !_hasCtImage) || _isBusy)"
+                            @onclick="AnalyzeAllAsync">
+                        @if (_isBusy)
+                        {
+                            <span class="spinner-border spinner-border-sm me-3" role="status"></span>
+                            <span>Synthesizing Models...</span>
+                        }
+                        else
+                        {
+                            <i class="bi bi-cpu-fill me-2"></i>
+                            <span>Combined Results (all three)</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Output Display Panel -->
+        <div class="col-xl-8 col-lg-7">
+            <div class="glass-card shadow-lg h-100 p-0 overflow-hidden d-flex flex-column">
+                <div class="p-4 border-bottom bg-white bg-opacity-50 d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-primary-bg text-primary p-2 rounded-3 me-3">
+                            <i class="bi bi-clipboard2-pulse-fill fs-5"></i>
+                        </div>
+                        <h5 class="mb-0 fw-bold outfit">Findings Report</h5>
+                    </div>
+                    @if (_results is not null || _bioBertResults is not null || _lungAIResults is not null)
+                    {
+                        <div class="d-flex gap-2">
+                             <button class="btn btn-sm btn-outline-secondary rounded-pill outfit" @onclick="ClearAllResults">
+                                <i class="bi bi-trash me-1"></i> Clear
+                            </button>
+                            <button class="btn btn-sm btn-premium rounded-pill outfit px-3" @onclick="NavigateToChat">
+                                <i class="bi bi-chat-left-dots-fill me-1"></i> Consult AI
+                            </button>
+                        </div>
+                    }
+                </div>
+
+                <div class="flex-grow-1 p-4 overflow-auto bg-slate-50 bg-opacity-30">
+                    @if (_results is null && _bioBertResults is null && _lungAIResults is null)
+                    {
+                        <div class="d-flex flex-column align-items-center justify-content-center h-100 py-5 animate-fade-in">
+                            <div class="empty-state-icon mb-4">
+                                <i class="bi bi-activity text-primary opacity-20" style="font-size: 5rem;"></i>
+                            </div>
+                            <h4 class="fw-bold text-slate-900 outfit">Ready for Analysis</h4>
+                            <p class="text-secondary text-center max-w-md">
+                                Upload a patient scan or enter clinical notes to begin the automated diagnostic workflow.
+                            </p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="row g-4">
+                            <!-- Visual Evidence Segment -->
+                            @if (_results is not null)
+                            {
+                                @foreach (var result in _results)
+                                {
+                                    <div class="col-12 animate-fade-in">
+                                        <div class="bg-white rounded-4 shadow-sm border p-4">
+                                            <div class="d-flex align-items-center justify-content-between mb-4">
+                                                <h6 class="fw-bold text-primary outfit mb-0">
+                                                    <i class="bi bi-eye-fill me-2"></i>1. X-Ray – CheXNet: @result.Key
+                                                </h6>
+                                            </div>
+                                            
+                                            <div class="row g-4">
+                                                <div class="col-lg-6">
+                                                    <div class="mb-3 d-flex justify-content-between align-items-end">
+                                                        <span class="small fw-bold text-slate-500">Pathology Probabilities</span>
+                                                        <span class="small text-muted">Confidence Index</span>
+                                                    </div>
+                                                    <div class="prediction-stack">
+                                                        @foreach (var item in result.Value.Probabilities.OrderByDescending(kv => kv.Value).Take(14))
+                                                        {
+                                                            var score = item.Value * 100;
+                                                            var severityClass = score > 60 ? "bg-danger" : (score > 30 ? "bg-warning" : "bg-info");
+                                                            
+                                                            <div class="mb-4">
+                                                                <div class="d-flex justify-content-between mb-2">
+                                                                    <span class="fw-bold small">@item.Key</span>
+                                                                    <span class="fw-bold small @(score > 60 ? "text-danger" : "")">@score.ToString("F1")%</span>
+                                                                </div>
+                                                                <div class="progress-premium">
+                                                                    <div class="progress-bar-premium @severityClass" style="width: @score%"></div>
+                                                                </div>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                </div>
+                                                <div class="col-lg-6">
+                                                    <div class="heatmap-card rounded-4 border overflow-hidden position-relative shadow-sm bg-black">
+                                                        <div class="heatmap-container" style="height: 350px;">
+                                                            <img src="@_imageDataUrl" class="heatmap-img h-100 object-fit-contain" />
+                                                            <img src="@result.Value.Heatmap.DataUrl" class="heatmap-overlay h-100 object-fit-contain" 
+                                                                 style="opacity: @(_heatmapOpacity / 100.0)" />
+                                                        </div>
+                                                        <div class="p-3 bg-white border-top">
+                                                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                                                <label class="small fw-bold outfit">Heatmap Opacity</label>
+                                                                <span class="badge bg-slate-50 text-dark border">@_heatmapOpacity%</span>
+                                                            </div>
+                                                            <input type="range" class="form-range" min="0" max="100" @bind="_heatmapOpacity" @bind:event="oninput" />
+                                                            <div class="mt-2 small text-center text-muted outfit">
+                                                                Focus: <strong>@result.Value.Heatmap.ClassName</strong>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            }
+
+                            <!-- CT (LungAI) Segment -->
+                            @if (_lungAIResults is not null)
+                            {
+                                <div class="col-12 animate-fade-in">
+                                    <div class="bg-white rounded-4 shadow-sm border p-4">
+                                        <h6 class="fw-bold text-info outfit mb-4">
+                                            <i class="bi bi-braces me-2"></i>3. CT Scan – LungAI (Lung Cancer Classification)
+                                        </h6>
+                                        @if (!string.IsNullOrEmpty(_lungAIResults.Error))
+                                        {
+                                            <div class="text-danger small">@_lungAIResults.Error</div>
+                                        }
+                                        else
+                                        {
+                                            <div class="row g-4">
+                                                <div class="col-md-6">
+                                                    <div class="p-3 bg-info bg-opacity-10 rounded-4 border border-info border-opacity-20">
+                                                        <div class="small fw-bold text-slate-500 text-uppercase mb-2">Predicted Class</div>
+                                                        <div class="display-6 fw-bold text-info outfit">@_lungAIResults.PredictedClass</div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="small fw-bold text-slate-500 text-uppercase mb-2">Class Probabilities</div>
+                                                    @foreach (var kv in _lungAIResults.Probabilities.OrderByDescending(x => x.Value))
+                                                    {
+                                                        var pct = kv.Value * 100;
+                                                        <div class="mb-2">
+                                                            <div class="d-flex justify-content-between mb-1">
+                                                                <span class="fw-bold small">@kv.Key</span>
+                                                                <span class="fw-bold small">@pct.ToString("F1")%</span>
+                                                            </div>
+                                                            <div class="progress" style="height: 8px;">
+                                                                <div class="progress-bar bg-info" style="width: @pct%"></div>
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+
+                            <!-- Linguistic Insights Segment (2. Text) -->
+                            @if (_bioBertResults is not null)
+                            {
+                                <div class="col-12 animate-fade-in">
+                                    <div class="bg-white rounded-4 shadow-sm border p-4">
+                                        <h6 class="fw-bold text-info outfit mb-4">
+                                            <i class="bi bi-body-text me-2"></i>2. Clinical Text – BioBERT (NLP)
+                                        </h6>
+                                        
+                                        <div class="row g-4">
+                                            <!-- Entity Extraction -->
+                                            <div class="col-md-7">
+                                                <div class="p-3 bg-slate-50 rounded-4 border border-dashed">
+                                                    <div class="small fw-bold text-slate-500 text-uppercase mb-3">Key Medical Entities</div>
+                                                    <div class="d-flex flex-wrap gap-2">
+                                                        @foreach (var entity in _bioBertResults.Entities.OrderByDescending(e => e.Score))
+                                                        {
+                                                            var variant = entity.EntityGroup.ToLower() switch 
+                                                            {
+                                                                "problem" or "disease" => "danger",
+                                                                "treatment" or "drug" => "success",
+                                                                "test" => "warning",
+                                                                _ => "primary"
+                                                            };
+                                                            <span class="badge rounded-pill px-3 py-2 fs-6 shadow-sm d-flex align-items-center bg-@variant bg-opacity-10 text-@variant border border-@variant">
+                                                                <i class="bi bi-tag-fill me-2"></i>
+                                                                @entity.Word <span class="ms-2 opacity-50 small">@entity.EntityGroup</span>
+                                                            </span>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Diagnostic Suggestion -->
+                                            <div class="col-md-5">
+                                                <div class="p-4 bg-info bg-opacity-5 rounded-4 border border-info border-opacity-20 h-100">
+                                                    <h6 class="fw-bold outfit text-info">Inferred Context</h6>
+                                                    <p class="small text-secondary mb-3">Language model identified strong indicators of:</p>
+                                                    @{
+                                                        var topEntity = _bioBertResults.Entities.FirstOrDefault();
+                                                        if (topEntity != null)
+                                                        {
+                                                            <div class="text-center py-3">
+                                                                <div class="display-6 fw-bold text-info outfit">@topEntity.Word</div>
+                                                                <div class="small fw-bold text-uppercase mt-2">@topEntity.EntityGroup Identified</div>
+                                                            </div>
+                                                        }
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .pulse-container { position: relative; width: 12px; height: 12px; }
+    .pulse-dot {
+        width: 12px; height: 12px; background: #10b981; border-radius: 50%;
+        position: relative;
+    }
+    .pulse-dot::after {
+        content: ""; position: absolute; width: 100%; height: 100%;
+        border-radius: 50%; background: inherit; opacity: 0.5;
+        animation: pulse 2s infinite;
+    }
+    @@keyframes pulse {
+        0% { transform: scale(1); opacity: 0.8; }
+        100% { transform: scale(2.5); opacity: 0; }
+    }
+</style>
+
+<style>
+    .glass-card {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 2rem;
+    }
+    
+    .upload-area {
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background: rgba(0, 123, 255, 0.05);
+        border-color: #007bff;
+    }
+    
+    .upload-area:hover { background: rgba(0, 123, 255, 0.1); }
+    
+    .preview-container img { width: 100%; height: 100%; object-fit: contain; }
+</style>
+
+@code {
+    private bool _isBusy;
+    private string? _error;
+
+    // Inputs
+    private byte[]? _imageBytes;
+    private string? _imageDataUrl;
+    private string _imageFileName = "xray.jpg";
+    private string _imageContentType = "image/jpeg";
+    private string _clinicalNote = "";
+
+    private byte[]? _ctBytes;
+    private string? _ctDataUrl;
+    private string _ctFileName = "ct.jpg";
+    private string _ctContentType = "image/jpeg";
+
+    private bool _hasImage => _imageBytes is { Length: > 0 };
+    private bool _hasCtImage => _ctBytes is { Length: > 0 };
+
+    // Results
+    private Dictionary<string, CheXNetPredictionResponse>? _results;
+    private BioBertResponse? _bioBertResults;
+    private LungAICtResponse? _lungAIResults;
+    private int _heatmapOpacity = 50;
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        _error = null;
+        var file = e.File;
+        if (file.Size > 10 * 1024 * 1024)
+        {
+            _error = "File is too large (max 10MB).";
+            return;
+        }
+
+        await using var stream = file.OpenReadStream(10 * 1024 * 1024);
+        using var ms = new MemoryStream();
+        await stream.CopyToAsync(ms);
+        _imageBytes = ms.ToArray();
+        _imageFileName = file.Name;
+        _imageContentType = file.ContentType;
+        _imageDataUrl = $"data:{_imageContentType};base64,{Convert.ToBase64String(_imageBytes)}";
+    }
+
+    private async Task OnCtFileSelected(InputFileChangeEventArgs e)
+    {
+        _error = null;
+        var file = e.File;
+        if (file.Size > 10 * 1024 * 1024) { _error = "CT file is too large (max 10MB)."; return; }
+        await using var stream = file.OpenReadStream(10 * 1024 * 1024);
+        using var ms = new MemoryStream();
+        await stream.CopyToAsync(ms);
+        _ctBytes = ms.ToArray();
+        _ctFileName = file.Name;
+        _ctContentType = file.ContentType;
+        _ctDataUrl = $"data:{_ctContentType};base64,{Convert.ToBase64String(_ctBytes)}";
+    }
+
+    private void ClearCtImage()
+    {
+        _ctBytes = null;
+        _ctDataUrl = null;
+    }
+
+    private void ClearAllResults()
+    {
+        _results = null;
+        _bioBertResults = null;
+        _lungAIResults = null;
+        StateService.ClearResults();
+    }
+
+    private async Task AnalyzeImageAsync()
+    {
+        if (!_hasImage) return;
+        await RunAnalysisAsync(runImage: true, runText: false, runCt: false);
+    }
+
+    private async Task AnalyzeTextAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_clinicalNote)) return;
+        await RunAnalysisAsync(runImage: false, runText: true, runCt: false);
+    }
+
+    private async Task AnalyzeCtAsync()
+    {
+        if (!_hasCtImage || _ctBytes is null) return;
+        await RunAnalysisAsync(runImage: false, runText: false, runCt: true);
+    }
+
+    private async Task AnalyzeAllAsync()
+    {
+        await RunAnalysisAsync(runImage: _hasImage, runText: !string.IsNullOrWhiteSpace(_clinicalNote), runCt: _hasCtImage);
+    }
+
+    private async Task RunAnalysisAsync(bool runImage, bool runText, bool runCt)
+    {
+        _isBusy = true;
+        _error = null;
+
+        _results = null;
+        _bioBertResults = null;
+        _lungAIResults = null;
+
+        try
+        {
+            Task<Dictionary<string, CheXNetPredictionResponse>>? chexTask = null;
+            Task<BioBertResponse>? bertTask = null;
+            Task<LungAICtResponse>? ctTask = null;
+
+            if (runImage && _hasImage && _imageBytes is not null)
+            {
+                chexTask = CheXNetApi.PredictAsync(
+                    imageBytes: _imageBytes,
+                    fileName: _imageFileName,
+                    contentType: _imageContentType,
+                    models: "CheXNet",
+                    topK: 14);
+            }
+
+            if (runText && !string.IsNullOrWhiteSpace(_clinicalNote))
+            {
+                bertTask = BioBertApi.PredictAsync(_clinicalNote);
+            }
+
+            if (runCt && _hasCtImage && _ctBytes is not null)
+            {
+                ctTask = LungAIApi.PredictCtAsync(_ctBytes, _ctFileName, _ctContentType);
+            }
+
+            if (chexTask is null && bertTask is null && ctTask is null)
+            {
+                _error = "Please provide at least one input (X-Ray, Text, or CT).";
+                return;
+            }
+
+            var toWait = new List<Task>();
+            if (chexTask is not null) toWait.Add(chexTask);
+            if (bertTask is not null) toWait.Add(bertTask);
+            if (ctTask is not null) toWait.Add(ctTask);
+            await Task.WhenAll(toWait);
+
+            if (chexTask is not null) _results = await chexTask;
+            if (bertTask is not null) _bioBertResults = await bertTask;
+            if (ctTask is not null) _lungAIResults = await ctTask;
+
+            StateService.SetResults(_results, _bioBertResults, _lungAIResults);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private void NavigateToChat()
+    {
+        Navigation.NavigateTo("/chat");
+    }
+}

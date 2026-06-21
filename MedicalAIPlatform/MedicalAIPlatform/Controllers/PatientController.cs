@@ -14,7 +14,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MedicalAIPlatform.Controllers
 {
-    [Authorize(Roles = "Admin,Doctor")]
+    [Authorize(Policy = "VerifiedMedicalUser")]
     public class PatientController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -22,37 +22,28 @@ namespace MedicalAIPlatform.Controllers
         private readonly CheXNetApiClient _cheXNetApi;
         private readonly BioBertApiClient _bioBertApi;
         private readonly LungAIApiClient _lungAIApi;
+        private readonly ScanAiAnalysisPipelineService _analysisPipeline;
 
         public PatientController(
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
             CheXNetApiClient cheXNetApi,
             BioBertApiClient bioBertApi,
-            LungAIApiClient lungAIApi)
+            LungAIApiClient lungAIApi,
+            ScanAiAnalysisPipelineService analysisPipeline)
         {
             _context = context;
             _userManager = userManager;
             _cheXNetApi = cheXNetApi;
             _bioBertApi = bioBertApi;
             _lungAIApi = lungAIApi;
+            _analysisPipeline = analysisPipeline;
         }
 
-        // GET: Patient - List all patients with search
-        public async Task<IActionResult> Index(string searchTerm = "")
+        // GET: Patient — full list; search filters rows in the browser (no query-string navigation).
+        public async Task<IActionResult> Index()
         {
-            ViewBag.SearchTerm = searchTerm;
-            var query = _context.Patients.AsQueryable();
-
-            if (!string.IsNullOrWhiteSpace(searchTerm))
-            {
-                query = query.Where(p =>
-                    p.FirstName.Contains(searchTerm) ||
-                    p.LastName.Contains(searchTerm) ||
-                    p.PatientId != null && p.PatientId.Contains(searchTerm) ||
-                    p.Email != null && p.Email.Contains(searchTerm));
-            }
-
-            var patients = await query
+            var patients = await _context.Patients.AsQueryable()
                 .OrderByDescending(p => p.CreatedAt)
                 .Select(p => new PatientViewModel
                 {
@@ -73,6 +64,39 @@ namespace MedicalAIPlatform.Controllers
                 .ToListAsync();
 
             return View(patients);
+        }
+
+        /// <summary>JSON search for the Select Patient flow (server-side filter; min 2 characters).</summary>
+        [HttpGet]
+        public async Task<IActionResult> SearchPatients(string? q, CancellationToken cancellationToken = default)
+        {
+            q = q?.Trim() ?? "";
+            if (q.Length < 2)
+                return Json(Array.Empty<object>());
+
+            var matches = await _context.Patients.AsQueryable()
+                .Where(p =>
+                    p.FirstName.Contains(q) ||
+                    p.LastName.Contains(q) ||
+                    (p.PatientId != null && p.PatientId.Contains(q)) ||
+                    (p.Email != null && p.Email.Contains(q)))
+                .OrderByDescending(p => p.CreatedAt)
+                .Take(100)
+                .Select(p => new { p.Id, p.FirstName, p.LastName, p.PatientId, p.DateOfBirth })
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            var rows = matches.Select(p => new
+            {
+                id = p.Id,
+                fullName = $"{p.FirstName} {p.LastName}",
+                patientId = p.PatientId ?? "",
+                dateOfBirth = p.DateOfBirth.ToString("yyyy-MM-dd"),
+                initials =
+                    $"{(string.IsNullOrEmpty(p.FirstName) ? "?" : p.FirstName[0])}{(string.IsNullOrEmpty(p.LastName) ? "?" : p.LastName[0])}"
+            }).ToList();
+
+            return Json(rows);
         }
 
         // GET: Patient/Create - Form to create new patient
@@ -194,6 +218,8 @@ namespace MedicalAIPlatform.Controllers
             var patient = await _context.Patients
                 .Include(p => p.HistoryEntries)
                 .Include(p => p.Scans)
+                    .ThenInclude(s => s.AiAnalysis!)
+                        .ThenInclude(a => a.MedicalReport)
                 .FirstOrDefaultAsync(p => p.Id == id);
 
             if (patient == null)
@@ -221,9 +247,12 @@ namespace MedicalAIPlatform.Controllers
                     ImageDataUrl = s.ImageDataUrl ?? (s.ImageData != null
                         ? $"data:{s.ContentType ?? "image/jpeg"};base64,{Convert.ToBase64String(s.ImageData)}"
                         : null),
-                    LinkedModels = s.LinkedModels,
-                    GeneratedResult = s.GeneratedResult,
-                    ResultGeneratedAt = s.ResultGeneratedAt
+                    ScanAiAnalysisId = s.AiAnalysis?.Id,
+                    AnalysisStatus = s.AiAnalysis?.Status ?? ScanAiAnalysisStatuses.Pending,
+                    LinkedModels = s.AiAnalysis?.LinkedModels,
+                    GeneratedResult = s.AiAnalysis?.GeneratedResult,
+                    ResultGeneratedAt = s.AiAnalysis?.ResultGeneratedAt,
+                    MedicalReportId = s.AiAnalysis?.MedicalReport?.Id
                 }).ToList()
             };
 
@@ -300,6 +329,7 @@ namespace MedicalAIPlatform.Controllers
                 var scan = await _context.PatientScans
                     .Include(s => s.Patient)
                     .Include(s => s.PatientHistory)
+                    .Include(s => s.AiAnalysis)
                     .FirstOrDefaultAsync(s => s.Id == scanId && s.PatientId == patientId);
 
                 if (scan == null)
@@ -379,24 +409,24 @@ namespace MedicalAIPlatform.Controllers
                     }
                 }
 
-                // Update scan with linked models and results
-                scan.LinkedModels = string.Join(",", linkedModels);
-                scan.CheXNetResults = chexnetJson;
-                scan.BioBertResults = biobertJson;
-                scan.LungAIResults = lungaiJson;
+                var analysis = scan.AiAnalysis
+                    ?? await _analysisPipeline.GetOrCreateForScanAsync(scan.Id, user.Id);
 
-                // Generate combined result summary
-                scan.GeneratedResult = GenerateResultSummary(chexnetJson, biobertJson, lungaiJson);
-                scan.ResultGeneratedAt = DateTime.UtcNow;
-
-                await _context.SaveChangesAsync();
+                await _analysisPipeline.ApplyModelResultsAsync(
+                    analysis,
+                    chexnetJson,
+                    biobertJson,
+                    lungaiJson,
+                    linkedModels,
+                    GenerateResultSummary(chexnetJson, biobertJson, lungaiJson));
 
                 return Json(new
                 {
                     success = true,
                     message = "Models linked successfully.",
                     linkedModels = linkedModels,
-                    generatedResult = scan.GeneratedResult
+                    generatedResult = analysis.GeneratedResult,
+                    analysisStatus = analysis.Status
                 });
             }
             catch (Exception ex)
@@ -412,6 +442,8 @@ namespace MedicalAIPlatform.Controllers
             var patient = await _context.Patients
                 .Include(p => p.HistoryEntries)
                 .Include(p => p.Scans)
+                    .ThenInclude(s => s.AiAnalysis!)
+                        .ThenInclude(a => a.MedicalReport)
                 .FirstOrDefaultAsync(p => p.Id == id);
 
             if (patient == null)
@@ -448,11 +480,20 @@ namespace MedicalAIPlatform.Controllers
                     imageDataUrl = s.ImageDataUrl ?? (s.ImageData != null
                         ? $"data:{s.ContentType ?? "image/jpeg"};base64,{Convert.ToBase64String(s.ImageData)}"
                         : null),
-                    linkedModels = s.LinkedModels,
-                    chexnetResults = s.CheXNetResults != null ? JsonSerializer.Deserialize<object>(s.CheXNetResults) : null,
-                    biobertResults = s.BioBertResults != null ? JsonSerializer.Deserialize<object>(s.BioBertResults) : null,
-                    lungaiResults = s.LungAIResults != null ? JsonSerializer.Deserialize<object>(s.LungAIResults) : null,
-                    generatedResult = s.GeneratedResult
+                    scanAiAnalysisId = s.AiAnalysis?.Id,
+                    analysisStatus = s.AiAnalysis?.Status ?? ScanAiAnalysisStatuses.Pending,
+                    linkedModels = s.AiAnalysis?.LinkedModels,
+                    chexnetResults = s.AiAnalysis?.CheXNetResults != null
+                        ? JsonSerializer.Deserialize<object>(s.AiAnalysis.CheXNetResults)
+                        : null,
+                    biobertResults = s.AiAnalysis?.BioBertResults != null
+                        ? JsonSerializer.Deserialize<object>(s.AiAnalysis.BioBertResults)
+                        : null,
+                    lungaiResults = s.AiAnalysis?.LungAIResults != null
+                        ? JsonSerializer.Deserialize<object>(s.AiAnalysis.LungAIResults)
+                        : null,
+                    generatedResult = s.AiAnalysis?.GeneratedResult,
+                    medicalReportId = s.AiAnalysis?.MedicalReport?.Id
                 }).ToList(),
                 history = orderedHistory.Select(h => new
                 {
@@ -487,7 +528,13 @@ namespace MedicalAIPlatform.Controllers
                 ImageData = imageBytes,
                 ImageDataUrl = imageDataUrl,
                 CreatedByUserId = userId,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                AiAnalysis = new ScanAiAnalysis
+                {
+                    Status = ScanAiAnalysisStatuses.Pending,
+                    CreatedByUserId = userId,
+                    CreatedAt = DateTime.UtcNow
+                }
             };
 
             _context.PatientScans.Add(scan);

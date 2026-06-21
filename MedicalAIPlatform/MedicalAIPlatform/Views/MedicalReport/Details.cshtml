@@ -1,0 +1,254 @@
+@model MedicalReportResponseDto
+@using System.Text.Json
+@{
+    ViewData["Title"] = "Medical Report";
+    Layout = "_DoctorLayout";
+    var jsonOpts = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+}
+<link rel="stylesheet" href="~/css/medical-report.css" asp-append-version="true" />
+
+<div class="mr-page" data-report-id="@Model.Id" data-patient-id="@Model.PatientId">
+    <header class="mr-header">
+        <a class="mr-back" href="@Url.Action("Details", "Patient", new { id = Model.PatientId })" aria-label="Back to patient">&larr;</a>
+        <div class="mr-title-block">
+            <h1 class="mr-title">Medical Report</h1>
+            <div class="mr-meta">
+                Data generated (UTC): <strong>@Model.GeneratedAt.ToString("yyyy-MM-dd HH:mm")</strong>
+                @if (Model.DoctorModifiedAt is { } dm)
+                {
+                    <span class="mr-meta-sep">&middot;</span>
+                    <span>Last physician edit (UTC): <strong>@dm.ToString("yyyy-MM-dd HH:mm")</strong></span>
+                }
+            </div>
+        </div>
+        <div class="mr-badge @(Model.StatusBadge == "doctor_modified" ? "mr-badge-modified" : "mr-badge-ai")">
+            @(Model.StatusBadge == "doctor_modified" ? "Physician modified" : "AI generated baseline")
+        </div>
+    </header>
+
+    <script type="application/json" id="mr-ai-original">@Html.Raw(JsonSerializer.Serialize(Model.AiOriginal, jsonOpts))</script>
+
+    <section class="mr-card">
+        <h2 class="mr-card-title">Patient</h2>
+        <p class="mr-patient-line"><strong>@Model.PatientDisplayName</strong> &mdash; Chart #@Model.PatientId</p>
+        <dl class="mr-dl">
+            @foreach (var kv in Model.MedicalHistory.Demographics.OrderBy(k => k.Key))
+            {
+                <dt>@kv.Key</dt>
+                <dd>@kv.Value</dd>
+            }
+        </dl>
+        @foreach (var line in Model.MedicalHistory.SummaryLines)
+        {
+            <p class="mr-summary-line">@line</p>
+        }
+    </section>
+
+    <section class="mr-card">
+        <h2 class="mr-card-title"><span class="mr-icon" aria-hidden="true">&#8635;</span> Medical history (visits)</h2>
+        @if (Model.MedicalHistory.Visits.Count == 0)
+        {
+            <p class="mr-muted">No structured visit rows recorded.</p>
+        }
+        else
+        {
+            <ul class="mr-visit-list">
+                @foreach (var v in Model.MedicalHistory.Visits)
+                {
+                    <li class="mr-visit">
+                        <div class="mr-visit-head">@v.VisitDate &middot; @(v.VisitType ?? "Visit")</div>
+                        @if (!string.IsNullOrWhiteSpace(v.ChiefComplaint))
+                        {
+                            <div><span class="mr-label">Chief complaint:</span> @v.ChiefComplaint</div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(v.Diagnosis))
+                        {
+                            <div><span class="mr-label">Diagnosis:</span> @v.Diagnosis</div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(v.ClinicalNotes))
+                        {
+                            <div><span class="mr-label">Notes:</span> @v.ClinicalNotes</div>
+                        }
+                    </li>
+                }
+            </ul>
+        }
+    </section>
+
+    @{
+        var ai = Model.AiAnalysis;
+        var riskTierNorm = (ai.RiskTier ?? "").Trim().ToLowerInvariant();
+        var riskBadgeClass = riskTierNorm switch
+        {
+            "high" => "mr-risk-high",
+            "medium" => "mr-risk-medium",
+            "low" => "mr-risk-low",
+            _ => "mr-risk-minimal"
+        };
+        var riskBadgeLabel = string.IsNullOrWhiteSpace(ai.RiskTier)
+            ? "Tier —"
+            : $"{char.ToUpperInvariant(ai.RiskTier.Trim()[0])}{ai.RiskTier.Trim().Substring(1).ToLowerInvariant()} signal";
+        var hasModelProb = ai.ChexnetProbabilities.Count > 0 || ai.CtProbabilities.Count > 0;
+    }
+
+    <section class="mr-card mr-ai-card">
+        <div class="mr-ai-head">
+            <h2 class="mr-card-title"><span class="mr-ai-dot" aria-hidden="true"></span> AI analysis</h2>
+            <span class="mr-risk-badge @riskBadgeClass">@riskBadgeLabel</span>
+        </div>
+        @if (!hasModelProb && string.IsNullOrWhiteSpace(ai.TopConditionLabel))
+        {
+            <p class="mr-muted">No CheXNet or LungAI probabilities were captured on this report snapshot (legacy report or no imaging runs merged). Regenerate after uploading studies or running analytics.</p>
+        }
+        else
+        {
+            <div class="mr-ai-top">
+                <div class="mr-ai-top-label">Primary modeled finding</div>
+                @if (!string.IsNullOrWhiteSpace(ai.TopConditionLabel))
+                {
+                    <div class="mr-ai-top-value"><strong>@ai.TopConditionLabel</strong> — @ai.TopConditionProbability.ToString("P0")</div>
+                }
+                else
+                {
+                    <div class="mr-ai-top-value mr-muted">No dominant chest / CT class above detection threshold.</div>
+                }
+            </div>
+            <p class="mr-ai-prov">
+                @if (ai.UsedPatientStudies){ <span class="mr-chip mr-chip-study">Stored studies</span> }
+                @if (ai.UsedLiveSession){ <span class="mr-chip mr-chip-live">Live analytics session</span> }
+                @if (!ai.UsedPatientStudies && !ai.UsedLiveSession){ <span class="mr-muted">No study or session merges recorded.</span> }
+            </p>
+            @if (ai.ChexnetProbabilities.Count > 0)
+            {
+                <h3 class="mr-ai-subtitle">Chest radiograph modeling (CheXNet)</h3>
+                <table class="mr-ai-table">
+                    <thead><tr><th>Finding</th><th>Probability</th><th class="mr-ai-src">Source</th></tr></thead>
+                    <tbody>
+                    @foreach (var row in ai.ChexnetProbabilities)
+                    {
+                        var isTop = string.Equals(row.Label, ai.TopConditionLabel, StringComparison.OrdinalIgnoreCase);
+                        <tr class="@(isTop ? "mr-ai-row-top" : null)">
+                            <td><span class="mr-ai-find">@row.Label</span>@if (isTop){ <span class="mr-top-tag">Top</span> }</td>
+                            <td class="mr-ai-pct">@row.Probability.ToString("P0")</td>
+                            <td class="mr-ai-src mr-muted-cell">@row.Source</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            }
+            @if (ai.CtProbabilities.Count > 0)
+            {
+                <h3 class="mr-ai-subtitle">Volumetric CT modeling (LungAI)</h3>
+                <table class="mr-ai-table">
+                    <thead><tr><th>Finding</th><th>Probability</th><th class="mr-ai-src">Source</th></tr></thead>
+                    <tbody>
+                    @foreach (var row in ai.CtProbabilities)
+                    {
+                        var isTop = ai.ChexnetProbabilities.Count == 0 && string.Equals(row.Label, ai.TopConditionLabel, StringComparison.OrdinalIgnoreCase);
+                        <tr class="@(isTop ? "mr-ai-row-top" : null)">
+                            <td><span class="mr-ai-find">@row.Label</span>@if (isTop){ <span class="mr-top-tag">Top</span> }</td>
+                            <td class="mr-ai-pct">@row.Probability.ToString("P0")</td>
+                            <td class="mr-ai-src mr-muted-cell">@row.Source</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            }
+            @if (ai.ClinicalEntities.Count > 0)
+            {
+                <h3 class="mr-ai-subtitle">Clinical text entities (BioBERT)</h3>
+                <ul class="mr-ai-entities">
+                    @foreach (var e in ai.ClinicalEntities.Take(12))
+                    {
+                        <li><strong>@e.Text</strong> <span class="mr-muted">(@e.Group)</span> — @e.Score.ToString("P0")</li>
+                    }
+                </ul>
+            }
+            @if (!string.IsNullOrWhiteSpace(ai.HeatmapNote))
+            {
+                <p class="mr-ai-heatmap-note mr-muted">@ai.HeatmapNote</p>
+            }
+        }
+    </section>
+
+    <section class="mr-card mr-confidence-card">
+        <div class="mr-confidence-row">
+            <span class="mr-label">Confidence score</span>
+            <span class="mr-confidence-value">@Model.Confidence.ToString("P1")</span>
+        </div>
+        <div class="mr-confidence-row">
+            <span class="mr-label">Derivation</span>
+            <span>@Model.ConfidenceMethod</span>
+        </div>
+        @if (!string.IsNullOrWhiteSpace(ai.ConfidenceCaption))
+        {
+            <p class="mr-confidence-caption">@ai.ConfidenceCaption</p>
+        }
+        <div class="mr-confidence-row">
+            <span class="mr-label">Model version</span>
+            <span>@Model.ModelVersion</span>
+        </div>
+    </section>
+
+    @if (Model.OptionalImages.Count > 0)
+    {
+        <section class="mr-card mr-images-card">
+            <h2 class="mr-card-title">Optional imaging references</h2>
+            <div class="mr-image-grid">
+                @foreach (var img in Model.OptionalImages)
+                {
+                    <figure class="mr-figure">
+                        <figcaption>@img.Label</figcaption>
+                        <img src="@img.DataUrl" alt="@img.Label" loading="lazy" />
+                    </figure>
+                }
+            </div>
+        </section>
+    }
+
+    <section class="mr-card mr-narrative">
+        <h2 class="mr-card-title"><span class="mr-ai-dot" aria-hidden="true"></span> Findings</h2>
+        <div class="mr-view md-enter" data-field="findings-view">
+            <pre class="mr-pre">@Model.Findings</pre>
+        </div>
+        <div class="mr-edit md-enter mr-edit-hidden" data-field="findings-edit">
+            <label class="sr-only" for="mr-findings">Findings</label>
+            <textarea id="mr-findings" class="mr-textarea" rows="8">@Model.Findings</textarea>
+        </div>
+    </section>
+
+    <section class="mr-card mr-narrative">
+        <h2 class="mr-card-title"><span class="mr-ai-dot" aria-hidden="true"></span> Impression</h2>
+        <div class="mr-view md-enter" data-field="impression-view">
+            <pre class="mr-pre">@Model.Impression</pre>
+        </div>
+        <div class="mr-edit md-enter mr-edit-hidden" data-field="impression-edit">
+            <label class="sr-only" for="mr-impression">Impression</label>
+            <textarea id="mr-impression" class="mr-textarea" rows="6">@Model.Impression</textarea>
+        </div>
+    </section>
+
+    <section class="mr-card mr-narrative">
+        <h2 class="mr-card-title"><span class="mr-ai-dot" aria-hidden="true"></span> Recommendations</h2>
+        <div class="mr-view md-enter" data-field="recommendations-view">
+            <pre class="mr-pre">@Model.Recommendations</pre>
+        </div>
+        <div class="mr-edit md-enter mr-edit-hidden" data-field="recommendations-edit">
+            <label class="sr-only" for="mr-recommendations">Recommendations</label>
+            <textarea id="mr-recommendations" class="mr-textarea" rows="6">@Model.Recommendations</textarea>
+        </div>
+    </section>
+
+    <div class="mr-actions no-print">
+        <button type="button" class="mr-btn mr-btn-primary" id="mr-btn-edit">Edit</button>
+        <button type="button" class="mr-btn mr-btn-primary mr-btn-hidden" id="mr-btn-save">Save changes</button>
+        <button type="button" class="mr-btn mr-btn-ghost mr-btn-hidden" id="mr-btn-cancel">Cancel</button>
+        <button type="button" class="mr-btn mr-btn-warn" id="mr-btn-reset-ai">Revert to AI baseline</button>
+        <button type="button" class="mr-btn mr-btn-ghost" id="mr-btn-print">Print</button>
+        <a class="mr-btn mr-btn-secondary" id="mr-btn-pdf" href="@Url.Action("Pdf", new { id = Model.Id })">Download PDF</a>
+    </div>
+
+    <p class="mr-disclaimer no-print">AI-assisted structured drafting for workflow support only &mdash; not a regulated medical device output. Physician review is required before external distribution.</p>
+</div>
+
+<script src="~/js/medical-report.js" asp-append-version="true"></script>

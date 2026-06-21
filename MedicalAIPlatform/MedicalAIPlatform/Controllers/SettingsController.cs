@@ -1,3 +1,4 @@
+using System.Reflection;
 using MedicalAIPlatform.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -26,21 +27,41 @@ public class SettingsController : Controller
     [HttpGet]
     public async Task<IActionResult> Index()
     {
+        var informationalVersion = typeof(SettingsController).Assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+        var assemblyVersion = typeof(SettingsController).Assembly.GetName().Version?.ToString();
+        var versionLabel = informationalVersion ?? assemblyVersion ?? "1.0";
+
         var model = new SettingsViewModel
         {
             IsDarkMode = true,
-            Language = "en"
+            Language = "en",
+            AppVersion = versionLabel,
+            RoleDisplay = "Guest",
+            AccountStatusDisplay = "Not signed in",
+            LastLoginDisplay = "—",
+            FullName = "Guest user",
+            Email = ""
         };
 
         if (User?.Identity?.IsAuthenticated ?? false)
         {
+            model.RoleDisplay = User.IsInRole("Admin")
+                ? "Administrator"
+                : User.IsInRole("Doctor")
+                    ? "Doctor"
+                    : "Staff";
+            model.AccountStatusDisplay = "Active";
+            // Identity does not expose last login here; realistic placeholder for clinical UX demo.
+            model.LastLoginDisplay = $"Session active · {DateTime.Now:MMM d, yyyy h:mm tt} (local)";
+
             var user = await _userManager.GetUserAsync(User);
             if (user != null)
             {
                 model.IsDarkMode = user.IsDarkMode;
                 model.Language = user.Language;
-                model.FullName = user.FullName ?? user.UserName;
-                model.Email = user.Email;
+                model.FullName = user.FullName ?? user.UserName ?? "User";
+                model.Email = user.Email ?? "";
                 model.Specialization = user.Specialization ?? "Medical Specialist";
                 model.UserId = user.Id;
             }

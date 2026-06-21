@@ -1,4 +1,5 @@
 using MedicalAIPlatform.Models;
+using MedicalAIPlatform.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -16,19 +17,22 @@ public class AccountController : Controller
     private readonly ILogger<AccountController> _logger;
     private readonly IEmailSender _emailSender;
     private readonly Data.ApplicationDbContext _context;
+    private readonly DoctorRegistrationService _doctorRegistration;
 
     public AccountController(
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
         ILogger<AccountController> logger,
         IEmailSender emailSender,
-        Data.ApplicationDbContext context)
+        Data.ApplicationDbContext context,
+        DoctorRegistrationService doctorRegistration)
     {
         _userManager = userManager;
         _signInManager = signInManager;
         _logger = logger;
         _emailSender = emailSender;
         _context = context;
+        _doctorRegistration = doctorRegistration;
     }
 
     [AllowAnonymous]
@@ -66,7 +70,7 @@ public class AccountController : Controller
             FullName = model.FullName,
             Specialization = model.Specialization,
             CreatedAt = DateTime.UtcNow,
-            DoctorStatus = "Verified" 
+            DoctorStatus = DoctorRegistrationStatuses.Verified
         };
 
         var result = await _userManager.CreateAsync(user, model.Password);
@@ -123,10 +127,16 @@ public class AccountController : Controller
         if (result.Succeeded)
         {
             _logger.LogInformation("User signed in.");
-            if (!string.IsNullOrEmpty(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl))
+            var user = await _userManager.FindByEmailAsync(model.Email).ConfigureAwait(false);
+            if (user != null)
             {
-                return Redirect(model.ReturnUrl);
+                var redirect = await RedirectAfterSignInAsync(user, model.ReturnUrl).ConfigureAwait(false);
+                if (redirect != null)
+                    return redirect;
             }
+
+            if (!string.IsNullOrEmpty(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl))
+                return Redirect(model.ReturnUrl);
 
             return RedirectToAction("Index", "Dashboard");
         }
@@ -307,6 +317,16 @@ public class AccountController : Controller
         if (result.Succeeded)
         {
             _logger.LogInformation("User signed in with {Provider} provider.", info.LoginProvider);
+            var existingUser = await _userManager.FindByLoginAsync(info.LoginProvider, info.ProviderKey).ConfigureAwait(false)
+                         ?? await _userManager.FindByEmailAsync(
+                             info.Principal.FindFirstValue(ClaimTypes.Email) ?? "").ConfigureAwait(false);
+            if (existingUser != null)
+            {
+                var redirect = await RedirectAfterSignInAsync(existingUser, returnUrl).ConfigureAwait(false);
+                if (redirect != null)
+                    return redirect;
+            }
+
             return RedirectToLocal(returnUrl);
         }
 
@@ -337,7 +357,8 @@ public class AccountController : Controller
                 Email = email,
                 EmailConfirmed = true,
                 FullName = name,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                DoctorStatus = DoctorRegistrationStatuses.Pending
             };
 
             var createResult = await _userManager.CreateAsync(user);
@@ -350,8 +371,7 @@ public class AccountController : Controller
                 return View(nameof(Login));
             }
 
-            // Assign Doctor role by default for external login users
-            await _userManager.AddToRoleAsync(user, "Doctor");
+            // Google sign-up: pending admin approval — no Doctor role until approved.
         }
 
         // Add external login to user
@@ -368,6 +388,125 @@ public class AccountController : Controller
         await _signInManager.SignInAsync(user, isPersistent: false);
         _logger.LogInformation("User created an account using {Provider} provider.", info.LoginProvider);
 
+        var postSignIn = await RedirectAfterSignInAsync(user, returnUrl).ConfigureAwait(false);
+        return postSignIn ?? RedirectToAction(nameof(CompleteProfile));
+    }
+
+    [Authorize]
+    [HttpGet]
+    public async Task<IActionResult> CompleteProfile()
+    {
+        var user = await _userManager.GetUserAsync(User).ConfigureAwait(false);
+        if (user is null)
+            return RedirectToAction(nameof(Login));
+
+        if (!string.Equals(user.DoctorStatus, DoctorRegistrationStatuses.Pending, StringComparison.OrdinalIgnoreCase))
+            return RedirectToAction("Index", "Dashboard");
+
+        if (user.ProfileSubmittedAt is not null)
+            return RedirectToAction(nameof(ApprovalPending));
+
+        return View(new CompleteDoctorProfileViewModel
+        {
+            FullName = user.FullName ?? "",
+            Specialization = user.Specialization ?? "",
+            HospitalOrganization = user.HospitalOrganization ?? "",
+            MedicalLicenseNumber = user.MedicalLicenseNumber ?? "",
+            PhoneNumber = user.PhoneNumber ?? "",
+            RegistrationNotes = user.RegistrationNotes
+        });
+    }
+
+    [Authorize]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CompleteProfile(CompleteDoctorProfileViewModel model)
+    {
+        if (!ModelState.IsValid)
+            return View(model);
+
+        var user = await _userManager.GetUserAsync(User).ConfigureAwait(false);
+        if (user is null)
+            return RedirectToAction(nameof(Login));
+
+        var (ok, error) = await _doctorRegistration.SubmitProfileAsync(user, model, HttpContext.RequestAborted)
+            .ConfigureAwait(false);
+        if (!ok)
+        {
+            ModelState.AddModelError(string.Empty, error ?? "Could not submit profile.");
+            return View(model);
+        }
+
+        return RedirectToAction(nameof(ApprovalPending));
+    }
+
+    [Authorize]
+    [HttpGet]
+    public async Task<IActionResult> ChangePasswordRequired()
+    {
+        var user = await _userManager.GetUserAsync(User).ConfigureAwait(false);
+        if (user is null)
+            return RedirectToAction(nameof(Login));
+
+        if (!user.MustChangePasswordOnLogin)
+            return RedirectToAction("Index", "Dashboard");
+
+        return View(new ChangePasswordRequiredViewModel());
+    }
+
+    [Authorize]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ChangePasswordRequired(ChangePasswordRequiredViewModel model)
+    {
+        if (!ModelState.IsValid)
+            return View(model);
+
+        var user = await _userManager.GetUserAsync(User).ConfigureAwait(false);
+        if (user is null)
+            return RedirectToAction(nameof(Login));
+
+        var result = await _userManager.ChangePasswordAsync(user, model.CurrentPassword, model.NewPassword)
+            .ConfigureAwait(false);
+        if (!result.Succeeded)
+        {
+            foreach (var error in result.Errors)
+                ModelState.AddModelError(string.Empty, error.Description);
+            return View(model);
+        }
+
+        user.MustChangePasswordOnLogin = false;
+        await _userManager.UpdateAsync(user).ConfigureAwait(false);
+        await _signInManager.RefreshSignInAsync(user).ConfigureAwait(false);
+        _logger.LogInformation("User {UserId} completed required password change.", user.Id);
+
+        return await RedirectAfterSignInAsync(user, null).ConfigureAwait(false)
+               ?? RedirectToAction("Index", "Dashboard");
+    }
+
+    private async Task<IActionResult?> RedirectAfterSignInAsync(ApplicationUser user, string? returnUrl)
+    {
+        if (user.MustChangePasswordOnLogin)
+            return RedirectToAction(nameof(ChangePasswordRequired));
+
+        if (await _userManager.IsInRoleAsync(user, "Admin").ConfigureAwait(false))
+            return RedirectToLocal(returnUrl);
+
+        if (string.Equals(user.DoctorStatus, DoctorRegistrationStatuses.Rejected, StringComparison.OrdinalIgnoreCase))
+            return RedirectToAction(nameof(ApprovalPending));
+
+        if (string.Equals(user.DoctorStatus, DoctorRegistrationStatuses.Pending, StringComparison.OrdinalIgnoreCase))
+        {
+            if (user.ProfileSubmittedAt is null)
+                return RedirectToAction(nameof(CompleteProfile));
+            return RedirectToAction(nameof(ApprovalPending));
+        }
+
+        var isVerifiedDoctor = await _userManager.IsInRoleAsync(user, "Doctor").ConfigureAwait(false)
+            && string.Equals(user.DoctorStatus, DoctorRegistrationStatuses.Verified, StringComparison.OrdinalIgnoreCase);
+        if (!isVerifiedDoctor)
+            return RedirectToAction(nameof(ApprovalPending));
+
         return RedirectToLocal(returnUrl);
     }
 
@@ -380,38 +519,27 @@ public class AccountController : Controller
         return RedirectToAction("Index", "Dashboard");
     }
 
-    [AllowAnonymous]
+    [Authorize]
     [HttpGet]
-    public IActionResult ApprovalPending()
+    public async Task<IActionResult> ApprovalPending()
     {
-        return View();
+        var user = await _userManager.GetUserAsync(User).ConfigureAwait(false);
+        if (user is null)
+            return RedirectToAction(nameof(Login));
+
+        if (string.Equals(user.DoctorStatus, DoctorRegistrationStatuses.Pending, StringComparison.OrdinalIgnoreCase)
+            && user.ProfileSubmittedAt is null)
+        {
+            return RedirectToAction(nameof(CompleteProfile));
+        }
+
+        var model = new ApprovalPendingViewModel
+        {
+            Status = user.DoctorStatus,
+            RejectionReason = user.RejectionReason,
+            ProfileSubmitted = user.ProfileSubmittedAt is not null
+        };
+        return View(model);
     }
 }
 
-// Email sender interface and implementation
-public interface IEmailSender
-{
-    Task SendEmailAsync(string email, string subject, string htmlMessage);
-}
-
-public class EmailSender : IEmailSender
-{
-    private readonly ILogger<EmailSender> _logger;
-
-    public EmailSender(ILogger<EmailSender> logger)
-    {
-        _logger = logger;
-    }
-
-    public Task SendEmailAsync(string email, string subject, string htmlMessage)
-    {
-        // In production, implement actual email sending (SMTP, SendGrid, etc.)
-        _logger.LogInformation("Email would be sent to {Email} with subject {Subject}", email, subject);
-        _logger.LogInformation("Email content: {Content}", htmlMessage);
-        
-        // For development: You can implement actual email sending here
-        // For now, we'll just log it
-        
-        return Task.CompletedTask;
-    }
-}

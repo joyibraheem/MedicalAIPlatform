@@ -1,0 +1,67 @@
+<div class="top-row ps-4 py-4 border-bottom">
+    <div class="container-fluid p-0">
+        <a class="navbar-brand outfit fw-bold fs-4 d-flex align-items-center text-dark" href="">
+            <div class="bg-primary rounded-3 p-1 me-3 d-flex align-items-center justify-content-center shadow-sm" style="width: 36px; height: 36px;">
+                <i class="bi bi-activity text-white fs-5"></i>
+            </div>
+            <span>MedAI <span class="text-primary-light">Pro</span></span>
+        </a>
+    </div>
+</div>
+
+<div class="nav-scrollable">
+    <nav class="flex-column mt-4 px-3">
+        <div class="nav-item mb-3">
+            <NavLink class="nav-link rounded-3 py-3 px-4 d-flex align-items-center" href="" Match="NavLinkMatch.All">
+                <i class="bi bi-grid-1x2-fill me-3 fs-5"></i> Analysis Lab
+            </NavLink>
+        </div>
+
+        <div class="nav-item mb-3">
+            <NavLink class="nav-link rounded-3 py-3 px-4 d-flex align-items-center" href="analytics">
+                <i class="bi bi-graph-up-arrow me-3 fs-5"></i> Analytics
+            </NavLink>
+        </div>
+
+        <div class="nav-item mb-3">
+            <NavLink class="nav-link rounded-3 py-3 px-4 d-flex align-items-center" href="chat">
+                <i class="bi bi-chat-heart-fill me-3 fs-5"></i> AI Assistant
+            </NavLink>
+        </div>
+
+        <div class="mt-5 px-4 mb-3 small text-secondary text-uppercase fw-bold outfit" style="font-size: 0.7rem; letter-spacing: 1.5px;">
+            System
+        </div>
+
+        <div class="nav-item mb-3">
+            <NavLink class="nav-link rounded-3 py-3 px-4 d-flex align-items-center" href="https://github.com/arnoweng/CheXNet" target="_blank">
+                <i class="bi bi-journal-medical me-3 fs-5"></i> Documentation
+            </NavLink>
+        </div>
+    </nav>
+</div>
+
+<style>
+    .nav-link {
+        color: var(--secondary) !important;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        border: 1px solid transparent;
+    }
+    
+    .nav-link:hover {
+        background: var(--primary-bg) !important;
+        color: var(--primary) !important;
+    }
+    
+    .nav-link.active {
+        background: var(--primary-bg) !important;
+        color: var(--primary) !important;
+        border-color: var(--primary-light);
+        box-shadow: 0 4px 6px -1px rgba(15, 118, 110, 0.1);
+    }
+
+    .nav-link i { opacity: 0.7; transition: all 0.3s ease; }
+    .nav-link.active i { opacity: 1; color: var(--primary); }
+</style>
+

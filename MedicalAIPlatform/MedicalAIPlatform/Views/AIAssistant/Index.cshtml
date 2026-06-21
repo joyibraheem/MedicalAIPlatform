@@ -93,22 +93,6 @@
 
 @Html.AntiForgeryToken()
 
-<script src="~/js/aichat.js" asp-append-version="true"></script>
-
-<script>
-    function toggleMinimize() {
-        // Toggle minimize functionality (optional)
-        console.log('Minimize clicked');
-    }
-
-    function closeChat() {
-        // Navigate back or close chat (optional)
-        if (confirm('Are you sure you want to close the chat?')) {
-            window.location.href = '@Url.Action("Index", "Home")';
-        }
-    }
-</script>
-
 <style>
     /* Ensure the page fills the viewport */
     body.doctor-dashboard .app-frame {
@@ -122,3 +106,18 @@
         padding: 0;
     }
 </style>
+
+@section Scripts {
+    <script src="~/js/aichat.js" asp-append-version="true"></script>
+    <script>
+        function toggleMinimize() {
+            console.log('Minimize clicked');
+        }
+
+        function closeChat() {
+            if (confirm('Are you sure you want to close the chat?')) {
+                window.location.href = '@Url.Action("Index", "Home")';
+            }
+        }
+    </script>
+}

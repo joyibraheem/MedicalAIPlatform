@@ -1,0 +1,152 @@
+@{
+    ViewData["Title"] = "Prediction feedback review";
+    Layout = "_DoctorLayout";
+}
+<link rel="stylesheet" href="~/css/doctor-dashboard.css" asp-append-version="true" />
+
+<div class="dash-header mb-3">
+    <div class="user-greeting">
+        <div class="greeting-text">
+            <h2 class="h5 fw-semibold mb-1">Prediction feedback queue</h2>
+            <p class="text-muted small mb-0">
+                Approve only records that are correct for offline training export. Rejected rows stay out of the training pipeline.
+            </p>
+        </div>
+    </div>
+    <div class="header-actions">
+        <a asp-controller="Admin" asp-action="Index" class="btn btn-outline-secondary btn-sm">Admin dashboard</a>
+    </div>
+</div>
+
+<div id="fb-review-alert" class="alert alert-dismissible fade show d-none" role="alert">
+    <span id="fb-review-alert-msg"></span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+
+<div class="upload-card">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <span id="fb-review-loading" class="small text-muted">Loading pending submissions…</span>
+        <button type="button" class="btn btn-primary btn-sm" id="fb-review-refresh">Refresh</button>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-sm align-middle" id="fb-review-table">
+            <thead>
+                <tr>
+                    <th scope="col">Created</th>
+                    <th scope="col">Doctor</th>
+                    <th scope="col">Modality / Model</th>
+                    <th scope="col">Action</th>
+                    <th scope="col">Correction</th>
+                    <th scope="col" class="text-end">Review</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+    <p id="fb-review-empty" class="small text-muted mb-0 d-none">No pending submissions.</p>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            var pendingUrl = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Url.Content("~/api/feedback/pending")));
+            var feedbackRoot = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Url.Content("~/api/feedback")));
+            var tbody = document.querySelector('#fb-review-table tbody');
+            var loading = document.getElementById('fb-review-loading');
+            var empty = document.getElementById('fb-review-empty');
+            var alertBox = document.getElementById('fb-review-alert');
+            var alertMsg = document.getElementById('fb-review-alert-msg');
+
+            function showAlert(kind, msg) {
+                alertBox.classList.remove('d-none', 'alert-success', 'alert-danger', 'alert-warning');
+                alertBox.classList.add(kind === 'ok' ? 'alert-success' : 'alert-danger');
+                alertMsg.textContent = msg;
+            }
+
+            function esc(s) {
+                if (!s) return '';
+                var d = document.createElement('div');
+                d.textContent = s;
+                return d.innerHTML;
+            }
+
+            function loadPending() {
+                loading.classList.remove('d-none');
+                empty.classList.add('d-none');
+                tbody.innerHTML = '';
+                fetch(pendingUrl + '?take=100', { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+                    .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+                    .then(function (x) {
+                        loading.classList.add('d-none');
+                        if (!x.ok) {
+                            showAlert('err', (x.j && x.j.error) || 'Could not load queue.');
+                            return;
+                        }
+                        var rows = Array.isArray(x.j) ? x.j : [];
+                        if (!rows.length) {
+                            empty.classList.remove('d-none');
+                            return;
+                        }
+                        rows.forEach(function (row) {
+                            var tr = document.createElement('tr');
+                            var created = row.createdAt ? new Date(row.createdAt).toLocaleString() : '';
+                            var doc = row.submittingDoctorEmail || row.submittingDoctorUserId || '';
+                            var corr = row.correctedPrimaryLabel || '';
+                            if (row.correctedPrimaryConfidence != null && row.correctedPrimaryConfidence !== undefined)
+                                corr += (corr ? ' · ' : '') + 'conf ' + Number(row.correctedPrimaryConfidence).toFixed(2);
+                            tr.innerHTML =
+                                '<td><small>' + esc(created) + '</small></td>' +
+                                '<td><small>' + esc(doc) + '</small></td>' +
+                                '<td><small>' + esc(row.modality) + ' / ' + esc(row.modelKey) + '</small></td>' +
+                                '<td><small>' + esc(row.doctorAction) + '</small></td>' +
+                                '<td><small>' + esc(corr || '—') + '</small></td>' +
+                                '<td class="text-end">' +
+                                '<button type="button" class="btn btn-success btn-sm me-1 fb-approve" data-id="' + esc(row.id) + '">Approve</button>' +
+                                '<button type="button" class="btn btn-outline-danger btn-sm fb-reject" data-id="' + esc(row.id) + '">Reject</button>' +
+                                '</td>';
+                            tbody.appendChild(tr);
+                        });
+                    })
+                    .catch(function () {
+                        loading.classList.add('d-none');
+                        showAlert('err', 'Network error loading queue.');
+                    });
+            }
+
+            function review(id, approve) {
+                var notes = window.prompt(approve ? 'Optional reviewer notes (approved)' : 'Optional reviewer notes (rejected)', '') || '';
+                var base = feedbackRoot.replace(/\/$/, '');
+                var url = base + '/' + id + '/' + (approve ? 'approve' : 'reject');
+                fetch(url, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                    body: JSON.stringify({ reviewNotes: notes.trim() || null })
+                })
+                    .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+                    .then(function (x) {
+                        if (x.ok) {
+                            showAlert('ok', approve ? 'Approved.' : 'Rejected.');
+                            loadPending();
+                        } else {
+                            showAlert('err', (x.j && x.j.error) || 'Action failed.');
+                        }
+                    })
+                    .catch(function () { showAlert('err', 'Network error.'); });
+            }
+
+            document.getElementById('fb-review-refresh').addEventListener('click', loadPending);
+            tbody.addEventListener('click', function (ev) {
+                var t = ev.target;
+                if (!(t instanceof HTMLElement)) return;
+                var id = t.getAttribute('data-id');
+                if (!id) return;
+                if (t.classList.contains('fb-approve')) review(id, true);
+                if (t.classList.contains('fb-reject')) review(id, false);
+            });
+
+            loadPending();
+        })();
+    </script>
+}
