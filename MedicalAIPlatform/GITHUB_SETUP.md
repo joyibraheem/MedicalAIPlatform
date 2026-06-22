@@ -9,6 +9,7 @@ The `.gitignore` file has been configured to exclude:
 ### ✅ Sensitive Files (NEVER committed):
 - `appsettings.Development.json` - Contains your local development settings
 - `appsettings.Production.json` - Contains production secrets (if exists)
+- `.env` - Docker/local secrets (passwords)
 - `*.secrets.json` - Any secret files
 - Database files (`.mdf`, `.ldf`, `.db`, `.sqlite`)
 - Environment files (`.env`, `.env.local`)
@@ -16,6 +17,7 @@ The `.gitignore` file has been configured to exclude:
 ### ✅ Build Artifacts (Not needed in repo):
 - `bin/` - Compiled binaries
 - `obj/` - Build objects
+- `_build_verify/` - Local verify output
 - `*.dll`, `*.exe`, `*.pdb` - Compiled files
 
 ### ✅ IDE/Editor Files:
@@ -33,6 +35,8 @@ The `.gitignore` file has been configured to exclude:
 - ✅ Source code (`.cs`, `.cshtml`, `.js`, `.css`)
 - ✅ `appsettings.json` - Template with placeholders (safe)
 - ✅ `appsettings.example.json` - Example configuration
+- ✅ `appsettings.Production.example.json` - Production template (no secrets)
+- ✅ `.env.example` - Docker secret template (no real passwords)
 - ✅ Project files (`.csproj`, `.sln`)
 - ✅ Documentation files (`.md`)
 - ✅ Static assets (`wwwroot/`)
@@ -42,7 +46,7 @@ The `.gitignore` file has been configured to exclude:
 ### Step 1: Initialize Git Repository (if not already done)
 
 ```bash
-cd "d:\MedicalAIPlatform final\MedicalAIPlatform"
+cd MedicalAIPlatform
 git init
 ```
 
@@ -91,7 +95,9 @@ Before pushing, verify:
 - [ ] `bin/` and `obj/` folders are NOT in the commit
 - [ ] No database files (`.mdf`, `.ldf`) are in the commit
 - [ ] No real Google OAuth credentials in `appsettings.json` (should have placeholders)
-- [ ] No real connection strings with passwords
+- [ ] No real connection strings with passwords in tracked files
+- [ ] `.env` is NOT in the commit (Docker secrets)
+- [ ] `docker-compose.yml` has no hardcoded passwords
 - [ ] `.vs/` folder is excluded
 
 ## 🔐 If You Accidentally Committed Sensitive Files
@@ -126,8 +132,9 @@ var googleClientId = Environment.GetEnvironmentVariable("GOOGLE_CLIENT_ID")
 If someone clones your repository, they should:
 
 1. Copy `appsettings.example.json` to `appsettings.Development.json`
-2. Fill in their own credentials
-3. `appsettings.Development.json` is already in `.gitignore`, so it won't be committed
+2. Copy `.env.example` to `.env` (for Docker)
+3. Fill in their own credentials
+4. Neither `appsettings.Development.json` nor `.env` will be committed (both are in `.gitignore`)
 
 ## ✅ Final Verification
 

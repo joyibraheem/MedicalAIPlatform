@@ -29,34 +29,7 @@
             home_admin_intro: "Admin dashboard placeholder: manage doctors, review system activity, and configure AI models.",
             home_doctor_title: "Doctor Workspace",
             home_doctor_intro: "Welcome! This is your doctor dashboard placeholder for managing patients and diagnostic analyses.",
-            home_no_role: "You are logged in, but no specific role-based dashboard is configured for your account.",
-            // Calendar translations
-            calendar_schedule: "Schedule",
-            calendar_upcoming: "Upcoming",
-            calendar_new_appointment: "+ New Appointment",
-            calendar_no_appointments: "No upcoming appointments",
-            day_sun: "Sun",
-            day_mon: "Mon",
-            day_tue: "Tue",
-            day_wed: "Wed",
-            day_thu: "Thu",
-            day_fri: "Fri",
-            day_sat: "Sat",
-            appointment_checkup: "Checkup",
-            appointment_follow_up: "Follow-up",
-            appointment_emergency: "Emergency",
-            appointment_consultation: "Consultation",
-            // FollowUp translations
-            followup_title: "Patient Follow-Up & Monitoring",
-            followup_subtitle: "Manage post-scan actions and AI-driven recommendations",
-            followup_compliance_rate: "Compliance Rate",
-            followup_high_urgency: "High Urgency cases",
-            followup_immediate_referral: "Requiring immediate referral",
-            followup_scheduled_today: "Scheduled Today",
-            followup_pid: "PID:",
-            urgency_high: "High",
-            urgency_medium: "Medium",
-            urgency_low: "Low"
+            home_no_role: "You are logged in, but no specific role-based dashboard is configured for your account."
         },
         ar: {
             brand_title: "منصة الذكاء الطبي",
@@ -80,39 +53,10 @@
             home_admin_intro: "من هنا يمكن للمشرف إدارة الأطباء ومراجعة نشاط النظام وضبط إعدادات النماذج.",
             home_doctor_title: "مساحة عمل الطبيب",
             home_doctor_intro: "مرحباً! هذه مساحة عملك لإدارة المرضى والتحليلات التشخيصية.",
-            home_no_role: "أنت مسجل الدخول، ولكن لا يوجد لوح تحكم مخصص لدورك حتى الآن.",
-            // Calendar translations
-            calendar_schedule: "الجدول",
-            calendar_upcoming: "القادم",
-            calendar_new_appointment: "+ موعد جديد",
-            calendar_no_appointments: "لا توجد مواعيد قادمة",
-            day_sun: "أحد",
-            day_mon: "اثنين",
-            day_tue: "ثلاثاء",
-            day_wed: "أربعاء",
-            day_thu: "خميس",
-            day_fri: "جمعة",
-            day_sat: "سبت",
-            appointment_checkup: "فحص",
-            appointment_follow_up: "متابعة",
-            appointment_emergency: "طوارئ",
-            appointment_consultation: "استشارة",
-            // FollowUp translations
-            followup_title: "متابعة ومراقبة المرضى",
-            followup_subtitle: "إدارة الإجراءات بعد الفحص والتوصيات المدعومة بالذكاء الاصطناعي",
-            followup_compliance_rate: "معدل الامتثال",
-            followup_high_urgency: "حالات عالية الأولوية",
-            followup_immediate_referral: "تتطلب إحالة فورية",
-            followup_scheduled_today: "المجدولة اليوم",
-            followup_pid: "رقم المريض:",
-            urgency_high: "عالية",
-            urgency_medium: "متوسطة",
-            urgency_low: "منخفضة"
+            home_no_role: "أنت مسجل الدخول، ولكن لا يوجد لوح تحكم مخصص لدورك حتى الآن."
         }
     };
     
-    // Make translations globally accessible
-    window.calendarTranslations = translations;
     if (!window.I18N) {
         window.I18N = translations;
     }
@@ -182,7 +126,7 @@
         const prefs = loadPreferencesLocal();
         savePreferencesLocal(prefs?.isDarkMode || false, lang);
         
-        // Trigger custom event for calendar/FollowUp scripts
+        // Notify listeners that language changed
         document.dispatchEvent(new CustomEvent('languageChanged', { detail: { lang } }));
     }
 

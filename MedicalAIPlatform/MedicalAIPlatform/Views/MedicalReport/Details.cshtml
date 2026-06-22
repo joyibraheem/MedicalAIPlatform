@@ -121,6 +121,7 @@
             @if (ai.ChexnetProbabilities.Count > 0)
             {
                 <h3 class="mr-ai-subtitle">Chest radiograph modeling (CheXNet)</h3>
+                <div class="table-responsive">
                 <table class="mr-ai-table">
                     <thead><tr><th>Finding</th><th>Probability</th><th class="mr-ai-src">Source</th></tr></thead>
                     <tbody>
@@ -135,10 +136,12 @@
                     }
                     </tbody>
                 </table>
+                </div>
             }
             @if (ai.CtProbabilities.Count > 0)
             {
                 <h3 class="mr-ai-subtitle">Volumetric CT modeling (LungAI)</h3>
+                <div class="table-responsive">
                 <table class="mr-ai-table">
                     <thead><tr><th>Finding</th><th>Probability</th><th class="mr-ai-src">Source</th></tr></thead>
                     <tbody>
@@ -153,6 +156,7 @@
                     }
                     </tbody>
                 </table>
+                </div>
             }
             @if (ai.ClinicalEntities.Count > 0)
             {

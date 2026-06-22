@@ -359,5 +359,15 @@ MigrationBackup/
 # Ionide (cross platform F# VS Code tools) working folder
 .ionide/
 
+# Local secrets and Docker env (never commit)
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Accidental local build output folders
+**/_compile_out*/
+**/_build_verify/
+
 # Fody - auto-generated XML schema
 FodyWeavers.xsd

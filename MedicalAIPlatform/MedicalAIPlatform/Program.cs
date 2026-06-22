@@ -106,7 +106,13 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.Cookie.IsEssential = true;
     options.AccessDeniedPath = "/Account/ApprovalPending";
 
-    if (builder.Environment.IsDevelopment())
+    var runningInContainer = string.Equals(
+        Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER"),
+        "true",
+        StringComparison.OrdinalIgnoreCase);
+
+    // Docker runs HTTP only; Secure cookies would never be sent to the browser.
+    if (builder.Environment.IsDevelopment() || runningInContainer)
         options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
     else
         options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
@@ -247,7 +253,12 @@ using (var scope = app.Services.CreateScope())
         var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
         await IdentityDevelopmentSeeder.SeedRolesAsync(roleManager).ConfigureAwait(false);
 
-        if (app.Environment.IsDevelopment())
+        var dockerDemoSeed = string.Equals(
+            Environment.GetEnvironmentVariable("DOCKER_DEMO_SEED"),
+            "true",
+            StringComparison.OrdinalIgnoreCase);
+
+        if (app.Environment.IsDevelopment() || dockerDemoSeed)
         {
             var devSeeder = services.GetRequiredService<IdentityDevelopmentSeeder>();
             var configuration = services.GetRequiredService<IConfiguration>();

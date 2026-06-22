@@ -56,6 +56,7 @@ appsettings.Local.json
 appsettings.*.json
 !appsettings.json
 !appsettings.example.json
+!appsettings.Production.example.json
 secrets.json
 *.secrets.json
 
@@ -71,6 +72,12 @@ secrets.json
 .env
 .env.local
 .env.*.local
+!.env.example
+
+## Local build / verify artifacts (do not commit)
+_build_verify/
+_compile_out*/
+**/_build_verify/
 
 ## Logs
 logs/

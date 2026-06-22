@@ -15,6 +15,7 @@
 </div>
 
 <link rel="stylesheet" href="~/css/landing.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/css/responsive.css" asp-append-version="true" />
 
 <script>
     // Initialize dark mode and language for landing page
@@ -42,8 +43,8 @@
     })();
 </script>
 
-@* --- NAVBAR --- *@
-<div class="nav-custom">
+@* --- NAVBAR (desktop ≥1200px) --- *@
+<div class="nav-custom nav-custom-desktop">
     <div class="container">
         <div class="d-flex justify-content-between align-items-center">
             <a href="/" class="brand-logo">
@@ -63,7 +64,33 @@
         </div>
     </div>
 </div>
-</div>
+
+@* --- NAVBAR (tablet/mobile <1200px) --- *@
+<nav class="nav-custom nav-custom-mobile navbar navbar-expand-lg">
+    <div class="container-fluid">
+        <a href="/" class="brand-logo navbar-brand">
+             <img src="~/images/chest-icon.png" alt="ChestAI" width="28" height="28" style="margin-right: 8px;" />
+            Multimodal-Medical-AI
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#homeNav"
+                aria-controls="homeNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse justify-content-end" id="homeNav">
+            <div class="d-flex align-items-center flex-wrap gap-2 py-2 py-lg-0">
+            @if (!isAuthenticated)
+            {
+                <a asp-controller="Account" asp-action="Login" class="btn-nav btn-nav-signin">Sign In</a>
+                <a asp-controller="Account" asp-action="Register" class="btn-nav btn-nav-signup">Sign Up</a>
+            }
+            else
+            {
+                <a asp-controller="Dashboard" asp-action="Index" class="btn-nav btn-nav-signup">Dashboard</a>
+            }
+            </div>
+        </div>
+    </div>
+</nav>
 
 @* --- HERO --- *@
 <div class="hero-section">

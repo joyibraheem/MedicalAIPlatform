@@ -82,8 +82,8 @@ body.light-mode .app-frame {
     border-radius: 3px;
 }
 
-/* Header - Desktop Style */
-.app-header {
+/* Header - Desktop Style (desktop navbar only) */
+.app-header-desktop {
     display: flex;
     align-items: center;
     margin-bottom: 2.5rem;
@@ -523,23 +523,23 @@ body.dark-mode .app-content {
 }
 
 /* Header stays LIGHT even in dark mode - Match Image Design */
-html[data-theme="dark"] .app-header,
-body.dark-mode .app-header {
+html[data-theme="dark"] .app-header-desktop,
+body.dark-mode .app-header-desktop {
     background: rgba(255, 255, 255, 0.95) !important;
     backdrop-filter: blur(10px) !important;
     -webkit-backdrop-filter: blur(10px) !important;
     border-bottom-color: rgba(0, 0, 0, 0.1) !important;
 }
 
-html[data-theme="dark"] .app-header .brand-name,
-html[data-theme="dark"] .app-header .nav-link,
-body.dark-mode .app-header .brand-name,
-body.dark-mode .app-header .nav-link {
+html[data-theme="dark"] .app-header-desktop .brand-name,
+html[data-theme="dark"] .app-header-desktop .nav-link,
+body.dark-mode .app-header-desktop .brand-name,
+body.dark-mode .app-header-desktop .nav-link {
     color: #1f2937 !important;
 }
 
-html[data-theme="dark"] .app-header .nav-link:hover,
-body.dark-mode .app-header .nav-link:hover {
+html[data-theme="dark"] .app-header-desktop .nav-link:hover,
+body.dark-mode .app-header-desktop .nav-link:hover {
     color: #3B82F6 !important;
 }
 

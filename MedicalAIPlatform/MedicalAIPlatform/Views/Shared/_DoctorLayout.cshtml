@@ -80,6 +80,7 @@
     <link rel="stylesheet" href="~/css/doctor-dashboard.css" asp-append-version="true" />
     <!-- Site CSS for global overrides -->
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/responsive.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/medical-ai-assistant-chat.css" asp-append-version="true" />
     <style>
         #darkOverlay {
@@ -115,8 +116,8 @@
     <!-- The Central App Frame -->
     <div class="app-frame">
         
-        <!-- Header -->
-        <header class="app-header">
+        <!-- Header — desktop only (≥992px) -->
+        <header class="app-header app-header-desktop" aria-label="Desktop navigation">
             <div class="header-left">
                 <div class="logo-container">
                     <img src="~/images/chest-icon.png" alt="ChestAI" class="logo-icon" style="width: 36px; height: 36px; border-radius: 6px;" />
@@ -125,8 +126,6 @@
                 <nav class="main-nav">
                     <a asp-controller="Home" asp-action="Index" class="nav-link" data-i18n="nav_home">Home</a>
                     <a asp-controller="Patient" asp-action="Index" class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Patient" ? "active" : "")" data-i18n="nav_patients">Patients</a>
-                    <a asp-controller="FollowUp" asp-action="Index" class="nav-link @(ViewData["Title"]?.ToString() == "Follow Up" ? "active" : "")" data-i18n="nav_follow_up">Follow up</a>
-                    <a asp-controller="PatientCalendar" asp-action="Index" class="nav-link @(ViewData["Title"]?.ToString() == "Calendar" ? "active" : "")" data-i18n="nav_calendar">Calendar</a>
                     <a asp-controller="Analytics" asp-action="Index" class="nav-link @(ViewData["Title"]?.ToString() == "Analytics" ? "active" : "")" data-i18n="nav_analytics">Analytics</a>
                     <a asp-controller="CtScan" asp-action="Index" class="nav-link @(ViewData["Title"]?.ToString() == "CT Scan" ? "active" : "")">CT Scan</a>
                     <a asp-controller="AIAssistant" asp-action="Index" class="nav-link @(ViewData["Title"]?.ToString() == "AI Assistant" ? "active" : "")" data-i18n="nav_ai_assistant">AI Assistant</a>
@@ -143,6 +142,51 @@
                     </div>
                 </a>
             </div>
+        </header>
+
+        <!-- Header — mobile/tablet only (<992px); no app-header class to avoid desktop CSS -->
+        <header class="app-header-mobile" aria-label="Mobile navigation">
+            <nav class="navbar navbar-light w-100 px-0 py-0" aria-label="Main navigation">
+                <div class="w-100 d-flex flex-wrap align-items-center justify-content-between gap-2">
+                    <a class="navbar-brand logo-container mb-0" asp-controller="Home" asp-action="Index">
+                        <img src="~/images/chest-icon.png" alt="ChestAI" class="logo-icon" width="36" height="36" style="border-radius: 6px;" />
+                        <span class="brand-name" data-i18n="brand_chestai">ChestAI</span>
+                    </a>
+                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#chestAiMainNav"
+                            aria-controls="chestAiMainNav" aria-expanded="false" aria-label="Toggle navigation">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+                    <div class="collapse navbar-collapse w-100" id="chestAiMainNav">
+                        <ul class="navbar-nav main-nav">
+                            <li class="nav-item">
+                                <a asp-controller="Home" asp-action="Index" class="nav-link" data-i18n="nav_home">Home</a>
+                            </li>
+                            <li class="nav-item">
+                                <a asp-controller="Patient" asp-action="Index" class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Patient" ? "active" : "")" data-i18n="nav_patients">Patients</a>
+                            </li>
+                            <li class="nav-item">
+                                <a asp-controller="Analytics" asp-action="Index" class="nav-link @(ViewData["Title"]?.ToString() == "Analytics" ? "active" : "")" data-i18n="nav_analytics">Analytics</a>
+                            </li>
+                            <li class="nav-item">
+                                <a asp-controller="CtScan" asp-action="Index" class="nav-link @(ViewData["Title"]?.ToString() == "CT Scan" ? "active" : "")">CT Scan</a>
+                            </li>
+                            <li class="nav-item">
+                                <a asp-controller="AIAssistant" asp-action="Index" class="nav-link @(ViewData["Title"]?.ToString() == "AI Assistant" ? "active" : "")" data-i18n="nav_ai_assistant">AI Assistant</a>
+                            </li>
+                        </ul>
+                        <ul class="navbar-nav header-right">
+                            <li class="nav-item">
+                                <a asp-controller="Account" asp-action="Logout" class="nav-link d-flex align-items-center gap-2">
+                                    <span data-i18n="nav_logout">Logout</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                    </svg>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </nav>
         </header>
 
         <div class="app-content">

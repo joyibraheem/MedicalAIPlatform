@@ -32,13 +32,26 @@ cd Multimodal-Medical-AI/MedicalAIPlatform
 Copy the example configuration file:
 
 ```bash
+# Windows
 copy MedicalAIPlatform\appsettings.example.json MedicalAIPlatform\appsettings.Development.json
+
+# Linux/macOS
+cp MedicalAIPlatform/appsettings.example.json MedicalAIPlatform/appsettings.Development.json
 ```
 
 Edit `appsettings.Development.json` and add your:
 - Database connection string
 - Google OAuth credentials (see [Google Auth Setup Guide](GOOGLE_AUTH_SETUP.md))
 - API endpoints
+
+### 2b. Docker (optional)
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+Open http://localhost:8080. See [QUICK_START.md](QUICK_START.md).
 
 ### 3. Setup Database
 
@@ -68,6 +81,8 @@ See [GITHUB_SETUP.md](GITHUB_SETUP.md) for detailed security guidelines.
 
 ## 📚 Documentation
 
+- [Quick Start (Docker)](QUICK_START.md)
+- [Docker Guide](DOCKER_README.md)
 - [Google Authentication Setup](GOOGLE_AUTH_SETUP.md)
 - [GitHub Setup & Security](GITHUB_SETUP.md)
 - [Testing Google Auth](TEST_GOOGLE_AUTH.md)
@@ -87,10 +102,12 @@ MedicalAIPlatform/
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Ensure `.gitignore` excludes sensitive files
-5. Submit a pull request
+2. Create a feature branch (`git checkout -b feature/your-change`)
+3. Copy `appsettings.example.json` → `appsettings.Development.json` (never commit the latter)
+4. For Docker: copy `.env.example` → `.env` (never commit `.env`)
+5. Make your changes and test locally (`dotnet run` or `docker compose up --build`)
+6. Ensure no secrets are staged: `git status` must not list `.env` or `appsettings.Development.json`
+7. Submit a pull request against `main`
 
 ## 📝 License
 

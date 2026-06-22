@@ -15,18 +15,15 @@ public sealed class MedicalReportService
     };
 
     private readonly ApplicationDbContext _db;
-    private readonly IUserAnalyticsSessionStore _sessionStore;
     private readonly IConfiguration _configuration;
     private readonly ILogger<MedicalReportService> _logger;
 
     public MedicalReportService(
         ApplicationDbContext db,
-        IUserAnalyticsSessionStore sessionStore,
         IConfiguration configuration,
         ILogger<MedicalReportService> logger)
     {
         _db = db;
-        _sessionStore = sessionStore;
         _configuration = configuration;
         _logger = logger;
     }
@@ -101,8 +98,8 @@ public sealed class MedicalReportService
             throw new InvalidOperationException($"Patient {patientId} was not found.");
 
         var histories = patient.HistoryEntries.OrderByDescending(h => h.VisitDate).Take(24).ToList();
-        var sessionSnapshot = _sessionStore.GetLatest(generatedByUserId) ?? AnalyticsSessionSnapshot.Empty;
-        var snapshot = BuildAiSnapshot(patient, histories, [scan], sessionSnapshot);
+        // Reports MUST use persisted ScanAiAnalysis only — never IUserAnalyticsSessionStore (per-user in-memory workspace).
+        var snapshot = BuildAiSnapshot(patient, histories, [scan], AnalyticsSessionSnapshot.Empty);
         var snapshotJson = JsonSerializer.Serialize(snapshot, JsonOpts);
 
         var report = new ClinicalMedicalReport

@@ -10,12 +10,27 @@ public sealed class CtScanViewerSession
     public string ContentType { get; init; } = "";
     public byte[] SourceBytes { get; init; } = [];
     public PatientMedicalHistory Metadata { get; init; } = new();
-    public IReadOnlyList<CtScanSliceInfo> Slices { get; init; } = [];
+    public IReadOnlyList<CtSeriesInfo> Series { get; init; } = [];
     public string TempDirectory { get; init; } = "";
     public LungAICtResponse? Analysis { get; set; }
     public int? PatientScanId { get; init; }
     public int? PatientId { get; init; }
     public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
+
+    /// <summary>Legacy flat list — first series slices only.</summary>
+    public IReadOnlyList<CtScanSliceInfo> Slices => Series.Count > 0 ? Series[0].Slices : [];
+}
+
+public sealed class CtSeriesInfo
+{
+    public int SeriesIndex { get; init; }
+    public string SeriesInstanceUid { get; init; } = "";
+    public string Label { get; init; } = "";
+    public string Modality { get; init; } = "";
+    public string? SeriesDescription { get; init; }
+    public string? BodyPartExamined { get; init; }
+    public int PreviewSliceIndex { get; init; }
+    public IReadOnlyList<CtScanSliceInfo> Slices { get; init; } = [];
 }
 
 public sealed class CtScanSliceInfo
@@ -33,11 +48,29 @@ public sealed class CtScanSessionSummaryDto
     public Guid SessionId { get; init; }
     public string FileName { get; init; } = "";
     public int SliceCount { get; init; }
+    public int SeriesCount { get; init; }
+    /// <summary>single | grid</summary>
+    public string LayoutMode { get; init; } = "single";
     public PatientMedicalHistory Metadata { get; init; } = new();
-    public IReadOnlyList<CtScanSliceInfo> Slices { get; init; } = [];
+    public IReadOnlyList<CtSeriesSummaryDto> Series { get; init; } = [];
     public bool HasAnalysis { get; init; }
     public int? PatientScanId { get; init; }
     public int? PatientId { get; init; }
+
+    /// <summary>Legacy — active (first) series slices.</summary>
+    public IReadOnlyList<CtScanSliceInfo> Slices =>
+        Series.Count > 0 ? Series[0].Slices : [];
+}
+
+public sealed class CtSeriesSummaryDto
+{
+    public int SeriesIndex { get; init; }
+    public string Label { get; init; } = "";
+    public string Modality { get; init; } = "";
+    public string? SeriesDescription { get; init; }
+    public int SliceCount { get; init; }
+    public int PreviewSliceIndex { get; init; }
+    public IReadOnlyList<CtScanSliceInfo> Slices { get; init; } = [];
 }
 
 public sealed class CtScanAnalysisPanelDto

@@ -1,88 +1,54 @@
-# Build results
-[Dd]ebug/
-[Dd]ebugPublic/
-[Rr]elease/
-[Rr]eleases/
-x64/
-x86/
-[Ww][Ii][Nn]32/
-[Aa][Rr][Mm]/
-[Aa][Rr][Mm]64/
-bld/
-[Bb]in/
-[Oo]bj/
-[Ll]og/
-[Ll]ogs/
+# Build output
+**/bin/
+**/obj/
+**/_build_verify/
+**/out/
+**/publish/
 
-# Visual Studio
-.vs/
-.vscode/
+# IDE / tooling
+**/.vs/
+**/.vscode/
+**/.idea/
 *.suo
 *.user
 *.userosscache
 *.sln.docstates
-
-# User-specific files
 *.rsuser
-*.suo
-*.user
-*.userosscache
-*.sln.docstates
 
-# Build results
-[Dd]ebug/
-[Dd]ebugPublic/
-[Rr]elease/
-[Rr]eleases/
-x64/
-x86/
-[Ww][Ii][Nn]32/
-[Aa][Rr][Mm]/
-[Aa][Rr][Mm]64/
-bld/
-[Bb]in/
-[Oo]bj/
-[Ll]og/
-[Ll]ogs/
+# Logs and caches
+**/[Ll]og/
+**/[Ll]ogs/
+*.cache
+*.tmp
+*.temp
 
-# .NET Core
+# NuGet
+**/*.nupkg
+**/*.snupkg
+**/packages/
 project.lock.json
 project.fragment.lock.json
 artifacts/
-
-# NuGet Packages
-*.nupkg
-*.snupkg
-**/packages/*
-!**/packages/build/
-*.nuget.props
-*.nuget.targets
-
-# Docker
-Dockerfile*
-docker-compose*
-.dockerignore
 
 # Git
 .git/
 .gitignore
 .gitattributes
 
-# IDE
-.idea/
-*.swp
-*.swo
-*~
+# Local secrets (never send to build context)
+.env
+.env.local
+.env.*.local
 
-# OS
+# Docker docs are not needed inside the image
+DOCKER_README.md
+DOCKER_SETUP_SUMMARY.md
+QUICK_START.md
+
+# OS junk
 .DS_Store
 Thumbs.db
 
-# Test results
-[Tt]est[Rr]esult*/
-[Bb]uild[Ll]og.*
-
-# Others
-*.cache
-*.tmp
-*.temp
+# Test output
+**/[Tt]est[Rr]esult*/
+**/[Bb]uild[Ll]og.*

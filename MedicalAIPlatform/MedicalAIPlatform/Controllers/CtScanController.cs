@@ -51,7 +51,7 @@ public sealed class CtScanController : Controller
         ViewBag.SessionId = session?.SessionId;
         ViewBag.HasSession = session is not null;
         ViewBag.FileName = session?.FileName;
-        ViewBag.SliceCount = session?.Slices.Count ?? 0;
+        ViewBag.SliceCount = session?.Series.Sum(s => s.Slices.Count) ?? 0;
         ViewBag.PatientScanId = session?.PatientScanId;
         ViewBag.PatientId = session?.PatientId;
 
@@ -128,7 +128,7 @@ public sealed class CtScanController : Controller
     }
 
     [HttpGet]
-    public IActionResult Slice(Guid sessionId, int index)
+    public IActionResult Slice(Guid sessionId, int index, int? seriesIndex)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId))
@@ -138,7 +138,8 @@ public sealed class CtScanController : Controller
         if (session is null)
             return NotFound();
 
-        var path = _viewer.GetSliceFilePath(session, index);
+        var si = seriesIndex ?? 0;
+        var path = _viewer.GetSliceFilePath(session, si, index);
         if (path is null)
             return NotFound();
 
