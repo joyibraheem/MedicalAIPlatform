@@ -1,5 +1,7 @@
 using System.Globalization;
+using System.IO.Compression;
 using System.Text;
+using FellowOakDicom;
 using MedicalAIPlatform.Data;
 using MedicalAIPlatform.Models;
 using MedicalAIPlatform.Models.Dicom;
@@ -87,28 +89,52 @@ public sealed class CtScanViewerService
     public CtScanViewerSession? GetSession(Guid sessionId, string userId) =>
         _store.Get(sessionId, userId);
 
-    public CtScanSessionSummaryDto ToSummary(CtScanViewerSession session) =>
-        new()
+    public CtScanSessionSummaryDto ToSummary(CtScanViewerSession session)
+    {
+        var seriesSummaries = session.Series.Select(s => new CtSeriesSummaryDto
+        {
+            SeriesIndex = s.SeriesIndex,
+            Label = s.Label,
+            Modality = s.Modality,
+            SeriesDescription = s.SeriesDescription,
+            SliceCount = s.Slices.Count,
+            PreviewSliceIndex = s.PreviewSliceIndex,
+            Slices = s.Slices,
+        }).ToList();
+
+        var totalSlices = session.Series.Sum(s => s.Slices.Count);
+        var layoutMode = ResolveLayoutMode(session.Series);
+
+        return new CtScanSessionSummaryDto
         {
             SessionId = session.SessionId,
             FileName = session.FileName,
-            SliceCount = session.Slices.Count,
+            SliceCount = totalSlices,
+            SeriesCount = session.Series.Count,
+            LayoutMode = layoutMode,
             Metadata = session.Metadata,
-            Slices = session.Slices,
+            Series = seriesSummaries,
             HasAnalysis = session.Analysis is not null,
             PatientScanId = session.PatientScanId,
             PatientId = session.PatientId,
         };
+    }
 
-    public string? GetSliceFilePath(CtScanViewerSession session, int sliceIndex)
+    public string? GetSliceFilePath(CtScanViewerSession session, int seriesIndex, int sliceIndex)
     {
-        if (sliceIndex < 0 || sliceIndex >= session.Slices.Count)
+        var series = session.Series.FirstOrDefault(s => s.SeriesIndex == seriesIndex)
+                     ?? session.Series.ElementAtOrDefault(seriesIndex);
+        if (series is null || sliceIndex < 0 || sliceIndex >= series.Slices.Count)
             return null;
 
-        var fileName = session.Slices[sliceIndex].JpegFileName;
+        var fileName = series.Slices[sliceIndex].JpegFileName;
         var path = Path.Combine(session.TempDirectory, fileName);
         return File.Exists(path) ? path : null;
     }
+
+    /// <summary>Legacy — first series.</summary>
+    public string? GetSliceFilePath(CtScanViewerSession session, int sliceIndex) =>
+        GetSliceFilePath(session, 0, sliceIndex);
 
     public async Task<CtScanAnalysisPanelDto> AnalyzeAsync(
         CtScanViewerSession session,
@@ -133,7 +159,8 @@ public sealed class CtScanViewerService
         sb.AppendLine(new string('=', 60));
         sb.AppendLine($"Generated (UTC): {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}");
         sb.AppendLine($"Source file: {session.FileName}");
-        sb.AppendLine($"Slices: {session.Slices.Count}");
+        sb.AppendLine($"Series: {session.Series.Count}");
+        sb.AppendLine($"Total slices: {session.Series.Sum(s => s.Slices.Count)}");
         sb.AppendLine();
 
         sb.AppendLine("Study metadata");
@@ -146,6 +173,14 @@ public sealed class CtScanViewerService
         AppendMeta(sb, "Series description", meta.SeriesDescription);
         if (meta.StudyDateTime is not null)
             AppendMeta(sb, "Study date", meta.StudyDateTime.Value.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture));
+
+        sb.AppendLine();
+        sb.AppendLine("Series in study");
+        sb.AppendLine(new string('-', 40));
+        foreach (var s in session.Series)
+        {
+            sb.AppendLine($"  [{s.SeriesIndex}] {s.Label} — {s.Slices.Count} slice(s), modality={s.Modality}");
+        }
 
         sb.AppendLine();
         sb.AppendLine("AI analysis");
@@ -190,15 +225,19 @@ public sealed class CtScanViewerService
         var tempDir = Path.Combine(Path.GetTempPath(), "MedicalAiPlatform", "ct-viewer", sessionId.ToString("N"));
         Directory.CreateDirectory(tempDir);
 
+        IReadOnlyList<CtSeriesInfo> seriesList;
         PatientMedicalHistory metadata;
-        List<CtScanSliceInfo> slices;
 
-        if (AnalyticsDicomRouting.IsDicomUpload(fileName, contentType))
+        if (IsZipUpload(fileName, contentType))
         {
-            await using var ms = new MemoryStream(bytes, writable: false);
-            var dicomFile = await _dicomLoader.LoadAsync(ms, cancellationToken).ConfigureAwait(false);
-            metadata = _metadataParser.Parse(dicomFile);
-            slices = await ExtractDicomSlicesAsync(dicomFile, metadata, tempDir, cancellationToken).ConfigureAwait(false);
+            (seriesList, metadata) = await LoadSeriesFromZipAsync(bytes, tempDir, cancellationToken).ConfigureAwait(false);
+        }
+        else if (AnalyticsDicomRouting.IsDicomUpload(fileName, contentType))
+        {
+            var extracted = await ExtractSeriesFromDicomBytesAsync(bytes, seriesIndex: 0, tempDir, cancellationToken)
+                .ConfigureAwait(false);
+            seriesList = [extracted.Info];
+            metadata = extracted.MetadataForStudy ?? new PatientMedicalHistory();
         }
         else
         {
@@ -208,8 +247,23 @@ public sealed class CtScanViewerService
                 BodyPartExamined = "CHEST",
                 NumberOfFrames = 1,
             };
-            slices = [await SaveRasterSliceAsync(bytes, tempDir, cancellationToken).ConfigureAwait(false)];
+            var slice = await SaveRasterSliceAsync(bytes, seriesIndex: 0, tempDir, cancellationToken).ConfigureAwait(false);
+            seriesList =
+            [
+                new CtSeriesInfo
+                {
+                    SeriesIndex = 0,
+                    Label = "CT Image",
+                    Modality = "CT",
+                    BodyPartExamined = "CHEST",
+                    PreviewSliceIndex = 0,
+                    Slices = [slice],
+                },
+            ];
         }
+
+        if (seriesList.Count == 0)
+            throw new InvalidOperationException("No DICOM series could be extracted from this upload.");
 
         var session = new CtScanViewerSession
         {
@@ -219,7 +273,7 @@ public sealed class CtScanViewerService
             ContentType = contentType,
             SourceBytes = bytes,
             Metadata = metadata,
-            Slices = slices,
+            Series = seriesList,
             TempDirectory = tempDir,
             PatientScanId = patientScanId,
             PatientId = patientId,
@@ -227,54 +281,180 @@ public sealed class CtScanViewerService
 
         _store.Save(session);
         _logger.LogInformation(
-            "CT viewer session {SessionId} created with {SliceCount} slice(s) for user {UserId}",
-            sessionId, slices.Count, userId);
+            "CT viewer session {SessionId}: {SeriesCount} series, {SliceCount} total slice(s) for user {UserId}",
+            sessionId, seriesList.Count, seriesList.Sum(s => s.Slices.Count), userId);
 
         return session;
     }
 
-    private async Task<List<CtScanSliceInfo>> ExtractDicomSlicesAsync(
-        FellowOakDicom.DicomFile dicomFile,
-        PatientMedicalHistory metadata,
+    private sealed class ExtractedSeries
+    {
+        public required CtSeriesInfo Info { get; init; }
+        public PatientMedicalHistory? MetadataForStudy { get; init; }
+    }
+
+    private async Task<ExtractedSeries> ExtractSeriesFromDicomBytesAsync(
+        byte[] bytes,
+        int seriesIndex,
         string tempDir,
         CancellationToken cancellationToken)
+    {
+        var dicomFile = await OpenDicomAsync(bytes, cancellationToken).ConfigureAwait(false);
+        var metadata = _metadataParser.Parse(dicomFile);
+        var slices = await ExtractDicomSlicesAsync(dicomFile, metadata, seriesIndex, tempDir, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (slices.Count == 0)
+            throw new InvalidOperationException("No slices could be extracted from this DICOM file.");
+
+        var previewIndex = PickPreviewSliceIndex(slices, metadata);
+        var label = BuildSeriesLabel(metadata, seriesIndex);
+
+        return new ExtractedSeries
+        {
+            MetadataForStudy = metadata,
+            Info = new CtSeriesInfo
+            {
+                SeriesIndex = seriesIndex,
+                SeriesInstanceUid = ReadSeriesUid(dicomFile.Dataset),
+                Label = label,
+                Modality = string.IsNullOrWhiteSpace(metadata.Modality) ? "CT" : metadata.Modality,
+                SeriesDescription = metadata.SeriesDescription,
+                BodyPartExamined = metadata.BodyPartExamined,
+                PreviewSliceIndex = previewIndex,
+                Slices = slices,
+            },
+        };
+    }
+
+    private async Task<(IReadOnlyList<CtSeriesInfo> Series, PatientMedicalHistory Metadata)> LoadSeriesFromZipAsync(
+        byte[] bytes,
+        string tempDir,
+        CancellationToken cancellationToken)
+    {
+        var groupedBytes = new Dictionary<string, List<byte[]>>(StringComparer.Ordinal);
+
+        using var zipMs = new MemoryStream(bytes, writable: false);
+        using var archive = new ZipArchive(zipMs, ZipArchiveMode.Read, leaveOpen: false);
+
+        foreach (var entry in archive.Entries)
+        {
+            if (entry.Length == 0 || string.IsNullOrWhiteSpace(entry.Name))
+                continue;
+            if (!AnalyticsDicomRouting.IsDicomUpload(entry.Name, null))
+                continue;
+
+            cancellationToken.ThrowIfCancellationRequested();
+            await using var entryStream = entry.Open();
+            using var ms = new MemoryStream();
+            await entryStream.CopyToAsync(ms, cancellationToken).ConfigureAwait(false);
+            var fileBytes = ms.ToArray();
+            if (fileBytes.Length == 0)
+                continue;
+
+            var dicomFile = await OpenDicomAsync(fileBytes, cancellationToken).ConfigureAwait(false);
+            var seriesKey = ReadSeriesUid(dicomFile.Dataset);
+            if (string.IsNullOrWhiteSpace(seriesKey))
+                seriesKey = $"entry-{entry.FullName}";
+
+            if (!groupedBytes.TryGetValue(seriesKey, out var list))
+            {
+                list = [];
+                groupedBytes[seriesKey] = list;
+            }
+
+            list.Add(fileBytes);
+        }
+
+        if (groupedBytes.Count == 0)
+            throw new InvalidOperationException("The ZIP archive contains no readable DICOM (.dcm) files.");
+
+        var result = new List<CtSeriesInfo>();
+        PatientMedicalHistory? studyMeta = null;
+        var seriesIdx = 0;
+
+        foreach (var kv in groupedBytes.OrderBy(k => k.Key, StringComparer.Ordinal))
+        {
+            var allSlices = new List<CtScanSliceInfo>();
+            PatientMedicalHistory? seriesMeta = null;
+
+            foreach (var fileBytes in kv.Value)
+            {
+                var dicomFile = await OpenDicomAsync(fileBytes, cancellationToken).ConfigureAwait(false);
+                var meta = _metadataParser.Parse(dicomFile);
+                seriesMeta ??= meta;
+                studyMeta ??= meta;
+
+                var slices = await ExtractDicomSlicesAsync(
+                        dicomFile, meta, seriesIdx, tempDir, cancellationToken, allSlices.Count)
+                    .ConfigureAwait(false);
+                allSlices.AddRange(slices);
+            }
+
+            allSlices = allSlices.OrderBy(s => s.Index).ToList();
+            seriesMeta ??= new PatientMedicalHistory();
+            result.Add(new CtSeriesInfo
+            {
+                SeriesIndex = seriesIdx,
+                SeriesInstanceUid = kv.Key.StartsWith("entry-", StringComparison.Ordinal) ? "" : kv.Key,
+                Label = BuildSeriesLabel(seriesMeta, seriesIdx),
+                Modality = seriesMeta.Modality,
+                SeriesDescription = seriesMeta.SeriesDescription,
+                BodyPartExamined = seriesMeta.BodyPartExamined,
+                PreviewSliceIndex = PickPreviewSliceIndex(allSlices, seriesMeta),
+                Slices = allSlices,
+            });
+            seriesIdx++;
+        }
+
+        return (result, studyMeta ?? new PatientMedicalHistory());
+    }
+
+    private async Task<List<CtScanSliceInfo>> ExtractDicomSlicesAsync(
+        DicomFile dicomFile,
+        PatientMedicalHistory metadata,
+        int seriesIndex,
+        string tempDir,
+        CancellationToken cancellationToken,
+        int sliceOffset = 0)
     {
         var slices = new List<CtScanSliceInfo>();
         var total = Math.Max(1, metadata.NumberOfFrames);
         var bodyPart = string.IsNullOrWhiteSpace(metadata.BodyPartExamined) ? "CHEST" : metadata.BodyPartExamined.ToUpperInvariant();
+        var localIndex = 0;
 
         foreach (var frame in _sliceExtractor.EnumerateSlices(dicomFile, metadata, cancellationToken))
         {
             using (frame)
             {
-                var jpegName = $"{frame.SliceIndex:D4}.jpg";
+                var globalIndex = sliceOffset + localIndex;
+                var jpegName = $"s{seriesIndex:D2}_{globalIndex:D4}.jpg";
                 var jpegPath = Path.Combine(tempDir, jpegName);
                 await SaveRgbAsJpegAsync(frame.Pixels, jpegPath, cancellationToken).ConfigureAwait(false);
 
                 slices.Add(new CtScanSliceInfo
                 {
-                    Index = frame.SliceIndex,
-                    InstanceNumber = frame.InstanceNumber,
-                    Label = $"CT {frame.SliceIndex + 1}/{total} {bodyPart}",
+                    Index = globalIndex,
+                    InstanceNumber = frame.InstanceNumber ?? (globalIndex + 1).ToString(CultureInfo.InvariantCulture),
+                    Label = $"{metadata.Modality} {localIndex + 1}/{total} {bodyPart}".Trim(),
                     Width = frame.Pixels.Width,
                     Height = frame.Pixels.Height,
                     JpegFileName = jpegName,
                 });
+                localIndex++;
             }
         }
-
-        if (slices.Count == 0)
-            throw new InvalidOperationException("No slices could be extracted from this DICOM file.");
 
         return slices;
     }
 
     private async Task<CtScanSliceInfo> SaveRasterSliceAsync(
         byte[] bytes,
+        int seriesIndex,
         string tempDir,
         CancellationToken cancellationToken)
     {
-        const string jpegName = "0000.jpg";
+        const string jpegName = "s00_0000.jpg";
         var jpegPath = Path.Combine(tempDir, jpegName);
 
         using var image = Image.Load<Rgb24>(bytes);
@@ -297,6 +477,66 @@ public sealed class CtScanViewerService
         using var clone = image.Clone();
         clone.SaveAsJpeg(path, new JpegEncoder { Quality = quality });
         return Task.CompletedTask;
+    }
+
+    private async Task<DicomFile> OpenDicomAsync(byte[] bytes, CancellationToken cancellationToken)
+    {
+        await using var ms = new MemoryStream(bytes, writable: false);
+        return await _dicomLoader.LoadAsync(ms, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static string ReadSeriesUid(DicomDataset ds)
+    {
+        try
+        {
+            return ds.GetSingleValueOrDefault(DicomTag.SeriesInstanceUID, "") ?? "";
+        }
+        catch
+        {
+            return "";
+        }
+    }
+
+    private static string BuildSeriesLabel(PatientMedicalHistory meta, int seriesIndex)
+    {
+        var parts = new[]
+            {
+                string.IsNullOrWhiteSpace(meta.Modality) ? null : meta.Modality.Trim(),
+                string.IsNullOrWhiteSpace(meta.SeriesDescription) ? null : meta.SeriesDescription.Trim(),
+                string.IsNullOrWhiteSpace(meta.BodyPartExamined) ? null : meta.BodyPartExamined.Trim(),
+            }
+            .Where(p => !string.IsNullOrWhiteSpace(p))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (parts.Count > 0)
+            return string.Join(" · ", parts);
+
+        return $"Series {seriesIndex + 1}";
+    }
+
+    private static int PickPreviewSliceIndex(IReadOnlyList<CtScanSliceInfo> slices, PatientMedicalHistory meta)
+    {
+        if (slices.Count == 0)
+            return 0;
+        return slices.Count / 2;
+    }
+
+    private static string ResolveLayoutMode(IReadOnlyList<CtSeriesInfo> series)
+    {
+        var withSlices = series.Count(s => s.Slices.Count > 0);
+        if (withSlices >= 2 && withSlices <= 4)
+            return "grid";
+        if (withSlices >= 2)
+            return "grid";
+        return "single";
+    }
+
+    private static bool IsZipUpload(string fileName, string contentType)
+    {
+        if (fileName.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+            return true;
+        return (contentType ?? "").Contains("zip", StringComparison.OrdinalIgnoreCase);
     }
 
     private static void AppendMeta(StringBuilder sb, string label, string? value)

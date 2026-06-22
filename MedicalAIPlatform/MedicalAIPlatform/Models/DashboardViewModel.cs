@@ -16,10 +16,8 @@ namespace MedicalAIPlatform.Models
         // Doctor Stats (New Design)
         public int PendingAIReportsCount { get; set; }
         public int UrgentPatientAlertsCount { get; set; }
-        public int UpcomingAppointmentsCount { get; set; }
 
         // Doctor Content
-        public List<AppointmentViewModel> UpcomingAppointments { get; set; } = new List<AppointmentViewModel>();
         public List<AIAlertViewModel> RecentAlerts { get; set; } = new List<AIAlertViewModel>();
         
         public List<PatientScanViewModel> LatestScans { get; set; } = new List<PatientScanViewModel>();

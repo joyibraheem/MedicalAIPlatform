@@ -1,141 +1,136 @@
-# Docker Setup Guide for Medical AI Platform
+# Docker Guide — Medical AI Platform
 
-This guide will help you run the Medical AI Platform using Docker. **You only need Docker installed** - no need to install .NET SDK, SQL Server, or any other dependencies.
+Run the ASP.NET Core 9 application with SQL Server using Docker Compose. No local .NET SDK or SQL Server install required.
 
-## Prerequisites
+## File locations
 
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running
-- At least 4GB of available RAM (for SQL Server)
+| File | Purpose |
+|------|---------|
+| `.env.example` | Template for secrets (copy to `.env`) |
+| `.env` | Local secrets (**gitignored** — do not commit) |
+| `Dockerfile` | Multi-stage build for the web app |
+| `docker-compose.yml` | SQL Server + web app stack |
+| `.dockerignore` | Build context exclusions |
+| `MedicalAIPlatform/appsettings.Production.example.json` | Production config template (no secrets) |
 
-## Quick Start (2 Commands)
+Run all `docker compose` commands from the folder containing `docker-compose.yml`.
 
-### Option 1: Using Docker Compose (Recommended)
-
-```bash
-# 1. Build and start all services (SQL Server + Web App)
-docker-compose up --build
-
-# 2. Open your browser and navigate to:
-# http://localhost:8080
-```
-
-That's it! The application will be available at `http://localhost:8080`
-
-### Option 2: Manual Docker Commands
-
-If you prefer to run commands separately:
+## First-time setup
 
 ```bash
-# 1. Build the Docker image
-docker build -t medicalai-platform .
-
-# 2. Run SQL Server container
-docker run -d --name medicalai-sqlserver \
-  -e ACCEPT_EULA=Y \
-  -e SA_PASSWORD=YourStrong@Passw0rd \
-  -e MSSQL_PID=Developer \
-  -p 1433:1433 \
-  mcr.microsoft.com/mssql/server:2022-latest
-
-# 3. Wait 30 seconds for SQL Server to start, then run the web app
-docker run -d --name medicalai-webapp \
-  -p 8080:8080 \
-  --link medicalai-sqlserver:sqlserver \
-  -e ConnectionStrings__DefaultConnection="Server=sqlserver;Database=MedicalAIPlatformDb;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;MultipleActiveResultSets=true" \
-  medicalai-platform
-
-# 4. Open browser: http://localhost:8080
+cp .env.example .env
+# Edit .env and set MSSQL_SA_PASSWORD and demo account passwords
+docker compose up --build
 ```
 
-## Stopping the Application
+Open **http://localhost:8080**
+
+## Architecture
+
+```text
+┌─────────────────────┐     ┌──────────────────────────────┐
+│  medicalai-webapp   │────▶│  medicalai-sqlserver         │
+│  ASP.NET Core 9     │     │  SQL Server 2022             │
+│  http://localhost:  │     │  volume: sqlserver_data      │
+│       8080          │     └──────────────────────────────┘
+└─────────────────────┘
+```
+
+### Included in Docker
+
+- Web app (Identity, SignalR, fo-dicom, CT viewer, reports, admin)
+- SQL Server with EF Core migrations on startup
+- Demo users when `DOCKER_DEMO_SEED=true` (passwords from `.env`)
+
+### Not included (disabled in container)
+
+| Service | Port | Flag |
+|---------|------|------|
+| CheXNet / LungAI | 8000 | `CHEXNET_API_AUTOSTART=false` |
+| BioBERT | 8001 | `BIOBERT_API_AUTOSTART=false` |
+| Ollama chat | 11434 | not bundled |
+
+## Environment variables
+
+Set in `.env` (see `.env.example`):
+
+| Variable | Purpose |
+|----------|---------|
+| `MSSQL_SA_PASSWORD` | SQL Server SA password |
+| `MEDICALAI_DEV_ADMIN_PASSWORD` | Demo admin password |
+| `MEDICALAI_DEV_DOCTOR_PASSWORD` | Demo doctor password |
+
+Compose also sets (no secrets):
+
+| Variable | Value |
+|----------|-------|
+| `ASPNETCORE_URLS` | `http://+:8080` |
+| `DOTNET_RUNNING_IN_CONTAINER` | `true` |
+| `DOCKER_DEMO_SEED` | `true` |
+
+Demo account emails: `admin@medicalai.com`, `doctor@medicalai.com`
+
+## Commands
 
 ```bash
-# Stop all containers
-docker-compose down
+# Build and run
+docker compose up --build
 
-# Stop and remove volumes (clears database)
-docker-compose down -v
+# Stop (keep database)
+docker compose down
+
+# Rebuild after code changes
+docker compose down && docker compose up --build
+
+# Full reset (wipe database)
+docker compose down -v && docker compose up --build
+
+# Logs
+docker logs medicalai-webapp
+docker logs medicalai-sqlserver
 ```
 
-## Default Login Credentials
+## Ports
 
-After the first run, you can log in with:
+| Service | Host | Container |
+|---------|------|-----------|
+| Web app | 8080 | 8080 |
+| SQL Server | 1433 | 1433 |
 
-- **Admin Account:**
-  - Email: `admin@medicalai.com`
-  - Password: `Admin@123`
-
-- **Doctor Account:**
-  - Email: `doctor@medicalai.com`
-  - Password: `Doctor@123`
-
-## Troubleshooting
-
-### Port Already in Use
-
-If port 8080 is already in use, modify `docker-compose.yml`:
+Change host port in `docker-compose.yml` if 8080 is in use:
 
 ```yaml
 ports:
-  - "8080:8080"  # Change 8080 to any available port (e.g., "5000:8080")
+  - "5000:8080"   # open http://localhost:5000
 ```
 
-Then access the app at `http://localhost:5000`
+## Startup sequence
 
-### Database Connection Issues
+1. SQL Server starts and passes health check (~30–90 s first run)
+2. Web app runs EF migrations and seeds roles/users
+3. App listens on **http://localhost:8080** (HTTP only — no TLS in container)
 
-If you see database connection errors:
+## Troubleshooting
 
-1. Wait a bit longer - SQL Server takes 30-60 seconds to start
-2. Check SQL Server logs: `docker logs medicalai-sqlserver`
-3. Restart containers: `docker-compose restart`
+| Issue | Action |
+|-------|--------|
+| `Set MSSQL_SA_PASSWORD in .env` | Copy `.env.example` to `.env` |
+| Port in use | Change `8080:8080` mapping or stop conflicting app |
+| Login fails | Use `http://` not `https://` |
+| AI features fail | Expected without host Python/Ollama services |
+| Stuck starting | `docker compose ps` and check SQL logs |
 
-### Viewing Logs
+## Security (team / GitHub)
+
+- **Never commit `.env`** — it is in `.gitignore`
+- Commit **`.env.example`** only (placeholder values)
+- `appsettings.Production.json` is gitignored; use `appsettings.Production.example.json` as template
+- Default `.env.example` passwords are for **local Docker demo only**
+
+## Manual image build
 
 ```bash
-# View web app logs
-docker logs medicalai-webapp
-
-# View SQL Server logs
-docker logs medicalai-sqlserver
-
-# Follow logs in real-time
-docker logs -f medicalai-webapp
+docker build -t medicalai-platform .
 ```
 
-### Rebuilding After Code Changes
-
-```bash
-# Rebuild and restart
-docker-compose up --build --force-recreate
-```
-
-## Project Structure
-
-```
-MedicalAIPlatform/
-├── Dockerfile                 # Docker image definition
-├── docker-compose.yml         # Multi-container setup
-├── .dockerignore             # Files to exclude from Docker build
-├── DOCKER_README.md          # This file
-└── MedicalAIPlatform/
-    └── MedicalAIPlatform.csproj
-```
-
-## What's Included
-
-- **SQL Server 2022**: Database server running in a container
-- **ASP.NET Core 9.0**: Web application containerized
-- **Automatic Database Migration**: Database is created automatically on first run
-- **Persistent Storage**: Database data persists in a Docker volume
-
-## Notes
-
-- The database password is set to `YourStrong@Passw0rd` (change in `docker-compose.yml` for production)
-- The application runs on HTTP (port 8080) inside Docker
-- All data is stored in Docker volumes and persists between container restarts
-- To completely reset: `docker-compose down -v` (removes all data)
-
-## Support
-
-If you encounter any issues, check the logs using the commands above or contact the development team.
+Requires a separate SQL Server instance or compose stack for the database.

@@ -3,7 +3,6 @@ using System.Linq;
 using System.Text.Json;
 using MedicalAIPlatform.Data;
 using MedicalAIPlatform.Models;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 namespace MedicalAIPlatform.Services;
@@ -17,12 +16,10 @@ public sealed class AdminDashboardService
     };
 
     private readonly ApplicationDbContext _db;
-    private readonly UserManager<ApplicationUser> _users;
 
-    public AdminDashboardService(ApplicationDbContext db, UserManager<ApplicationUser> users)
+    public AdminDashboardService(ApplicationDbContext db)
     {
         _db = db;
-        _users = users;
     }
 
     public async Task<AdminDashboardViewModel> BuildAsync(CancellationToken cancellationToken = default)
@@ -33,12 +30,13 @@ public sealed class AdminDashboardService
         var prevWeekStart = utcNow.AddDays(-14);
         var activityStart = todayUtc.AddDays(-6);
 
-        var doctorRoleUsers = await _users.GetUsersInRoleAsync("Doctor").ConfigureAwait(false);
-        var adminRoleUsers = await _users.GetUsersInRoleAsync("Admin").ConfigureAwait(false);
-
-        var doctorsThisWeek = doctorRoleUsers.Count(u => u.CreatedAt >= weekAgo);
-        var doctorsPrevWeek = doctorRoleUsers.Count(u =>
-            u.CreatedAt >= prevWeekStart && u.CreatedAt < weekAgo);
+        var doctorsInRole = DoctorsInRoleQuery();
+        var activeDoctorsCount = await doctorsInRole.CountAsync(cancellationToken).ConfigureAwait(false);
+        var doctorsThisWeek = await doctorsInRole
+            .CountAsync(u => u.CreatedAt >= weekAgo, cancellationToken).ConfigureAwait(false);
+        var doctorsPrevWeek = await doctorsInRole
+            .CountAsync(u => u.CreatedAt >= prevWeekStart && u.CreatedAt < weekAgo, cancellationToken)
+            .ConfigureAwait(false);
 
         var patientsTotal = await _db.Patients.AsNoTracking().CountAsync(cancellationToken).ConfigureAwait(false);
         var patientsThisWeek = await _db.Patients.AsNoTracking()
@@ -217,7 +215,7 @@ public sealed class AdminDashboardService
 
         var vm = new AdminDashboardViewModel
         {
-            ActiveDoctorsCount = doctorRoleUsers.Count,
+            ActiveDoctorsCount = activeDoctorsCount,
             PatientsCount = patientsTotal,
             AccuracyRate = Math.Round(anchorAccuracy, 1),
             PendingDoctors = pendingDoctors,
@@ -235,7 +233,7 @@ public sealed class AdminDashboardService
             DoctorsCard = new AdminKpiCardVm
             {
                 Title = "Active doctors",
-                ValueDisplay = doctorRoleUsers.Count.ToString(CultureInfo.InvariantCulture),
+                ValueDisplay = activeDoctorsCount.ToString(CultureInfo.InvariantCulture),
                 TrendVariant = doctorTrend.variant,
                 TrendLabel = doctorTrend.arrow,
                 TrendContext = doctorsThisWeek > 0
@@ -267,6 +265,13 @@ public sealed class AdminDashboardService
 
         return vm;
     }
+
+    private IQueryable<ApplicationUser> DoctorsInRoleQuery() =>
+        from user in _db.Users.AsNoTracking()
+        join userRole in _db.UserRoles on user.Id equals userRole.UserId
+        join role in _db.Roles on userRole.RoleId equals role.Id
+        where role.NormalizedName == "DOCTOR"
+        select user;
 
     private sealed record InferenceJobRow(string? ResultPayloadJson, DateTimeOffset CompletedAt, DateTimeOffset CreatedAt);
 

@@ -26,7 +26,7 @@ public sealed class AdminController : Controller
 
     public async Task<IActionResult> Index()
     {
-        var model = await _adminDashboard.BuildAsync(HttpContext.RequestAborted).ConfigureAwait(false);
+        var model = await _adminDashboard.BuildAsync(CancellationToken.None).ConfigureAwait(false);
         return View(model);
     }
 

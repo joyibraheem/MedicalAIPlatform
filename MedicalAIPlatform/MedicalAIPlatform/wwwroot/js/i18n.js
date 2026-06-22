@@ -4,8 +4,6 @@ window.I18N = {
     en: {
         // Navigation
         nav_home: "Home",
-        nav_follow_up: "Follow up",
-        nav_calendar: "Calendar",
         nav_analytics: "Analytics",
         nav_ai_assistant: "AI Assistant",
         nav_logout: "Logout",
@@ -70,35 +68,6 @@ window.I18N = {
         home_doctor_intro: "Welcome! This is your doctor dashboard placeholder for managing patients and diagnostic analyses.",
         home_no_role: "You are logged in, but no specific role-based dashboard is configured for your account.",
         
-        // Calendar
-        calendar_schedule: "Schedule",
-        calendar_upcoming: "Upcoming",
-        calendar_new_appointment: "+ New Appointment",
-        calendar_no_appointments: "No upcoming appointments",
-        day_sun: "Sun",
-        day_mon: "Mon",
-        day_tue: "Tue",
-        day_wed: "Wed",
-        day_thu: "Thu",
-        day_fri: "Fri",
-        day_sat: "Sat",
-        appointment_checkup: "Checkup",
-        appointment_follow_up: "Follow-up",
-        appointment_emergency: "Emergency",
-        appointment_consultation: "Consultation",
-        
-        // FollowUp
-        followup_title: "Patient Follow-Up & Monitoring",
-        followup_subtitle: "Manage post-scan actions and AI-driven recommendations",
-        followup_compliance_rate: "Compliance Rate",
-        followup_high_urgency: "High Urgency cases",
-        followup_immediate_referral: "Requiring immediate referral",
-        followup_scheduled_today: "Scheduled Today",
-        followup_pid: "PID:",
-        urgency_high: "High",
-        urgency_medium: "Medium",
-        urgency_low: "Low",
-        
         // Analytics
         analytics_diagnostic_command_center: "Diagnostic Command Center",
         analytics_multi_modal_system: "Multi-modal AI Analysis System",
@@ -141,7 +110,6 @@ window.I18N = {
         dashboard_scan_alerts_today: "scan alerts today",
         dashboard_pending_ai_reports: "Pending AI Reports",
         dashboard_urgent_patient_alerts: "Urgent patient Alerts",
-        dashboard_upcoming_appointments: "upcoming Appointments",
         dashboard_upload_new_xray: "Upload New X-Ray",
         dashboard_start_new_scan: "start a new AI chest scan here",
         dashboard_upload_now: "Upload Now",
@@ -196,8 +164,6 @@ window.I18N = {
     ar: {
         // Navigation
         nav_home: "الصفحة الرئيسية",
-        nav_follow_up: "المتابعة",
-        nav_calendar: "الجدول",
         nav_analytics: "التحليلات",
         nav_ai_assistant: "المساعد الذكي",
         nav_logout: "تسجيل الخروج",
@@ -262,35 +228,6 @@ window.I18N = {
         home_doctor_intro: "مرحباً! هذه مساحة عملك لإدارة المرضى والتحليلات التشخيصية.",
         home_no_role: "أنت مسجل الدخول، ولكن لا يوجد لوح تحكم مخصص لدورك حتى الآن.",
         
-        // Calendar
-        calendar_schedule: "الجدول",
-        calendar_upcoming: "القادم",
-        calendar_new_appointment: "+ موعد جديد",
-        calendar_no_appointments: "لا توجد مواعيد قادمة",
-        day_sun: "أحد",
-        day_mon: "اثنين",
-        day_tue: "ثلاثاء",
-        day_wed: "أربعاء",
-        day_thu: "خميس",
-        day_fri: "جمعة",
-        day_sat: "سبت",
-        appointment_checkup: "فحص",
-        appointment_follow_up: "متابعة",
-        appointment_emergency: "طوارئ",
-        appointment_consultation: "استشارة",
-        
-        // FollowUp
-        followup_title: "متابعة ومراقبة المرضى",
-        followup_subtitle: "إدارة الإجراءات بعد الفحص والتوصيات المدعومة بالذكاء الاصطناعي",
-        followup_compliance_rate: "معدل الامتثال",
-        followup_high_urgency: "حالات عالية الأولوية",
-        followup_immediate_referral: "تتطلب إحالة فورية",
-        followup_scheduled_today: "المجدولة اليوم",
-        followup_pid: "رقم المريض:",
-        urgency_high: "عالية",
-        urgency_medium: "متوسطة",
-        urgency_low: "منخفضة",
-        
         // Analytics
         analytics_diagnostic_command_center: "مركز التشخيص",
         analytics_multi_modal_system: "نظام التحليل متعدد الوسائط",
@@ -333,7 +270,6 @@ window.I18N = {
         dashboard_scan_alerts_today: "تنبيهات فحص اليوم",
         dashboard_pending_ai_reports: "تقارير الذكاء الاصطناعي المعلقة",
         dashboard_urgent_patient_alerts: "تنبيهات المرضى العاجلة",
-        dashboard_upcoming_appointments: "المواعيد القادمة",
         dashboard_upload_new_xray: "رفع أشعة جديدة",
         dashboard_start_new_scan: "ابدأ فحص صدر جديد بالذكاء الاصطناعي هنا",
         dashboard_upload_now: "رفع الآن",

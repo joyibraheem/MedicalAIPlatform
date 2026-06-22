@@ -35,7 +35,7 @@ namespace MedicalAIPlatform.Controllers
             // Check for Admin Role
             if (await _userManager.IsInRoleAsync(user, "Admin"))
             {
-                var adminModel = await _adminDashboard.BuildAsync(HttpContext.RequestAborted).ConfigureAwait(false);
+                var adminModel = await _adminDashboard.BuildAsync(CancellationToken.None).ConfigureAwait(false);
                 return View("~/Views/Admin/Index.cshtml", adminModel);
             }
 
@@ -50,12 +50,6 @@ namespace MedicalAIPlatform.Controllers
             // Populate logic
             model.PendingAIReportsCount = 12;
             model.UrgentPatientAlertsCount = 03;
-            model.UpcomingAppointmentsCount = 08;
-            model.UpcomingAppointments = new List<AppointmentViewModel>
-            {
-                new AppointmentViewModel { Id = 1, PatientName = "John Doe", AppointmentTime = DateTime.Now.AddHours(2), Type = "checkup", Status = "Confirmed" },
-                new AppointmentViewModel { Id = 2, PatientName = "Jane Smith", AppointmentTime = DateTime.Now.AddHours(4), Type = "Follow-up", Status = "Confirmed" }
-            };
             model.RecentAlerts = new List<AIAlertViewModel>
             {
                 new AIAlertViewModel { Id = 101, PatientName = "Alice Johnson", AlertType = "High Blood Pressure", Severity = "High", SuggestedNextStep = "Immediate Consultation", Timestamp = DateTime.Now.AddMinutes(-30) },

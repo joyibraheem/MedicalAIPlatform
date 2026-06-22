@@ -53,10 +53,7 @@ public sealed class BioBertApiHostedService : IHostedService
             possiblePaths.Add(Path.Combine(parentDir, "BIOBERT", "BIOBERT", "biobert_service"));
         }
         
-        // Option 3: Check D:\AIProjects (common location)
-        possiblePaths.Add(@"D:\AIProjects\BIOBERT\BIOBERT\biobert_service");
-        
-        // Option 4: Check current directory structure
+        // Option 3: Check current directory structure
         possiblePaths.Add(Path.Combine(repoRoot, "..", "BIOBERT", "BIOBERT", "biobert_service"));
         
         string? bioBertServiceDir = null;

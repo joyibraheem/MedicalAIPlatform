@@ -5,11 +5,14 @@
     var hasSession = ViewBag.HasSession as bool? ?? false;
 }
 
+<link rel="stylesheet" href="~/css/responsive.css" asp-append-version="true" />
 <link rel="stylesheet" href="~/css/ct-scan-viewer.css" asp-append-version="true" />
 
 <div class="ct-viewer-page" id="ctViewerRoot"
      data-session-id="@(sessionId?.ToString() ?? "")"
      data-has-session="@(hasSession.ToString().ToLowerInvariant())"
+     data-patient-id="@(ViewBag.PatientId != null ? ViewBag.PatientId.ToString() : "")"
+     data-patient-url="@Url.Action("Details", "Patient")"
      data-upload-url="@Url.Action("Upload", "CtScan")"
      data-session-url="@Url.Action("Session", "CtScan")"
      data-slice-url-base="@Url.Action("Slice", "CtScan")"
@@ -35,26 +38,28 @@
 
     <div class="ct-toolbar">
         <div class="ct-toolbar__group">
-            <button type="button" class="ct-tool-btn" id="btnSeries" title="Series info">
-                <i class="bi bi-list-ul"></i><span>Series</span>
+            <button type="button" class="ct-tool-btn" id="btnPrev" disabled title="Previous slice">
+                <i class="bi bi-chevron-left"></i>
             </button>
-            <button type="button" class="ct-tool-btn" id="btnPrev" disabled>
-                <i class="bi bi-chevron-left"></i><span>Previous</span>
+            <span class="ct-slice-indicator" id="toolbarSliceIndicator">— / —</span>
+            <button type="button" class="ct-tool-btn" id="btnNext" disabled title="Next slice">
+                <i class="bi bi-chevron-right"></i>
             </button>
-            <button type="button" class="ct-tool-btn" id="btnNext" disabled>
-                <span>Next</span><i class="bi bi-chevron-right"></i>
-            </button>
-            <button type="button" class="ct-tool-btn" id="btnPlay" disabled>
+            <button type="button" class="ct-tool-btn" id="btnPlay" disabled title="Cine playback">
                 <i class="bi bi-play-fill"></i><span>Play</span>
+            </button>
+            <button type="button" class="ct-tool-btn" id="btnSeries" disabled title="Series info">
+                <i class="bi bi-info-circle"></i>
             </button>
         </div>
         <div class="ct-toolbar__group">
-            <button type="button" class="ct-tool-btn" id="btnZoomIn" disabled><i class="bi bi-zoom-in"></i><span>Zoom</span></button>
-            <button type="button" class="ct-tool-btn" id="btnZoomOut" disabled><i class="bi bi-zoom-out"></i></button>
-            <button type="button" class="ct-tool-btn" id="btnPanMode" disabled><i class="bi bi-arrows-move"></i><span>Pan</span></button>
+            <button type="button" class="ct-tool-btn" id="btnZoomIn" disabled title="Zoom in"><i class="bi bi-zoom-in"></i></button>
+            <button type="button" class="ct-tool-btn" id="btnZoomOut" disabled title="Zoom out"><i class="bi bi-zoom-out"></i></button>
+            <button type="button" class="ct-tool-btn" id="btnPanMode" disabled title="Pan mode"><i class="bi bi-arrows-move"></i></button>
+            <button type="button" class="ct-tool-btn" id="btnResetViewport" disabled title="Reset viewport"><i class="bi bi-arrow-counterclockwise"></i></button>
             <div class="dropdown">
                 <button type="button" class="ct-tool-btn dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="bi bi-three-dots"></i><span>More</span>
+                    <i class="bi bi-three-dots"></i>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-dark ct-dropdown">
                     <li>
@@ -62,10 +67,9 @@
                             <i class="bi bi-cloud-upload me-2"></i>Upload new scan
                         </label>
                         <input type="file" id="ctUploadInput" class="d-none"
-                               accept="image/png,image/jpeg,application/dicom,.dcm,.dicm" />
+                               accept="image/png,image/jpeg,application/dicom,.dcm,.dicm,.zip,application/zip" />
                     </li>
                     <li><button type="button" class="dropdown-item" id="btnDownloadReport" disabled><i class="bi bi-download me-2"></i>Download report</button></li>
-                    <li><button type="button" class="dropdown-item" id="btnResetViewer" disabled><i class="bi bi-arrow-counterclockwise me-2"></i>Reset viewer</button></li>
                 </ul>
             </div>
         </div>
@@ -75,13 +79,28 @@
         </button>
     </div>
 
+    <div class="ct-mobile-panel-bar" role="toolbar" aria-label="Panel toggles">
+        <button type="button" class="btn btn-sm btn-outline-secondary flex-fill" data-bs-toggle="collapse" data-bs-target="#leftPanel" aria-expanded="false" aria-controls="leftPanel">
+            <i class="bi bi-list-ul me-1"></i> Series &amp; Slices
+        </button>
+    </div>
+
     <div class="ct-viewer-body">
-        <aside class="ct-thumbs-panel" id="thumbsPanel" aria-label="Slice thumbnails">
-            <div class="ct-thumbs-panel__header">
-                <span>Slices</span>
-                <span id="thumbCounter">0 / 0</span>
+        <aside class="ct-left-panel collapse" id="leftPanel" aria-label="Series and slices">
+            <div class="ct-panel-block">
+                <div class="ct-panel-block__header">
+                    <span>Series</span>
+                    <span id="seriesCountLabel">0</span>
+                </div>
+                <div class="ct-series-list" id="seriesList"></div>
             </div>
-            <div class="ct-thumbs-list" id="thumbsList"></div>
+            <div class="ct-panel-block ct-panel-block--grow">
+                <div class="ct-panel-block__header">
+                    <span>Slices</span>
+                    <span id="thumbCounter">0 / 0</span>
+                </div>
+                <div class="ct-thumbs-list" id="thumbsList"></div>
+            </div>
         </aside>
 
         <main class="ct-main-panel">
@@ -94,20 +113,26 @@
                     <span>Upload CT / DICOM</span>
                 </label>
                 <input type="file" id="ctUploadInputHero" class="d-none"
-                       accept="image/png,image/jpeg,application/dicom,.dcm,.dicm" />
+                       accept="image/png,image/jpeg,application/dicom,.dcm,.dicm,.zip,application/zip" />
             </div>
 
             <div class="ct-viewport-wrap d-none" id="viewportWrap">
-                <div class="ct-viewport-toolbar">
-                    <span id="currentSliceLabel">—</span>
-                    <span id="zoomLabel">100%</span>
-                </div>
                 <div class="ct-viewport" id="viewport">
                     <img id="mainSliceImage" alt="CT slice" draggable="false" />
+                    <div class="ct-viewport-overlay" aria-hidden="true">
+                        <span id="overlaySeries" class="ct-overlay-series"></span>
+                        <span id="overlaySlice">1 / 1</span>
+                        <span id="overlayZoom">100%</span>
+                    </div>
                     <div class="ct-viewport-loading d-none" id="viewportLoading">
                         <div class="ct-spinner"></div>
                         <span>Loading slice…</span>
                     </div>
+                </div>
+                <div class="ct-viewport-grid d-none" id="viewportGrid" aria-label="Multi-series view"></div>
+                <div class="ct-viewport-toolbar">
+                    <span id="currentSliceLabel">—</span>
+                    <span id="zoomLabel">100%</span>
                 </div>
             </div>
         </main>

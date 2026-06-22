@@ -1,14 +1,16 @@
-version: '3.8'
+# Medical AI Platform — local Docker stack (web app + SQL Server)
+#
+# Setup: copy .env.example to .env and set passwords before first run.
+# Run from this directory: docker compose up --build
 
 services:
-  # SQL Server Database
   sqlserver:
     image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: medicalai-sqlserver
     environment:
-      - ACCEPT_EULA=Y
-      - SA_PASSWORD=YourStrong@Passw0rd
-      - MSSQL_PID=Developer
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: ${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD in .env — copy from .env.example}
+      MSSQL_PID: Developer
     ports:
       - "1433:1433"
     volumes:
@@ -16,25 +18,35 @@ services:
     networks:
       - medicalai-network
     healthcheck:
-      test: /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P YourStrong@Passw0rd -Q "SELECT 1" || exit 1
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$SA_PASSWORD\" -C -Q \"SELECT 1\" || exit 1",
+        ]
       interval: 10s
-      timeout: 3s
-      retries: 10
-      start_period: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
 
-  # ASP.NET Core Web Application
   webapp:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: medicalai-webapp
+    env_file:
+      - .env
     environment:
-      - ASPNETCORE_ENVIRONMENT=Production
-      - ASPNETCORE_URLS=http://+:8080
-      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=MedicalAIPlatformDb;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;MultipleActiveResultSets=true
-      - CHEXNET_API_AUTOSTART=false
-      - BIOBERT_API_AUTOSTART=false
-      - DOTNET_RUNNING_IN_CONTAINER=true
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      DOTNET_RUNNING_IN_CONTAINER: "true"
+      DOCKER_DEMO_SEED: ${DOCKER_DEMO_SEED:-true}
+      ConnectionStrings__DefaultConnection: >-
+        Server=sqlserver;Database=MedicalAIPlatformDb;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;MultipleActiveResultSets=true
+      MEDICALAI_DEV_ADMIN_PASSWORD: ${MEDICALAI_DEV_ADMIN_PASSWORD:?Set MEDICALAI_DEV_ADMIN_PASSWORD in .env}
+      MEDICALAI_DEV_DOCTOR_PASSWORD: ${MEDICALAI_DEV_DOCTOR_PASSWORD:?Set MEDICALAI_DEV_DOCTOR_PASSWORD in .env}
+      CHEXNET_API_AUTOSTART: "false"
+      BIOBERT_API_AUTOSTART: "false"
+      DemoData__RunOnStartup: "false"
     ports:
       - "8080:8080"
     depends_on:
