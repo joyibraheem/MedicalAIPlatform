@@ -84,7 +84,7 @@
                         </div>
                     }
 
-                    <partial name="_ClinicalPredictionFeedback" model="ClinicalFeedbackVmBuilder.FromLung(StateService.CurrentLungAIResults!)" />
+                    <partial name="_ClinicalPredictionFeedback" model="ClinicalFeedbackVmBuilder.FromLung(StateService.CurrentLungAIResults!, StateService)" />
                 </div>
             }
         }

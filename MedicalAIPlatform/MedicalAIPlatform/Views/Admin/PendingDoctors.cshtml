@@ -1,7 +1,7 @@
 @model IEnumerable<MedicalAIPlatform.Models.ApplicationUser>
 @using MedicalAIPlatform.Models
 @{
-    ViewData["Title"] = "Pending Doctor Requests";
+    ViewData["Title"] = "Pending Doctors";
     Layout = "_DoctorLayout";
 }
 
@@ -10,8 +10,8 @@
 <div class="admin-dash-root">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
         <div>
-            <h1 class="h3 mb-1">Pending doctor requests</h1>
-            <p class="text-muted mb-0">Registrations awaiting credentialing review.</p>
+            <h1 class="h3 mb-1">Pending Doctors</h1>
+            <p class="text-muted mb-0">Doctor accounts awaiting administrator approval.</p>
         </div>
         <a asp-controller="Dashboard" asp-action="Index" class="btn btn-sm admin-btn-outline">← Admin dashboard</a>
     </div>
@@ -33,7 +33,7 @@
                             <th>Specialty</th>
                             <th>Hospital</th>
                             <th>License</th>
-                            <th>Submitted</th>
+                            <th>Registration Date</th>
                             <th>Status</th>
                             <th class="text-end">Actions</th>
                         </tr>
@@ -47,7 +47,7 @@
                                 <td>@(user.Specialization ?? "—")</td>
                                 <td>@(user.HospitalOrganization ?? "—")</td>
                                 <td><code>@(user.MedicalLicenseNumber ?? "—")</code></td>
-                                <td>@(user.ProfileSubmittedAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</td>
+                                <td>@((user.ProfileSubmittedAt ?? new DateTimeOffset(user.CreatedAt)).ToString("yyyy-MM-dd HH:mm"))</td>
                                 <td><span class="badge bg-warning text-dark">@user.DoctorStatus</span></td>
                                 <td class="text-end">
                                     <div class="d-flex gap-2 justify-content-end flex-wrap">
@@ -57,6 +57,7 @@
                                             <input type="hidden" name="userId" value="@user.Id" />
                                             <button type="submit" class="btn btn-sm btn-success">Approve</button>
                                         </form>
+                                        <a asp-action="DoctorDetails" asp-route-userId="@user.Id" class="btn btn-sm btn-outline-danger">Reject</a>
                                     </div>
                                 </td>
                             </tr>

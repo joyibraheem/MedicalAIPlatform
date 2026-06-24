@@ -1,0 +1,143 @@
+@model MedicalAIPlatform.Models.FineTuningDashboardViewModel
+@{
+    ViewData["Title"] = "Fine-Tuning Dashboard";
+    Layout = "_DoctorLayout";
+}
+
+<link rel="stylesheet" href="~/css/admin-dashboard.css" asp-append-version="true" />
+
+<div class="admin-dash-root">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h1 class="h3 mb-1">Fine-Tuning Dashboard</h1>
+            <p class="text-muted mb-0">
+                Human-in-the-loop learning — retraining triggers automatically after @Model.ModifiedThreshold doctor modifications per model.
+            </p>
+        </div>
+        <a asp-controller="Dashboard" asp-action="Index" class="btn btn-sm admin-btn-outline">← Admin dashboard</a>
+    </div>
+
+    @if (TempData["AdminError"] is string err)
+    {
+        <div class="alert alert-danger">@err</div>
+    }
+    @if (TempData["AdminSuccess"] is string ok)
+    {
+        <div class="alert alert-success">@ok</div>
+    }
+
+    <div class="row g-4 mb-4">
+        @foreach (var m in Model.Models)
+        {
+            <div class="col-lg-4">
+                <div class="admin-card h-100">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <h2 class="h5 mb-0">@m.ModelName</h2>
+                        @if (m.RetrainingReady)
+                        {
+                            <span class="badge bg-warning text-dark">Ready</span>
+                        }
+                    </div>
+                    <dl class="row mb-3 small">
+                        <dt class="col-7">Production version</dt>
+                        <dd class="col-5 text-end"><code>@m.CurrentVersion</code></dd>
+                        <dt class="col-7">Accepted samples</dt>
+                        <dd class="col-5 text-end">@m.AcceptedCount</dd>
+                        <dt class="col-7">Modified samples</dt>
+                        <dd class="col-5 text-end">@m.ModifiedCount</dd>
+                        <dt class="col-7">Pending export</dt>
+                        <dd class="col-5 text-end">@m.UnprocessedModifiedCount / @Model.ModifiedThreshold</dd>
+                        <dt class="col-7">Production accuracy</dt>
+                        <dd class="col-5 text-end">@(m.ProductionAccuracy?.ToString("P1") ?? "—")</dd>
+                        <dt class="col-7">Production F1</dt>
+                        <dd class="col-5 text-end">@(m.ProductionF1Score?.ToString("P1") ?? "—")</dd>
+                        <dt class="col-7">Last training</dt>
+                        <dd class="col-5 text-end">@(m.LastTrainingDate?.ToString("yyyy-MM-dd") ?? "—")</dd>
+                        <dt class="col-7">Last dataset size</dt>
+                        <dd class="col-5 text-end">@(m.LastDatasetSize?.ToString() ?? "—")</dd>
+                        <dt class="col-7">Deployable versions</dt>
+                        <dd class="col-5 text-end">@m.DeployableVersionsCount</dd>
+                    </dl>
+                    @if (m.RetrainingReady)
+                    {
+                        <form asp-action="TriggerRetraining" method="post" class="m-0">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="modelName" value="@m.ModelName" />
+                            <button type="submit" class="btn btn-sm btn-primary w-100">Run retraining batch</button>
+                        </form>
+                    }
+                    else
+                    {
+                        <p class="small text-muted mb-0">Collect @(m.ModifiedThreshold - m.UnprocessedModifiedCount) more modification(s) to auto-trigger.</p>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-6">
+            <div class="admin-card">
+                <h3 class="h6 fw-semibold mb-3">Pending / running jobs</h3>
+                @if (Model.PendingJobs.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead><tr><th>Model</th><th>Status</th><th>Started</th><th>Size</th></tr></thead>
+                            <tbody>
+                            @foreach (var j in Model.PendingJobs)
+                            {
+                                <tr>
+                                    <td>@j.ModelName</td>
+                                    <td><span class="badge bg-secondary">@j.Status</span></td>
+                                    <td>@j.StartedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                                    <td>@j.DatasetSize</td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <p class="text-muted small mb-0">No active training jobs.</p>
+                }
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="admin-card">
+                <h3 class="h6 fw-semibold mb-3">Completed training jobs</h3>
+                @if (Model.RecentJobs.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead><tr><th>Model</th><th>Version</th><th>Acc</th><th>F1</th><th>Status</th></tr></thead>
+                            <tbody>
+                            @foreach (var j in Model.RecentJobs)
+                            {
+                                <tr>
+                                    <td>@j.ModelName</td>
+                                    <td><code>@(j.NewModelVersion ?? "—")</code></td>
+                                    <td>@(j.Accuracy?.ToString("P1") ?? "—")</td>
+                                    <td>@(j.F1Score?.ToString("P1") ?? "—")</td>
+                                    <td>
+                                        <span class="badge @(j.Status == "Completed" ? "bg-success" : "bg-danger")">@j.Status</span>
+                                    </td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <p class="text-muted small mb-0">No completed jobs yet.</p>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="alert alert-info mt-4 mb-0 small">
+        New models are <strong>not</strong> deployed to production automatically. After training, better-performing checkpoints are marked <em>Deployable</em> for manual promotion.
+    </div>
+</div>

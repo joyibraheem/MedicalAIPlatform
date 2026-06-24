@@ -188,6 +188,20 @@ builder.Services.AddScoped<CtScanViewerService>();
 
 builder.Services.AddScoped<PredictionFeedbackService>();
 builder.Services.AddScoped<AdminDashboardService>();
+builder.Services.Configure<ModelRetrainingOptions>(
+    builder.Configuration.GetSection(ModelRetrainingOptions.SectionName));
+builder.Services.AddScoped<ModelTrainingDataService>();
+builder.Services.AddScoped<TrainingAssetPersistenceService>();
+builder.Services.AddSingleton<ModelRetrainingOrchestrator>();
+builder.Services.AddScoped<FineTuningDashboardService>();
+
+builder.Services.AddHttpClient<TrainingApiClient>((sp, client) =>
+{
+    var opts = sp.GetRequiredService<IOptions<ModelRetrainingOptions>>().Value;
+    var baseUrl = opts.TrainingApiBaseUrl.TrimEnd('/') + "/";
+    client.BaseAddress = new Uri(baseUrl, UriKind.Absolute);
+    client.Timeout = TimeSpan.FromMinutes(30);
+});
 
 builder.Services.AddScoped<MedicalReportService>();
 builder.Services.AddScoped<ScanAiAnalysisPipelineService>();
@@ -249,6 +263,7 @@ using (var scope = app.Services.CreateScope())
         var context = services.GetRequiredService<ApplicationDbContext>();
         DatabaseMigrationBootstrap.PrepareLegacyDatabase(context);
         context.Database.Migrate();
+        await ModelVersionBootstrap.EnsureSeedAsync(context).ConfigureAwait(false);
 
         var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
         await IdentityDevelopmentSeeder.SeedRolesAsync(roleManager).ConfigureAwait(false);

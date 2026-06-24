@@ -158,7 +158,7 @@
                         </div>
                     </div>
 
-                    <partial name="_ClinicalPredictionFeedback" model="ClinicalFeedbackVmBuilder.FromCheXNet(xrayResult)" />
+                    <partial name="_ClinicalPredictionFeedback" model="ClinicalFeedbackVmBuilder.FromCheXNet(xrayResult, StateService)" />
                 </div>
             }
 
@@ -192,7 +192,7 @@
                         }
                     </div>
 
-                    <partial name="_ClinicalPredictionFeedback" model="ClinicalFeedbackVmBuilder.FromBio(StateService.CurrentBioBertResults)" />
+                    <partial name="_ClinicalPredictionFeedback" model="ClinicalFeedbackVmBuilder.FromBio(StateService.CurrentBioBertResults, StateService)" />
                 </div>
             }
 
@@ -256,7 +256,7 @@
                         </div>
                     }
 
-                    <partial name="_ClinicalPredictionFeedback" model="ClinicalFeedbackVmBuilder.FromLung(StateService.CurrentLungAIResults!)" />
+                    <partial name="_ClinicalPredictionFeedback" model="ClinicalFeedbackVmBuilder.FromLung(StateService.CurrentLungAIResults!, StateService)" />
                 </div>
             }
         }

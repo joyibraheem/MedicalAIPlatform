@@ -52,44 +52,31 @@ public class AccountController : Controller
             return View(model);
         }
 
-        // 1. Mandatory Doctor Verification
-        var verificationCode = await _context.DoctorVerificationCodes
-            .FirstOrDefaultAsync(c => c.Code == model.DoctorVerificationCode && !c.IsUsed);
-
-        if (verificationCode == null)
-        {
-            ModelState.AddModelError("DoctorVerificationCode", "Invalid or already used verification code.");
-            return View(model);
-        }
-
-        // 2. Create User (Always DoctorStatus = Verified because we have a valid code)
         var user = new ApplicationUser
         {
             UserName = model.Email,
             Email = model.Email,
-            FullName = model.FullName,
-            Specialization = model.Specialization,
+            FullName = model.FullName.Trim(),
+            Specialization = model.Specialization.Trim(),
+            HospitalOrganization = model.HospitalOrganization.Trim(),
+            MedicalLicenseNumber = string.IsNullOrWhiteSpace(model.MedicalLicenseNumber)
+                ? null
+                : model.MedicalLicenseNumber.Trim(),
             CreatedAt = DateTime.UtcNow,
-            DoctorStatus = DoctorRegistrationStatuses.Verified
+            DoctorStatus = DoctorRegistrationStatuses.Pending,
+            ProfileSubmittedAt = DateTimeOffset.UtcNow
         };
 
         var result = await _userManager.CreateAsync(user, model.Password);
         if (result.Succeeded)
         {
-            // 3. Mark code as used
-            verificationCode.IsUsed = true;
-            verificationCode.UsedByUserId = user.Id;
-            verificationCode.UsedAt = DateTime.UtcNow;
-            _context.Update(verificationCode);
-            await _context.SaveChangesAsync();
+            await _doctorRegistration.NotifyNewRegistrationAsync(user, HttpContext.RequestAborted)
+                .ConfigureAwait(false);
 
-            // 4. Automatically Assign Doctor Role
-            await _userManager.AddToRoleAsync(user, "Doctor");
-
-            // 5. Sign In
-            await _signInManager.SignInAsync(user, isPersistent: false);
-            _logger.LogInformation("Doctor registered and signed in.");
-            return RedirectToAction("Index", "Dashboard");
+            _logger.LogInformation("Doctor registered pending approval: {Email}", user.Email);
+            TempData["RegistrationSuccess"] =
+                "Your account has been created and is pending administrator approval. You will be able to sign in once approved.";
+            return RedirectToAction(nameof(Login));
         }
 
         foreach (var error in result.Errors)
@@ -118,6 +105,24 @@ public class AccountController : Controller
             return View(model);
         }
 
+        var user = await _userManager.FindByEmailAsync(model.Email).ConfigureAwait(false);
+        if (user is not null
+            && await _userManager.CheckPasswordAsync(user, model.Password).ConfigureAwait(false)
+            && !await _userManager.IsInRoleAsync(user, "Admin").ConfigureAwait(false))
+        {
+            if (string.Equals(user.DoctorStatus, DoctorRegistrationStatuses.Pending, StringComparison.OrdinalIgnoreCase))
+            {
+                ModelState.AddModelError(string.Empty, "Your account is pending administrator approval.");
+                return View(model);
+            }
+
+            if (string.Equals(user.DoctorStatus, DoctorRegistrationStatuses.Rejected, StringComparison.OrdinalIgnoreCase))
+            {
+                ModelState.AddModelError(string.Empty, "Your registration request was rejected. Contact support if you believe this is an error.");
+                return View(model);
+            }
+        }
+
         var result = await _signInManager.PasswordSignInAsync(
             model.Email,
             model.Password,
@@ -127,7 +132,7 @@ public class AccountController : Controller
         if (result.Succeeded)
         {
             _logger.LogInformation("User signed in.");
-            var user = await _userManager.FindByEmailAsync(model.Email).ConfigureAwait(false);
+            user = await _userManager.FindByEmailAsync(model.Email).ConfigureAwait(false);
             if (user != null)
             {
                 var redirect = await RedirectAfterSignInAsync(user, model.ReturnUrl).ConfigureAwait(false);

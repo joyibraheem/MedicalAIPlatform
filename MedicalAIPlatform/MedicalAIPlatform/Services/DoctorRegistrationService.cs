@@ -39,6 +39,14 @@ public sealed class DoctorRegistrationService
         _logger = logger;
     }
 
+    public async Task NotifyNewRegistrationAsync(
+        ApplicationUser user,
+        CancellationToken cancellationToken = default)
+    {
+        var reviewUrl = BuildAbsoluteUrl("DoctorDetails", "Admin", new { userId = user.Id });
+        await NotifyAdminsOfNewRegistrationAsync(user, reviewUrl, cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task<(bool Ok, string? Error)> SubmitProfileAsync(
         ApplicationUser user,
         CompleteDoctorProfileViewModel model,
@@ -78,7 +86,7 @@ public sealed class DoctorRegistrationService
             .Where(u =>
                 u.DoctorStatus == DoctorRegistrationStatuses.Pending
                 && u.ProfileSubmittedAt != null)
-            .OrderByDescending(u => u.ProfileSubmittedAt)
+            .OrderByDescending(u => u.ProfileSubmittedAt ?? u.CreatedAt)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
     }

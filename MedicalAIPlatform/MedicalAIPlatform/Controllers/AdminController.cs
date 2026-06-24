@@ -13,15 +13,21 @@ public sealed class AdminController : Controller
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly AdminDashboardService _adminDashboard;
     private readonly DoctorRegistrationService _registrations;
+    private readonly FineTuningDashboardService _fineTuningDashboard;
+    private readonly ModelRetrainingOrchestrator _retraining;
 
     public AdminController(
         UserManager<ApplicationUser> userManager,
         AdminDashboardService adminDashboard,
-        DoctorRegistrationService registrations)
+        DoctorRegistrationService registrations,
+        FineTuningDashboardService fineTuningDashboard,
+        ModelRetrainingOrchestrator retraining)
     {
         _userManager = userManager;
         _adminDashboard = adminDashboard;
         _registrations = registrations;
+        _fineTuningDashboard = fineTuningDashboard;
+        _retraining = retraining;
     }
 
     public async Task<IActionResult> Index()
@@ -61,6 +67,8 @@ public sealed class AdminController : Controller
             .ConfigureAwait(false);
         if (!ok)
             TempData["AdminError"] = error ?? "Approval failed.";
+        else
+            return RedirectToAction(nameof(PendingDoctors));
 
         return RedirectToAction(nameof(DoctorDetails), new { userId });
     }
@@ -84,9 +92,27 @@ public sealed class AdminController : Controller
             .ConfigureAwait(false);
         if (!ok)
             TempData["AdminError"] = error ?? "Rejection failed.";
+        else
+            return RedirectToAction(nameof(PendingDoctors));
 
         return RedirectToAction(nameof(DoctorDetails), new { userId = model.UserId });
     }
 
     public IActionResult PredictionFeedbackReview() => View();
+
+    public async Task<IActionResult> FineTuningDashboard()
+    {
+        var model = await _fineTuningDashboard.BuildAsync(HttpContext.RequestAborted).ConfigureAwait(false);
+        return View(model);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> TriggerRetraining(string modelName)
+    {
+        var (ok, message) = await _retraining.RunRetrainingBatchAsync(modelName, HttpContext.RequestAborted)
+            .ConfigureAwait(false);
+        TempData[ok ? "AdminSuccess" : "AdminError"] = message;
+        return RedirectToAction(nameof(FineTuningDashboard));
+    }
 }
