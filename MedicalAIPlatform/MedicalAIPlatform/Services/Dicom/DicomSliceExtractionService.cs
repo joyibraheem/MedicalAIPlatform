@@ -63,9 +63,13 @@ public sealed class DicomSliceExtractionService
                 _log.LogError(ex,
                     "DICOM RenderImage threw for frame {Frame}/{Frames}; TransferSyntaxUID={Xfer}",
                     i, nFrames, xferUid);
+                var hint = ex.Message.Contains("closed", StringComparison.OrdinalIgnoreCase)
+                    || ex.Message.Contains("stream", StringComparison.OrdinalIgnoreCase)
+                    ? "The DICOM pixel buffer could not be read (often because the upload stream was closed before rendering). "
+                    : "Compressed images may need fo-dicom native codecs (JPEG / JPEG 2000 / etc.). ";
                 throw new InvalidOperationException(
-                    "Could not decode this DICOM frame for display. Compressed images need the fo-dicom native codecs " +
-                    $"(JPEG / JPEG 2000 / etc.). Frame {i}/{nFrames}, transfer syntax UID={xferUid}. Inner: {ex.Message}",
+                    "Could not decode this DICOM frame for display. " + hint +
+                    $"Frame {i}/{nFrames}, transfer syntax UID={xferUid}. Inner: {ex.Message}",
                     ex);
             }
 

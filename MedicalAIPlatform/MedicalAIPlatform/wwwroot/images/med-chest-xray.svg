@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 600" role="img" aria-label="Chest X-ray">
+  <defs>
+    <linearGradient id="xbg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0a0f18"/>
+      <stop offset="100%" stop-color="#1a2433"/>
+    </linearGradient>
+    <radialGradient id="xfilm" cx="50%" cy="48%" r="62%">
+      <stop offset="0%" stop-color="#eef2f7"/>
+      <stop offset="55%" stop-color="#c8d0da"/>
+      <stop offset="100%" stop-color="#8a96a8"/>
+    </radialGradient>
+    <filter id="xnoise" x="0%" y="0%" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="3" stitchTiles="stitch" result="n"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 0.08 0" in="n" result="g"/>
+      <feBlend in="SourceGraphic" in2="g" mode="overlay"/>
+    </filter>
+  </defs>
+  <rect width="960" height="600" fill="url(#xbg)"/>
+  <rect x="80" y="40" width="800" height="520" rx="12" fill="#05080e" stroke="#1e293b" stroke-width="2"/>
+  <g filter="url(#xnoise)">
+    <rect x="100" y="60" width="760" height="480" rx="8" fill="url(#xfilm)"/>
+    <ellipse cx="480" cy="300" rx="300" ry="360" fill="#b8c2cf" opacity="0.35"/>
+    <path d="M480 95 C360 140 310 230 300 310 C295 360 310 410 350 445 C390 475 480 485 480 485 C480 485 570 475 610 445 C650 410 665 360 660 310 C650 230 600 140 480 95Z" fill="#dfe5ec" opacity="0.92"/>
+    <path d="M480 130 C410 165 385 230 380 290 C377 330 390 365 420 395 M480 130 C550 165 575 230 580 290 C583 330 570 365 540 395" fill="none" stroke="#b0bac8" stroke-width="4" opacity="0.75"/>
+    <ellipse cx="395" cy="275" rx="72" ry="95" fill="#edf1f6" opacity="0.88"/>
+    <ellipse cx="565" cy="275" rx="72" ry="95" fill="#edf1f6" opacity="0.88"/>
+    <path d="M330 180 C350 160 380 155 410 165 M330 420 C350 440 380 445 410 435 M630 180 C610 160 580 155 550 165 M630 420 C610 440 580 445 550 435" fill="none" stroke="#9aa6b8" stroke-width="3" opacity="0.55"/>
+    <circle cx="420" cy="255" r="14" fill="#127FEC" opacity="0.9"/>
+    <circle cx="420" cy="255" r="26" fill="none" stroke="#127FEC" stroke-width="2.5" opacity="0.55"/>
+    <rect x="720" y="78" width="120" height="28" rx="4" fill="rgba(15,23,42,0.55)"/>
+    <text x="780" y="97" text-anchor="middle" fill="#cbd5e1" font-family="Arial,sans-serif" font-size="13" letter-spacing="1">PA VIEW</text>
+  </g>
+</svg>

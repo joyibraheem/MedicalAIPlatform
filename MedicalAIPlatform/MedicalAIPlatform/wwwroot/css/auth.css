@@ -302,14 +302,16 @@ main.pb-3 {
 }
 
 .btn-primary-auth {
-    background-color: #1D4581;
+    background: linear-gradient(135deg, #1D4581, #127FEC);
     color: #fff;
-    box-shadow: 0 4px 15px rgba(29, 69, 129, 0.3);
+    box-shadow: 0 4px 16px rgba(29, 69, 129, 0.28);
+    border-radius: 12px;
 }
 
 .btn-primary-auth:hover {
-    background-color: #163a6e;
-    transform: translateY(-1px);
+    background: linear-gradient(135deg, #163a6e, #0B67C3);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 24px rgba(29, 69, 129, 0.38);
     color: #fff;
 }
 

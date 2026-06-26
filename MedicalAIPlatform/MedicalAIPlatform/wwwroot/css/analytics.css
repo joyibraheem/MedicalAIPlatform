@@ -933,6 +933,97 @@ body.dark-mode .findings-title {
     border-width: 0.15em;
 }
 
+/* --- Patient page buttons (UI polish only) --- */
+.mai-patient-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1.35rem;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 0.9375rem;
+    line-height: 1.2;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition:
+        transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+        box-shadow 0.22s ease,
+        background 0.22s ease,
+        color 0.22s ease;
+    white-space: nowrap;
+}
+
+.mai-patient-btn i {
+    font-size: 1.05rem;
+    line-height: 1;
+}
+
+.mai-patient-btn-primary {
+    width: 100%;
+    padding: 0.85rem 1.5rem;
+    background: linear-gradient(135deg, #127FEC 0%, #1D4581 100%);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(18, 127, 236, 0.28);
+}
+
+.mai-patient-btn-primary:hover {
+    color: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 22px rgba(18, 127, 236, 0.38);
+}
+
+.mai-patient-btn-view {
+    padding: 0.5rem 1rem;
+    background: rgba(18, 127, 236, 0.1);
+    color: #127FEC;
+    border: 1px solid rgba(18, 127, 236, 0.22);
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+}
+
+.mai-patient-btn-view:hover {
+    color: #fff;
+    background: linear-gradient(135deg, #127FEC 0%, #1D4581 100%);
+    border-color: transparent;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(18, 127, 236, 0.3);
+}
+
+.mai-patient-btn-inline {
+    width: auto;
+    display: inline-flex;
+    vertical-align: middle;
+    margin-left: 0.25rem;
+}
+
+.mai-patient-back {
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(18, 127, 236, 0.12);
+}
+
+.mai-patient-back:hover {
+    background: rgba(18, 127, 236, 0.12);
+    color: #1D4581;
+}
+
+.patient-actions-cell {
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+html[data-theme="dark"] .mai-patient-btn-view,
+body.dark-mode .mai-patient-btn-view {
+    background: rgba(18, 127, 236, 0.15);
+    color: #93c5fd;
+    border-color: rgba(147, 197, 253, 0.25);
+}
+
+html[data-theme="dark"] .mai-patient-btn-view:hover,
+body.dark-mode .mai-patient-btn-view:hover {
+    color: #fff;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .analytics-overlay {
@@ -952,6 +1043,10 @@ body.dark-mode .findings-title {
     }
 
     .action-btn {
+        width: 100%;
+    }
+
+    .mai-patient-btn-primary {
         width: 100%;
     }
 }

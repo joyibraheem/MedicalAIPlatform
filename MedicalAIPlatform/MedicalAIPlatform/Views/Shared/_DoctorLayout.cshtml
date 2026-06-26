@@ -4,7 +4,10 @@
         ? (User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty)
         : string.Empty;
 
-    var isDarkMode = true; // Default to Dark Mode
+    var isAdmin = User.IsInRole("Admin");
+    var isDoctor = User.IsInRole("Doctor") || (User.Identity?.IsAuthenticated == true && !isAdmin);
+
+    var isDarkMode = true;
     if (Context.Request.Cookies.TryGetValue("Settings_DarkMode", out var darkModeVal))
     {
         if (bool.TryParse(darkModeVal, out var parsedMode))
@@ -13,10 +16,11 @@
         }
     }
 
-    // Default language is ALWAYS English - client-side JavaScript will apply saved preference
     var language = "en";
     var dir = "ltr";
     var bodyClass = "doctor-dashboard";
+    if (isAdmin) { bodyClass += " role-admin"; }
+    else if (isDoctor) { bodyClass += " role-doctor"; }
     if (!isDarkMode)
     {
         bodyClass += " light-mode";
@@ -80,6 +84,8 @@
     <link rel="stylesheet" href="~/css/doctor-dashboard.css" asp-append-version="true" />
     <!-- Site CSS for global overrides -->
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/medical-platform.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/role-themes.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/responsive.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/medical-ai-assistant-chat.css" asp-append-version="true" />
     <style>
@@ -111,6 +117,7 @@
     </style>
 </head>
 <body class="@bodyClass">
+    <script src="~/js/toast.js" asp-append-version="true"></script>
     <div id="darkOverlay"></div>
     
     <!-- The Central App Frame -->
@@ -126,9 +133,13 @@
                 <nav class="main-nav">
                     <a asp-controller="Home" asp-action="Index" class="nav-link" data-i18n="nav_home">Home</a>
                     <a asp-controller="Patient" asp-action="Index" class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Patient" ? "active" : "")" data-i18n="nav_patients">Patients</a>
-                    <a asp-controller="Analytics" asp-action="Index" class="nav-link @(ViewData["Title"]?.ToString() == "Analytics" ? "active" : "")" data-i18n="nav_analytics">Analytics</a>
-                    <a asp-controller="CtScan" asp-action="Index" class="nav-link @(ViewData["Title"]?.ToString() == "CT Scan" ? "active" : "")">CT Scan</a>
+                    <a asp-controller="Analytics" asp-action="Index" class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Analytics" ? "active" : "")" data-i18n="nav_analytics">Analytics</a>
+                    <a asp-controller="CtScan" asp-action="Index" class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "CtScan" ? "active" : "")">CT Scan</a>
                     <a asp-controller="AIAssistant" asp-action="Index" class="nav-link @(ViewData["Title"]?.ToString() == "AI Assistant" ? "active" : "")" data-i18n="nav_ai_assistant">AI Assistant</a>
+                    @if (isAdmin)
+                    {
+                        <a asp-controller="Admin" asp-action="Index" class="nav-link nav-link-admin @(ViewContext.RouteData.Values["controller"]?.ToString() == "Admin" ? "active" : "")"><i class="bi bi-shield-lock"></i> Admin</a>
+                    }
                 </nav>
             </div>
             
@@ -218,7 +229,9 @@
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/clinical-feedback.js" asp-append-version="true"></script>
     <script src="~/js/i18n.js" asp-append-version="true"></script>
+    <script src="~/js/i18n.js" asp-append-version="true"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="~/js/premium-interactions.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

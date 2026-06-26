@@ -5,12 +5,13 @@
 }
 
 <link rel="stylesheet" href="~/css/analytics.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/css/medical-platform.css" asp-append-version="true" />
 
 <div class="analytics-container">
     <div class="analytics-overlay">
         <!-- Header -->
         <div class="patient-header">
-            <button class="back-button" onclick="window.location.href='@Url.Action("Index", "Dashboard")'">
+            <button type="button" class="back-button mai-patient-back" onclick="window.location.href='@Url.Action("Index", "Dashboard")'" aria-label="Back to dashboard">
                 <i class="bi bi-arrow-left"></i>
             </button>
             <div class="patient-info">
@@ -28,13 +29,14 @@
         <div class="case-input-card mb-4">
             <div class="row align-items-center">
                 <div class="col-md-8">
-                    <div class="input-section">
-                        <input type="text" id="searchInput" class="form-control" placeholder="Search by name, patient ID, or email..." autocomplete="off" />
+                    <div class="input-section mai-search">
+                        <i class="bi bi-search mai-search-icon"></i>
+                        <input type="text" id="searchInput" class="form-control mai-input" placeholder="Search by name, patient ID, or email..." autocomplete="off" />
                     </div>
                 </div>
                 <div class="col-md-4 text-end">
-                    <a href="@Url.Action("Create")" class="combined-btn w-100-mobile">
-                        <i class="bi bi-plus-circle"></i> Add New Patient
+                    <a href="@Url.Action("Create")" class="mai-patient-btn mai-patient-btn-primary w-100-mobile">
+                        <i class="bi bi-person-plus-fill"></i> Add New Patient
                     </a>
                 </div>
             </div>
@@ -45,7 +47,7 @@
             @if (Model.Any())
             {
                 <div class="table-responsive">
-                    <table class="table table-hover">
+                    <table class="table table-hover mai-table">
                         <thead>
                             <tr>
                                 <th>Profile</th>
@@ -98,9 +100,9 @@
                                             <div>@patient.PhoneNumber</div>
                                         }
                                     </td>
-                                    <td>
-                                        <a href="@Url.Action("Details", new { id = patient.Id })" class="btn btn-sm btn-primary">
-                                            <i class="bi bi-eye"></i> View
+                                    <td class="patient-actions-cell">
+                                        <a href="@Url.Action("Details", new { id = patient.Id })" class="mai-patient-btn mai-patient-btn-view">
+                                            <i class="bi bi-eye-fill"></i> View
                                         </a>
                                     </td>
                                 </tr>
@@ -116,7 +118,7 @@
             {
                 <div class="text-center py-5">
                     <i class="bi bi-inbox" style="font-size: 3rem; color: #6c757d;"></i>
-                    <p class="mt-3">No patients found. <a href="@Url.Action("Create")">Add your first patient</a></p>
+                    <p class="mt-3">No patients found. <a href="@Url.Action("Create")" class="mai-patient-btn mai-patient-btn-primary mai-patient-btn-inline">Add your first patient</a></p>
                 </div>
             }
         </div>
