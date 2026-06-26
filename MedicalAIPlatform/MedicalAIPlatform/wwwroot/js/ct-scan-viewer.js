@@ -26,6 +26,7 @@
         currentIndex: 0,
         zoom: 1,
         fitScale: 1,
+        rotation: 0,
         panX: 0,
         panY: 0,
         panMode: false,
@@ -33,7 +34,10 @@
         dragStart: { x: 0, y: 0 },
         playTimer: null,
         isPlaying: false,
-        analysis: null
+        analysis: null,
+        fileName: '',
+        fileSize: null,
+        fileType: ''
     };
 
     const els = {
@@ -73,14 +77,25 @@
         btnPlay: document.getElementById('btnPlay'),
         btnZoomIn: document.getElementById('btnZoomIn'),
         btnZoomOut: document.getElementById('btnZoomOut'),
+        btnRotateLeft: document.getElementById('btnRotateLeft'),
+        btnRotateRight: document.getElementById('btnRotateRight'),
         btnPanMode: document.getElementById('btnPanMode'),
+        btnFullscreen: document.getElementById('btnFullscreen'),
         btnAnalyzeScan: document.getElementById('btnAnalyzeScan'),
         btnDownloadReport: document.getElementById('btnDownloadReport'),
         btnResetViewport: document.getElementById('btnResetViewport'),
         btnSeries: document.getElementById('btnSeries'),
         btnCloseSeries: document.getElementById('btnCloseSeries'),
         btnBack: document.getElementById('btnBack'),
-        uploadInputs: [document.getElementById('ctUploadInput'), document.getElementById('ctUploadInputHero')]
+        uploadInputs: [document.getElementById('ctUploadInput'), document.getElementById('ctUploadInputHero')],
+        viewportColumn: document.querySelector('.ct-viewport-column'),
+        imageInfoBody: document.getElementById('imageInfoBody'),
+        dicomTagsBody: document.getElementById('dicomTagsBody'),
+        dicomTagSearch: document.getElementById('dicomTagSearch'),
+        hudTopLeft: document.getElementById('hudTopLeft'),
+        hudTopRight: document.getElementById('hudTopRight'),
+        hudBottomLeft: document.getElementById('hudBottomLeft'),
+        hudBottomRight: document.getElementById('hudBottomRight')
     };
 
     function antiforgeryToken() {
@@ -122,13 +137,267 @@
         }, 5000);
     }
 
+    function formatFileSize(bytes) {
+        if (bytes == null || bytes <= 0) return '';
+        var units = ['B', 'KB', 'MB', 'GB'];
+        var i = 0;
+        var size = bytes;
+        while (size >= 1024 && i < units.length - 1) {
+            size /= 1024;
+            i++;
+        }
+        return (i === 0 ? size : size.toFixed(i === 1 ? 1 : 2)) + ' ' + units[i];
+    }
+
+    function formatDateTime(value) {
+        if (!value) return '';
+        var d = new Date(value);
+        if (Number.isNaN(d.getTime())) return String(value);
+        return d.toLocaleString(undefined, {
+            year: 'numeric', month: 'short', day: '2-digit',
+            hour: '2-digit', minute: '2-digit'
+        });
+    }
+
+    function fileTypeLabel() {
+        if (state.fileType) return state.fileType;
+        var name = state.fileName || '';
+        var dot = name.lastIndexOf('.');
+        if (dot > 0) return name.slice(dot + 1).toUpperCase();
+        return '';
+    }
+
+    function isDicomStudy() {
+        var fn = (state.fileName || '').toLowerCase();
+        if (fn.endsWith('.dcm') || fn.endsWith('.dicm') || fn.endsWith('.zip')) return true;
+        var meta = state.metadata || {};
+        if (meta.studyInstanceUid) return true;
+        var ts = meta.additionalTags && meta.additionalTags.transfer_syntax_uid;
+        return !!(ts && String(ts).trim());
+    }
+
+    function hasRealWindow(meta) {
+        if (!meta || meta.windowCenter == null || meta.windowWidth == null) return false;
+        var src = meta.additionalTags && meta.additionalTags.window_source;
+        return src !== 'default_ct_fallback' && src !== 'full_range_segmentation_or_derived';
+    }
+
+    function getCurrentSlice() {
+        var slices = getActiveSlices();
+        return slices.length ? slices[state.currentIndex] : null;
+    }
+
+    function isGridViewActive() {
+        return state.layoutMode === 'grid' && state.series.length >= 2;
+    }
+
+    function setViewportToolsEnabled(enabled) {
+        var toolsOn = enabled && !isGridViewActive();
+        [
+            els.btnZoomIn, els.btnZoomOut, els.btnRotateLeft, els.btnRotateRight,
+            els.btnPanMode, els.btnResetViewport, els.btnFullscreen
+        ].forEach(function (btn) {
+            if (btn) btn.disabled = !toolsOn;
+        });
+    }
+
+    function renderMetaTable(container, rows) {
+        if (!container) return;
+        if (!rows.length) {
+            container.innerHTML = '<p class="ct-meta-empty">No metadata available for this image.</p>';
+            return;
+        }
+        container.innerHTML = '<table class="ct-meta-table"><tbody>' +
+            rows.map(function (row) {
+                return '<tr><th>' + escapeHtml(row[0]) + '</th><td>' + escapeHtml(row[1]) + '</td></tr>';
+            }).join('') +
+            '</tbody></table>';
+    }
+
+    function buildImageInfoRows() {
+        var rows = [];
+        if (state.fileName) rows.push(['File Name', state.fileName]);
+        var typeLabel = fileTypeLabel();
+        if (typeLabel) rows.push(['File Type', typeLabel]);
+        if (state.fileSize != null) rows.push(['Image Size', formatFileSize(state.fileSize)]);
+
+        var slice = getCurrentSlice();
+        var w = (slice && slice.width) || (els.mainImage && els.mainImage.naturalWidth) || 0;
+        var h = (slice && slice.height) || (els.mainImage && els.mainImage.naturalHeight) || 0;
+        if (w > 0 && h > 0) {
+            rows.push(['Resolution', w + ' \u00d7 ' + h + ' px']);
+            rows.push(['Dimensions', w + ' \u00d7 ' + h]);
+        }
+
+        if (slice && slice.instanceNumber) {
+            rows.push(['Instance Number', String(slice.instanceNumber)]);
+        }
+
+        if (isDicomStudy()) {
+            var meta = state.metadata || {};
+            var tags = meta.additionalTags || {};
+
+            if (meta.modality) rows.push(['Modality', meta.modality]);
+            if (tags.pixel_spacing) rows.push(['Pixel Spacing', String(tags.pixel_spacing)]);
+            if (tags.slice_thickness) rows.push(['Slice Thickness', String(tags.slice_thickness)]);
+            if (hasRealWindow(meta)) {
+                rows.push(['Window Level', String(meta.windowCenter)]);
+                rows.push(['Window Width', String(meta.windowWidth)]);
+            }
+            if (meta.studyDateTime) rows.push(['Acquisition Date', formatDateTime(meta.studyDateTime)]);
+            if (tags.manufacturer) rows.push(['Manufacturer', String(tags.manufacturer)]);
+            if (meta.patientName) rows.push(['Patient Name', meta.patientName]);
+            if (meta.patientId) rows.push(['Patient ID', meta.patientId]);
+        }
+
+        return rows;
+    }
+
+    var DICOM_TAG_MAP = [
+        ['(0010,0010)', "Patient's Name", 'patientName'],
+        ['(0010,0020)', 'Patient ID', 'patientId'],
+        ['(0010,0040)', "Patient's Sex", 'patientSex'],
+        ['(0010,1010)', "Patient's Age", 'patientAgeYears'],
+        ['(0020,000D)', 'Study Instance UID', 'studyInstanceUid'],
+        ['(0020,0010)', 'Study ID', 'studyId'],
+        ['(0008,0060)', 'Modality', 'modality'],
+        ['(0018,0015)', 'Body Part Examined', 'bodyPartExamined'],
+        ['(0008,1030)', 'Study Description', 'studyDescription'],
+        ['(0008,103E)', 'Series Description', 'seriesDescription']
+    ];
+
+    function buildDicomTagRows() {
+        if (!isDicomStudy()) return [];
+
+        var meta = state.metadata || {};
+        var rows = [];
+
+        DICOM_TAG_MAP.forEach(function (entry) {
+            var val = meta[entry[2]];
+            if (entry[2] === 'patientAgeYears' && val != null) val = val + 'Y';
+            if (val == null || val === '') return;
+            rows.push({ tag: entry[0], name: entry[1], value: String(val) });
+        });
+
+        if (meta.studyDateTime) {
+            rows.push({
+                tag: '(0008,0020)',
+                name: 'Study Date',
+                value: formatDateTime(meta.studyDateTime)
+            });
+        }
+
+        if (hasRealWindow(meta)) {
+            rows.push({ tag: '(0028,1050)', name: 'Window Center', value: String(meta.windowCenter) });
+            rows.push({ tag: '(0028,1051)', name: 'Window Width', value: String(meta.windowWidth) });
+        }
+
+        var add = meta.additionalTags || {};
+        Object.keys(add).sort().forEach(function (key) {
+            if (key === 'window_source' || !add[key]) return;
+            var label = key.replace(/_/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+            var tagId = key === 'transfer_syntax_uid' ? '(0002,0010)' : '';
+            rows.push({ tag: tagId, name: label, value: String(add[key]) });
+        });
+
+        return rows;
+    }
+
+    function renderDicomTags() {
+        if (!els.dicomTagsBody) return;
+
+        if (!isDicomStudy()) {
+            if (els.dicomTagSearch) {
+                els.dicomTagSearch.value = '';
+                els.dicomTagSearch.disabled = true;
+            }
+            els.dicomTagsBody.innerHTML =
+                '<p class="ct-meta-empty">No DICOM metadata available for this file.</p>';
+            return;
+        }
+
+        var rows = buildDicomTagRows();
+        if (els.dicomTagSearch) els.dicomTagSearch.disabled = rows.length === 0;
+
+        if (!rows.length) {
+            els.dicomTagsBody.innerHTML =
+                '<p class="ct-meta-empty">No DICOM tags were found in this file.</p>';
+            return;
+        }
+
+        els.dicomTagsBody.innerHTML = rows.map(function (row, index) {
+            return '<div class="ct-dicom-tag-row" data-tag-index="' + index + '">' +
+                (row.tag ? '<div class="ct-dicom-tag-id">' + escapeHtml(row.tag) + '</div>' : '') +
+                '<div class="ct-dicom-tag-name">' + escapeHtml(row.name) + '</div>' +
+                '<div class="ct-dicom-tag-value">' + escapeHtml(row.value) + '</div>' +
+                '</div>';
+        }).join('');
+
+        filterDicomTags(els.dicomTagSearch ? els.dicomTagSearch.value : '');
+    }
+
+    function filterDicomTags(query) {
+        if (!els.dicomTagsBody) return;
+        var q = (query || '').trim().toLowerCase();
+        els.dicomTagsBody.querySelectorAll('.ct-dicom-tag-row').forEach(function (row) {
+            var text = row.textContent.toLowerCase();
+            row.classList.toggle('is-hidden', q.length > 0 && text.indexOf(q) === -1);
+        });
+    }
+
+    function updateViewportHud() {
+        var meta = state.metadata || {};
+        var slice = getCurrentSlice();
+        var tl = [];
+        var tr = [];
+        var bl = [];
+        var br = [];
+
+        if (isDicomStudy()) {
+            if (meta.patientName) tl.push(meta.patientName);
+            if (meta.patientId) tl.push('ID: ' + meta.patientId);
+            if (meta.studyDescription) tl.push(meta.studyDescription);
+            if (meta.studyDateTime) tr.push(formatDateTime(meta.studyDateTime));
+            if (meta.modality) tr.push(meta.modality);
+            if (hasRealWindow(meta)) {
+                bl.push('WL: ' + meta.windowCenter + '  WW: ' + meta.windowWidth);
+            }
+        } else if (state.fileName) {
+            tl.push(state.fileName);
+        }
+
+        var w = (slice && slice.width) || (els.mainImage && els.mainImage.naturalWidth) || 0;
+        var h = (slice && slice.height) || (els.mainImage && els.mainImage.naturalHeight) || 0;
+        if (w > 0 && h > 0) bl.push(w + ' \u00d7 ' + h + ' px');
+
+        br.push('Zoom: ' + Math.round(state.zoom * 100) + '%');
+
+        function setHud(el, lines) {
+            if (!el) return;
+            el.innerHTML = lines.filter(Boolean).map(function (line) {
+                return '<span>' + escapeHtml(line) + '</span>';
+            }).join('');
+        }
+
+        setHud(els.hudTopLeft, tl);
+        setHud(els.hudTopRight, tr);
+        setHud(els.hudBottomLeft, bl);
+        setHud(els.hudBottomRight, br);
+    }
+
+    function renderMetadataPanels() {
+        renderMetaTable(els.imageInfoBody, buildImageInfoRows());
+        renderDicomTags();
+        updateViewportHud();
+    }
+
     function setViewerEnabled(enabled) {
         [
-            els.btnPrev, els.btnNext, els.btnPlay, els.btnSeries, els.btnZoomIn, els.btnZoomOut,
-            els.btnPanMode, els.btnAnalyzeScan, els.btnDownloadReport, els.btnResetViewport
+            els.btnPrev, els.btnNext, els.btnPlay, els.btnSeries, els.btnAnalyzeScan, els.btnDownloadReport
         ].forEach(function (btn) {
             if (btn) btn.disabled = !enabled;
         });
+        setViewportToolsEnabled(enabled);
         if (!enabled && els.btnDownloadReport) els.btnDownloadReport.disabled = true;
     }
 
@@ -145,17 +414,24 @@
         if (!els.mainImage) return;
         var scale = state.fitScale * state.zoom;
         els.mainImage.style.transform =
-            'translate(calc(-50% + ' + state.panX + 'px), calc(-50% + ' + state.panY + 'px)) scale(' + scale + ')';
+            'translate(calc(-50% + ' + state.panX + 'px), calc(-50% + ' + state.panY + 'px)) ' +
+            'rotate(' + state.rotation + 'deg) scale(' + scale + ')';
         var pct = Math.round(state.zoom * 100) + '%';
         if (els.zoomLabel) els.zoomLabel.textContent = pct;
         if (els.overlayZoom) els.overlayZoom.textContent = pct;
+        if (els.viewport) {
+            els.viewport.classList.toggle('is-zoomed', state.zoom > 1.01 && !isGridViewActive());
+        }
+        updateViewportHud();
     }
 
     function resetViewport() {
         state.zoom = 1;
+        state.rotation = 0;
         state.panX = 0;
         state.panY = 0;
         state.panMode = false;
+        state.isDragging = false;
         state.fitScale = computeFitScale();
         if (els.btnPanMode) els.btnPanMode.classList.remove('active');
         if (els.viewport) els.viewport.classList.remove('pan-mode', 'dragging');
@@ -218,6 +494,7 @@
             els.viewportGrid.classList.toggle('d-none', !useGrid);
             if (useGrid) renderViewportGrid();
         }
+        setViewportToolsEnabled(!!state.sessionId);
     }
 
     function renderViewportGrid() {
@@ -258,6 +535,7 @@
             renderViewportGrid();
             updateNavButtons();
             highlightThumb(index);
+            renderMetadataPanels();
             return;
         }
 
@@ -267,6 +545,7 @@
                 state.fitScale = computeFitScale();
                 if (els.viewportLoading) els.viewportLoading.classList.add('d-none');
                 applyTransform();
+                renderMetadataPanels();
             };
             els.mainImage.onerror = function () {
                 if (els.viewportLoading) els.viewportLoading.classList.add('d-none');
@@ -361,6 +640,7 @@
         }
         state.metadata = summary.metadata || null;
         state.layoutMode = summary.layoutMode || (state.series.length >= 2 ? 'grid' : 'single');
+        if (summary.fileName) state.fileName = summary.fileName;
         state.activeSeriesIndex = state.series[0]?.seriesIndex ?? 0;
         state.sliceIndexBySeries = {};
         state.currentIndex = 0;
@@ -416,6 +696,7 @@
         buildThumbnails();
         renderLayoutMode();
         loadMainSlice(state.currentIndex);
+        renderMetadataPanels();
     }
 
     function resetAiPlaceholder() {
@@ -485,6 +766,9 @@
 
     async function uploadFile(file) {
         if (!file) return;
+        state.fileName = file.name || '';
+        state.fileSize = file.size || null;
+        state.fileType = file.type || '';
         var formData = new FormData();
         formData.append('dicomFile', file);
         formData.append('__RequestVerificationToken', antiforgeryToken());
@@ -596,6 +880,20 @@
             });
         }
 
+        if (els.btnRotateLeft) {
+            els.btnRotateLeft.addEventListener('click', function () {
+                state.rotation = ((state.rotation - 90) % 360 + 360) % 360;
+                applyTransform();
+            });
+        }
+
+        if (els.btnRotateRight) {
+            els.btnRotateRight.addEventListener('click', function () {
+                state.rotation = (state.rotation + 90) % 360;
+                applyTransform();
+            });
+        }
+
         if (els.btnZoomIn) {
             els.btnZoomIn.addEventListener('click', function () {
                 state.zoom = Math.min(5, state.zoom + 0.25);
@@ -614,7 +912,12 @@
             els.btnPanMode.addEventListener('click', function () {
                 state.panMode = !state.panMode;
                 els.btnPanMode.classList.toggle('active', state.panMode);
-                if (els.viewport) els.viewport.classList.toggle('pan-mode', state.panMode);
+                if (els.viewport) {
+                    els.viewport.classList.toggle('pan-mode', state.panMode);
+                    if (!state.panMode && !state.isDragging) {
+                        els.viewport.classList.remove('dragging');
+                    }
+                }
             });
         }
 
@@ -622,6 +925,35 @@
             els.btnResetViewport.addEventListener('click', function () {
                 stopPlay();
                 resetViewport();
+            });
+        }
+
+        if (els.btnFullscreen) {
+            els.btnFullscreen.addEventListener('click', function () {
+                var target = els.viewportColumn || els.viewportWrap;
+                if (!target) return;
+                if (!document.fullscreenElement) {
+                    target.requestFullscreen().catch(function () {
+                        showToast('Full screen is not available in this browser.');
+                    });
+                } else {
+                    document.exitFullscreen();
+                }
+            });
+        }
+
+        document.addEventListener('fullscreenchange', function () {
+            if (!els.btnFullscreen) return;
+            var active = !!document.fullscreenElement;
+            els.btnFullscreen.innerHTML = active
+                ? '<i class="bi bi-fullscreen-exit"></i>'
+                : '<i class="bi bi-fullscreen"></i>';
+            els.btnFullscreen.title = active ? 'Exit full screen' : 'Full screen';
+        });
+
+        if (els.dicomTagSearch) {
+            els.dicomTagSearch.addEventListener('input', function (e) {
+                filterDicomTags(e.target.value);
             });
         }
 
@@ -662,10 +994,18 @@
             }, { passive: false });
 
             els.viewport.addEventListener('mousedown', function (e) {
-                if (!state.panMode) return;
+                if (e.button !== 0) return;
+                var canPan = state.panMode || state.zoom > 1.01;
+                if (!canPan) return;
                 state.isDragging = true;
                 state.dragStart = { x: e.clientX - state.panX, y: e.clientY - state.panY };
                 els.viewport.classList.add('dragging');
+                e.preventDefault();
+            });
+
+            els.viewport.addEventListener('dblclick', function () {
+                if (isGridViewActive()) return;
+                resetViewport();
             });
         }
 
@@ -677,6 +1017,11 @@
         });
 
         window.addEventListener('mouseup', function () {
+            state.isDragging = false;
+            if (els.viewport) els.viewport.classList.remove('dragging');
+        });
+
+        window.addEventListener('mouseleave', function () {
             state.isDragging = false;
             if (els.viewport) els.viewport.classList.remove('dragging');
         });
@@ -693,6 +1038,16 @@
             } else if (e.key === ' ') {
                 e.preventDefault();
                 if (els.btnPlay) els.btnPlay.click();
+            } else if (e.key === '+' || e.key === '=') {
+                state.zoom = Math.min(5, state.zoom + 0.25);
+                applyTransform();
+            } else if (e.key === '-') {
+                state.zoom = Math.max(0.25, state.zoom - 0.25);
+                applyTransform();
+            } else if (e.key === '0') {
+                resetViewport();
+            } else if (e.key === 'f' || e.key === 'F') {
+                if (els.btnFullscreen) els.btnFullscreen.click();
             }
         });
 

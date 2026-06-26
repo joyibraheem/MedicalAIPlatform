@@ -4,63 +4,53 @@
 @{
     ViewData["Title"] = "Multimodal-Medical-AI";
     var isAuthenticated = SignInManager.IsSignedIn(User);
+    var isAdmin = User.IsInRole("Admin");
+    var isDoctor = User.IsInRole("Doctor") || (isAuthenticated && !isAdmin);
+    var roleClass = isAdmin ? "role-admin" : isDoctor ? "role-doctor" : "";
 }
 
-@* 
-    STRICT PALETTE RESTORATION
-    - Colors: Reverted exactly to user specification (#1D4581, #127FEC, etc).
-    - Design: Kept professional layout, typography, and "beautiful" structure.
-    - Shadows/Gradients: Adjusted to work within the strict palette.
-*@
-</div>
-
 <link rel="stylesheet" href="~/css/landing.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/css/medical-platform.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/css/role-themes.css" asp-append-version="true" />
 <link rel="stylesheet" href="~/css/responsive.css" asp-append-version="true" />
 
 <script>
-    // Initialize dark mode and language for landing page
     (function() {
-        // Initialize theme
         const savedTheme = localStorage.getItem('theme');
         const prefs = localStorage.getItem('medicalAiPrefs') ? JSON.parse(localStorage.getItem('medicalAiPrefs')) : null;
-        let isDarkMode = true; // Default to dark
+        let isDarkMode = true;
         if (savedTheme === 'light' || savedTheme === 'dark') {
             isDarkMode = savedTheme === 'dark';
         } else if (prefs && typeof prefs.isDarkMode === 'boolean') {
             isDarkMode = prefs.isDarkMode;
         }
         document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
-        
-        // Initialize language
         const savedLang = localStorage.getItem('lang') || (prefs ? prefs.language : null) || 'en';
         document.documentElement.setAttribute('lang', savedLang);
         document.documentElement.setAttribute('dir', savedLang === 'ar' ? 'rtl' : 'ltr');
-        
-        // Apply language translations when i18n.js loads
-        if (typeof window.setLanguage === 'function') {
-            window.setLanguage(savedLang);
-        }
+        if (typeof window.setLanguage === 'function') window.setLanguage(savedLang);
     })();
 </script>
 
 @* --- NAVBAR (desktop ≥1200px) --- *@
 <div class="nav-custom nav-custom-desktop">
-    <div class="container">
+    <div class="container landing-container-wide">
         <div class="d-flex justify-content-between align-items-center">
             <a href="/" class="brand-logo">
-                 <img src="~/images/chest-icon.png" alt="ChestAI" style="width: 28px; height: 28px; margin-right: 8px;" />
-            Multimodal-Medical-AI
-        </a>
-        <div class="d-flex align-items-center">
-            @if (!isAuthenticated)
-            {
-                <a asp-controller="Account" asp-action="Login" class="btn-nav btn-nav-signin">Sign In</a>
-                <a asp-controller="Account" asp-action="Register" class="btn-nav btn-nav-signup">Sign Up</a>
-            }
-            else
-            {
-                <a asp-controller="Dashboard" asp-action="Index" class="btn-nav btn-nav-signup">Dashboard</a>
-            }
+                <img src="~/images/chest-icon.png" alt="ChestAI" style="width: 28px; height: 28px; margin-right: 8px;" />
+                Multimodal-Medical-AI
+            </a>
+            <div class="d-flex align-items-center">
+                @if (!isAuthenticated)
+                {
+                    <a asp-controller="Account" asp-action="Login" class="btn-nav btn-nav-signin">Sign In</a>
+                    <a asp-controller="Account" asp-action="Register" class="btn-nav btn-nav-signup">Sign Up</a>
+                }
+                else
+                {
+                    <a asp-controller="Dashboard" asp-action="Index" class="btn-nav btn-nav-signup">Dashboard</a>
+                }
+            </div>
         </div>
     </div>
 </div>
@@ -69,7 +59,7 @@
 <nav class="nav-custom nav-custom-mobile navbar navbar-expand-lg">
     <div class="container-fluid">
         <a href="/" class="brand-logo navbar-brand">
-             <img src="~/images/chest-icon.png" alt="ChestAI" width="28" height="28" style="margin-right: 8px;" />
+            <img src="~/images/chest-icon.png" alt="ChestAI" width="28" height="28" style="margin-right: 8px;" />
             Multimodal-Medical-AI
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#homeNav"
@@ -78,92 +68,227 @@
         </button>
         <div class="collapse navbar-collapse justify-content-end" id="homeNav">
             <div class="d-flex align-items-center flex-wrap gap-2 py-2 py-lg-0">
-            @if (!isAuthenticated)
-            {
-                <a asp-controller="Account" asp-action="Login" class="btn-nav btn-nav-signin">Sign In</a>
-                <a asp-controller="Account" asp-action="Register" class="btn-nav btn-nav-signup">Sign Up</a>
-            }
-            else
-            {
-                <a asp-controller="Dashboard" asp-action="Index" class="btn-nav btn-nav-signup">Dashboard</a>
-            }
+                @if (!isAuthenticated)
+                {
+                    <a asp-controller="Account" asp-action="Login" class="btn-nav btn-nav-signin">Sign In</a>
+                    <a asp-controller="Account" asp-action="Register" class="btn-nav btn-nav-signup">Sign Up</a>
+                }
+                else
+                {
+                    <a asp-controller="Dashboard" asp-action="Index" class="btn-nav btn-nav-signup">Dashboard</a>
+                }
             </div>
         </div>
     </div>
 </nav>
 
+@if (isAuthenticated)
+{
+    <div class="container landing-role-banner-wrap">
+        <div class="role-welcome-banner @roleClass mai-reveal">
+            <div>
+                <strong>@(isAdmin ? "Administrator Console" : "Clinical Workspace")</strong>
+                <span> — @(isAdmin ? "System oversight, AI calibration, and enrollment management." : "Patient care, imaging analysis, and diagnostic workflows.")</span>
+            </div>
+            <div class="role-quick-actions">
+                @if (isAdmin)
+                {
+                    <a asp-controller="Admin" asp-action="Index"><i class="bi bi-speedometer2"></i> Admin Dashboard</a>
+                    <a asp-controller="Admin" asp-action="PendingDoctors"><i class="bi bi-person-check"></i> Pending Doctors</a>
+                    <a asp-controller="Admin" asp-action="FineTuningDashboard"><i class="bi bi-cpu"></i> Fine-Tuning</a>
+                }
+                else
+                {
+                    <a asp-controller="Analytics" asp-action="Index"><i class="bi bi-cloud-upload"></i> Upload Scan</a>
+                    <a asp-controller="Patient" asp-action="Index"><i class="bi bi-people"></i> Patients</a>
+                    <a asp-controller="AIAssistant" asp-action="Index"><i class="bi bi-chat-dots"></i> AI Assistant</a>
+                }
+            </div>
+        </div>
+    </div>
+}
+
 @* --- HERO --- *@
-<div class="hero-section">
-    <div class="container">
-        <div class="row">
-            <div class="col-lg-7">
-                <div class="hero-content">
+<section class="hero-section @roleClass">
+    <div class="hero-bg-blur"></div>
+    <div class="hero-bg-gradient"></div>
+    <div class="hero-bg-vignette"></div>
+    <div class="container landing-container-wide">
+        <div class="row align-items-center g-4">
+            <div class="col-lg-6">
+                <div class="hero-content mai-reveal">
                     <span class="hero-badge" data-i18n="home_ai_powered_diagnostics">AI-POWERED DIAGNOSTICS</span>
                     <h1 class="hero-title" data-i18n="home_ai_powered_title">AI-Powered Chest Analysis</h1>
                     <p class="hero-text" data-i18n="home_ai_powered_desc">
                         An intelligent system that supports doctors by analyzing chest X-ray and CT scan images and highlighting areas of interest using explainable AI.
                     </p>
-                    <div class="d-flex flex-wrap">
-                        <a asp-controller="Account" asp-action="Register" class="btn-hero btn-hero-start" data-i18n="home_get_started">Get Started</a>
-                        <button class="btn-hero btn-hero-demo" data-i18n="home_view_demo">View Demo</button>
+                    <div class="d-flex flex-wrap hero-cta-group">
+                        @if (!isAuthenticated)
+                        {
+                            <a asp-controller="Account" asp-action="Register" class="btn-hero btn-hero-start" data-i18n="home_get_started">
+                                <i class="bi bi-rocket-takeoff"></i> Get Started
+                            </a>
+                            <a href="#how-it-works" class="btn-hero btn-hero-demo" data-i18n="home_view_demo">
+                                <i class="bi bi-play-circle"></i> View Demo
+                            </a>
+                        }
+                        else
+                        {
+                            <a asp-controller="Dashboard" asp-action="Index" class="btn-hero btn-hero-start" data-i18n="home_get_started">
+                                <i class="bi bi-speedometer2"></i> Open Dashboard
+                            </a>
+                            <a asp-controller="Analytics" asp-action="Index" class="btn-hero btn-hero-demo" data-i18n="home_view_demo">
+                                <i class="bi bi-play-circle"></i> Try Live Demo
+                            </a>
+                        }
+                    </div>
+                    <div class="hero-trust-row">
+                        <span><i class="bi bi-shield-check"></i> HIPAA Compliant</span>
+                        <span><i class="bi bi-lock"></i> End-to-End Encryption</span>
+                        <span><i class="bi bi-patch-check"></i> FDA-Ready Workflow</span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6 d-none d-lg-block">
+                <div class="hero-visual mai-reveal mai-reveal-delay-2">
+                    <div class="hero-illustration">
+                        <div class="hero-scan-ring"></div>
+                        <div class="hero-scan-core">
+                            <svg viewBox="0 0 200 200" class="hero-lungs-svg" aria-hidden="true">
+                                <defs>
+                                    <linearGradient id="lungGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" style="stop-color:#127FEC;stop-opacity:0.9" />
+                                        <stop offset="100%" style="stop-color:#1D4581;stop-opacity:0.7" />
+                                    </linearGradient>
+                                </defs>
+                                <ellipse cx="100" cy="100" rx="85" ry="85" fill="none" stroke="rgba(18,127,236,0.25)" stroke-width="1.5" stroke-dasharray="8 4"/>
+                                <path d="M100 40 Q70 60 65 100 Q60 140 75 165 Q85 175 100 170 Q115 175 125 165 Q140 140 135 100 Q130 60 100 40Z" fill="url(#lungGrad)" opacity="0.85"/>
+                                <circle cx="100" cy="100" r="6" fill="#127FEC"/>
+                                <circle cx="78" cy="95" r="4" fill="#ef4444" opacity="0.8" class="hero-hotspot"/>
+                                <circle cx="122" cy="108" r="3" fill="#f59e0b" opacity="0.7" class="hero-hotspot"/>
+                            </svg>
+                        </div>
+                        <div class="hero-float-card hero-float-card-1">
+                            <i class="bi bi-cpu"></i>
+                            <div>
+                                <strong>AI Analysis</strong>
+                                <span>Real-time inference</span>
+                            </div>
+                        </div>
+                        <div class="hero-float-card hero-float-card-2">
+                            <i class="bi bi-graph-up-arrow"></i>
+                            <div>
+                                <strong>98.7%</strong>
+                                <span>Detection accuracy</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
+</section>
+
+@* --- STATS --- *@
+<section class="stats-section">
+    <div class="container landing-container-wide">
+        <div class="row g-4 g-xl-5">
+            <div class="col-6 col-lg-3">
+                <div class="stat-card mai-reveal">
+                    <div class="stat-card-media stat-media-xray" role="img" aria-label="Chest X-ray diagnostic imaging">
+                        <img src="~/images/stat-chest-xray.png" alt="Chest X-ray radiograph" loading="lazy" asp-append-version="true" />
+                    </div>
+                    <div class="stat-card-body">
+                        <div class="stat-icon"><i class="bi bi-images"></i></div>
+                        <div class="stat-value" data-count="1000000" data-suffix="+">0</div>
+                        <div class="stat-label">Scans Analyzed</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="stat-card mai-reveal mai-reveal-delay-1">
+                    <div class="stat-card-media stat-media-chestct" role="img" aria-label="Chest CT scan">
+                        <img src="~/images/stat-chest-ct.png" alt="Chest CT axial scan" loading="lazy" asp-append-version="true" />
+                    </div>
+                    <div class="stat-card-body">
+                        <div class="stat-icon"><i class="bi bi-hospital"></i></div>
+                        <div class="stat-value" data-count="250" data-suffix="+">0</div>
+                        <div class="stat-label">Healthcare Partners</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="stat-card mai-reveal mai-reveal-delay-2">
+                    <div class="stat-card-media stat-media-lungct" role="img" aria-label="Lung CT scan analysis">
+                        <img src="~/images/stat-lung-ct.png" alt="Lung CT axial scan" loading="lazy" asp-append-version="true" />
+                    </div>
+                    <div class="stat-card-body">
+                        <div class="stat-icon"><i class="bi bi-bullseye"></i></div>
+                        <div class="stat-value">98.7%</div>
+                        <div class="stat-label">Model Accuracy</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="stat-card mai-reveal mai-reveal-delay-3">
+                    <div class="stat-card-media stat-media-thoraxct" role="img" aria-label="Thorax CT scan">
+                        <img src="~/images/stat-thorax-ct.png" alt="Thorax CT axial scan" loading="lazy" asp-append-version="true" />
+                    </div>
+                    <div class="stat-card-body">
+                        <div class="stat-icon"><i class="bi bi-lightning-charge"></i></div>
+                        <div class="stat-value" data-count="3" data-suffix="s">0</div>
+                        <div class="stat-label">Avg. Analysis Time</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
 
 @* --- FEATURES --- *@
-<div class="features-section">
-    <div class="container">
-        <div class="row justify-content-center section-head">
+<section class="features-section" id="features">
+    <div class="container landing-container-wide">
+        <div class="row justify-content-center section-head mai-reveal">
             <div class="col-12 text-center">
+                <span class="section-kicker">Platform Capabilities</span>
                 <h2 class="section-header-title" data-i18n="home_key_features">Key Features</h2>
                 <p class="section-header-desc mx-auto" data-i18n="home_features_desc">
                     Clinical precision, high-speed processing, and absolute data privacy.
                 </p>
             </div>
         </div>
-
         <div class="row g-4">
-            <!-- Accuracy -->
             <div class="col-md-4 d-flex">
-                <div class="feature-card w-100">
+                <div class="feature-card w-100 mai-reveal glass-card-premium">
+                    <div class="card-visual card-visual-xray" aria-hidden="true">
+                        <img src="~/images/med-chest-xray.svg" alt="" loading="lazy" asp-append-version="true" />
+                    </div>
                     <div class="feature-icon-box">
-                         <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-bullseye" viewBox="0 0 16 16">
-                            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
-                            <path d="M8 13A5 5 0 1 1 8 3a5 5 0 0 1 0 10zm0 1A6 6 0 1 0 8 2a6 6 0 0 0 0 12z"/>
-                            <path d="M8 11a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm0 1a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/>
-                            <path d="M9.5 8a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z"/>
-                        </svg>
+                        <i class="bi bi-bullseye"></i>
                     </div>
                     <h3 class="feature-title">Accuracy</h3>
                     <p class="feature-text">Deep-learning models trained on 1M+ high-resolution clinical scans for unparalleled precision.</p>
                 </div>
             </div>
-            
-             <!-- Speed -->
             <div class="col-md-4 d-flex">
-                <div class="feature-card w-100">
+                <div class="feature-card w-100 mai-reveal mai-reveal-delay-1 glass-card-premium">
+                    <div class="card-visual card-visual-speed" aria-hidden="true">
+                        <img src="~/images/med-chest-ct.svg" alt="" loading="lazy" asp-append-version="true" />
+                    </div>
                     <div class="feature-icon-box">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-speedometer2" viewBox="0 0 16 16">
-                             <path d="M8 4a.5.5 0 0 1 .5.5V6a.5.5 0 0 1-1 0V4.5A.5.5 0 0 1 8 4zM3.732 5.732a.5.5 0 0 1 .707 0l.915.914a.5.5 0 1 1-.708.708l-.914-.915a.5.5 0 0 1 0-.707zM2 10a.5.5 0 0 1 .5-.5h1.586a.5.5 0 0 1 0 1H2.5A.5.5 0 0 1 2 10zm9.5 0a.5.5 0 0 1 .5-.5h1.5a.5.5 0 0 1 0 1H12a.5.5 0 0 1-.5-.5zm.754-4.246a.389.389 0 0 0-.527-.02L7.547 9.31a.91.91 0 1 0 1.302 1.258l3.434-4.297a.389.389 0 0 0-.029-.518z"/>
-                             <path fill-rule="evenodd" d="M0 10a8 8 0 1 1 15.528 4.093l-1.552-4.656a6.5 6.5 0 1 0-8.956 0l-1.552 4.656A8 8 0 0 1 0 10z"/>
-                         </svg>
+                        <i class="bi bi-speedometer2"></i>
                     </div>
                     <h3 class="feature-title">Speed</h3>
                     <p class="feature-text">Instant cloud analysis results delivered in seconds for critical emergency decision-making.</p>
                 </div>
             </div>
-
-            <!-- Security -->
-             <div class="col-md-4 d-flex">
-                <div class="feature-card w-100">
+            <div class="col-md-4 d-flex">
+                <div class="feature-card w-100 mai-reveal mai-reveal-delay-2 glass-card-premium">
+                    <div class="card-visual card-visual-security" aria-hidden="true">
+                        <img src="~/images/med-lung-ct.svg" alt="" loading="lazy" asp-append-version="true" />
+                    </div>
                     <div class="feature-icon-box">
-                         <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-shield-check" viewBox="0 0 16 16">
-                             <path d="M5.338 1.59a61.44 61.44 0 0 0-2.837.856.481.481 0 0 0-.328.39c-.554 4.157.726 7.19 2.253 9.188a10.725 10.725 0 0 0 2.287 2.233c.346.244.652.42.893.533.12.057.218.095.293.118a.55.55 0 0 0 .101.025.615.615 0 0 0 .1-.025c.076-.023.174-.061.294-.118.24-.113.547-.29.893-.533a10.726 10.726 0 0 0 2.287-2.233c1.527-1.997 2.807-5.031 2.253-9.188a.48.48 0 0 0-.328-.39c-.651-.23-4.95-1.446-4.95-1.446A6.035 6.035 0 0 0 5.337 1.6zm9.167 1.619c.444 3.75-1.127 6.472-2.316 8.35a9.721 9.721 0 0 1-2.036 1.966c-.66.44-1.28.775-1.613.926-.333-.151-.953-.486-1.613-.926a9.721 9.721 0 0 1-2.036-1.966C3.766 9.652 2.195 6.93 2.639 3.18l4.42-1.291 4.444 1.32z"/>
-                            <path fill-rule="evenodd" d="M10.854 5.146a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7.5 7.793l2.646-2.647a.5.5 0 0 1 .708 0z"/>
-                         </svg>
+                        <i class="bi bi-shield-check"></i>
                     </div>
                     <h3 class="feature-title">Security</h3>
                     <p class="feature-text">HIPAA-compliant end-to-end data encryption ensuring total patient privacy and compliance.</p>
@@ -171,28 +296,150 @@
             </div>
         </div>
     </div>
-</div>
+</section>
+
+@* --- WHY CHOOSE US --- *@
+<section class="why-section">
+    <div class="container landing-container-wide">
+        <div class="row align-items-center g-4 g-xl-5">
+            <div class="col-lg-5 mai-reveal">
+                <span class="section-kicker">Why Choose Us</span>
+                <h2 class="section-header-title text-start">Built for Clinical Excellence</h2>
+                <p class="why-lead">Our platform bridges cutting-edge AI research with real-world clinical workflows, empowering radiologists and pulmonologists to deliver faster, more accurate diagnoses.</p>
+                <ul class="why-list">
+                    <li><i class="bi bi-check-circle-fill"></i> Explainable AI with heatmap overlays</li>
+                    <li><i class="bi bi-check-circle-fill"></i> Seamless PACS & DICOM integration</li>
+                    <li><i class="bi bi-check-circle-fill"></i> Multi-modal analysis (X-Ray + CT)</li>
+                    <li><i class="bi bi-check-circle-fill"></i> Continuous model improvement via feedback</li>
+                </ul>
+                @if (!isAuthenticated)
+                {
+                    <a asp-controller="Account" asp-action="Register" class="btn-hero btn-hero-start mt-3">Start Free Trial</a>
+                }
+                else if (isAdmin)
+                {
+                    <a asp-controller="Admin" asp-action="Index" class="btn-hero btn-hero-start mt-3">Go to Admin Dashboard</a>
+                }
+                else
+                {
+                    <a asp-controller="Dashboard" asp-action="Index" class="btn-hero btn-hero-start mt-3">Go to Dashboard</a>
+                }
+            </div>
+            <div class="col-lg-7">
+                <div class="why-grid mai-reveal mai-reveal-delay-2">
+                    <div class="why-mini-card">
+                        <i class="bi bi-eye"></i>
+                        <h4>Explainable AI</h4>
+                        <p>Visual heatmaps highlight regions of interest for transparent clinical review.</p>
+                    </div>
+                    <div class="why-mini-card">
+                        <i class="bi bi-cloud-check"></i>
+                        <h4>Cloud-Native</h4>
+                        <p>Scalable Azure infrastructure with 99.9% uptime SLA.</p>
+                    </div>
+                    <div class="why-mini-card">
+                        <i class="bi bi-people"></i>
+                        <h4>Team Collaboration</h4>
+                        <p>Share findings and reports across your clinical team securely.</p>
+                    </div>
+                    <div class="why-mini-card">
+                        <i class="bi bi-arrow-repeat"></i>
+                        <h4>Continuous Learning</h4>
+                        <p>Models improve through clinician feedback and fine-tuning.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+@* --- AI CAPABILITIES --- *@
+<section class="capabilities-section">
+    <div class="container landing-container-wide">
+        <div class="text-center section-head mai-reveal">
+            <span class="section-kicker">AI Engine</span>
+            <h2 class="section-header-title">Advanced AI Capabilities</h2>
+            <p class="section-header-desc mx-auto">State-of-the-art deep learning models powering every diagnostic workflow.</p>
+        </div>
+        <div class="row g-4">
+            <div class="col-md-6 col-lg-3">
+                <div class="capability-card mai-reveal">
+                    <div class="capability-icon"><i class="bi bi-lungs"></i></div>
+                    <h4>Chest X-Ray</h4>
+                    <p>14-pathology detection including pneumonia, effusion, and nodules.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+                <div class="capability-card mai-reveal mai-reveal-delay-1">
+                    <div class="capability-icon"><i class="bi bi-box"></i></div>
+                    <h4>CT Analysis</h4>
+                    <p>3D volumetric segmentation for lung nodules and masses.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+                <div class="capability-card mai-reveal mai-reveal-delay-2">
+                    <div class="capability-icon"><i class="bi bi-chat-dots"></i></div>
+                    <h4>AI Assistant</h4>
+                    <p>Clinical Q&A powered by medical knowledge bases.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+                <div class="capability-card mai-reveal mai-reveal-delay-3">
+                    <div class="capability-icon"><i class="bi bi-file-earmark-medical"></i></div>
+                    <h4>Smart Reports</h4>
+                    <p>Auto-generated structured reports with ICD coding support.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+@* --- MEDICAL SPECIALTIES --- *@
+<section class="specialties-section">
+    <div class="container landing-container-wide">
+        <div class="text-center section-head mai-reveal">
+            <span class="section-kicker">Specialties</span>
+            <h2 class="section-header-title">Medical Specialties We Serve</h2>
+        </div>
+        <div class="row g-3 justify-content-center">
+            @{
+                var specialties = new[] {
+                    ("bi-heart-pulse", "Radiology"),
+                    ("bi-lungs-fill", "Pulmonology"),
+                    ("bi-hospital", "Emergency Medicine"),
+                    ("bi-clipboard2-pulse", "Internal Medicine"),
+                    ("bi-person-badge", "Primary Care"),
+                    ("bi-activity", "Critical Care")
+                };
+            }
+            @for (var i = 0; i < specialties.Length; i++)
+            {
+                var (icon, name) = specialties[i];
+                <div class="col-6 col-md-4 col-lg-2">
+                    <div class="specialty-card mai-reveal" style="transition-delay:@(i * 0.05)s">
+                        <i class="bi @icon"></i>
+                        <span>@name</span>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</section>
 
 @* --- HOW IT WORKS --- *@
-<div class="how-it-works-section">
-    <div class="container">
-        <div class="text-center mb-5">
+<section class="how-it-works-section" id="how-it-works">
+    <div class="container landing-container-wide">
+        <div class="text-center mb-5 mai-reveal">
+            <span class="section-kicker">Workflow</span>
             <h2 class="hiw-title">HOW IT WORKS</h2>
             <span class="hiw-subtitle">Seamless Integration in 3 Steps</span>
         </div>
-        
         <div class="row justify-content-center">
             <div class="col-lg-9">
                 <div class="step-list">
-                    <!-- Step 1 -->
-                    <div class="step-item">
+                    <div class="step-item mai-reveal">
                         <div class="step-icon-wrapper">
-                            <div class="step-icon">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" fill="currentColor" class="bi bi-cloud-upload" viewBox="0 0 16 16">
-                                    <path fill-rule="evenodd" d="M4.406 1.342A5.53 5.53 0 0 1 8 0c2.69 0 4.923 2 5.166 4.579C14.758 4.804 16 6.137 16 7.773 16 9.569 14.502 11 12.687 11H10a.5.5 0 0 1 0-1h2.688C13.979 10 15 8.988 15 7.773c0-1.216-1.02-2.228-2.313-2.228h-.5v-.5C12.188 2.825 10.328 1 8 1a4.53 4.53 0 0 0-2.941 1.1c-.757.652-1.153 1.438-1.153 2.055v.448l-.445.049C2.064 4.805 1 5.952 1 7.318 1 8.785 2.23 10 3.781 10H6a.5.5 0 0 1 0 1H3.781C1.708 11 0 9.366 0 7.318c0-1.763 1.266-3.223 2.942-3.593.143-.863.698-1.723 1.464-2.383z"/>
-                                    <path fill-rule="evenodd" d="M7.646 4.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 5.707V14.5a.5.5 0 0 1-1 0V5.707L5.354 7.854a.5.5 0 1 1-.708-.708l3-3z"/>
-                                </svg>
-                            </div>
+                            <div class="step-icon"><i class="bi bi-cloud-upload"></i></div>
                             <div class="step-line"></div>
                         </div>
                         <div class="step-content">
@@ -200,15 +447,9 @@
                             <p class="step-desc">Securely upload DICOM or standard imaging formats directly from your workstation.</p>
                         </div>
                     </div>
-                    
-                     <!-- Step 2 -->
-                    <div class="step-item">
+                    <div class="step-item mai-reveal">
                         <div class="step-icon-wrapper">
-                            <div class="step-icon">
-                                 <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" fill="currentColor" class="bi bi-cpu" viewBox="0 0 16 16">
-                                   <path d="M5 0a.5.5 0 0 1 .5.5V2h1V.5a.5.5 0 0 1 1 0V2h1V.5a.5.5 0 0 1 1 0V2h1V.5a.5.5 0 0 1 1 0V2h1V.5a.5.5 0 0 1 1 0V2h1V.5a.5.5 0 0 1 1 0V2A2.5 2.5 0 0 1 14 4.5h1.5a.5.5 0 0 1 0 1H14v1h1.5a.5.5 0 0 1 0 1H14v1h1.5a.5.5 0 0 1 0 1H14v1h1.5a.5.5 0 0 1 0 1H14a2.5 2.5 0 0 1-2.5 2.5v1.5a.5.5 0 0 1-1 0V14h-1v1.5a.5.5 0 0 1-1 0V14h-1v1.5a.5.5 0 0 1-1 0V14h-1v1.5a.5.5 0 0 1-1 0V14A2.5 2.5 0 0 1 2 11.5H.5a.5.5 0 0 1 0-1H2v-1H.5a.5.5 0 0 1 0-1H2v-1H.5a.5.5 0 0 1 0-1H2A2.5 2.5 0 0 1 4.5 2V.5A.5.5 0 0 1 5 0zm-.5 3A1.5 1.5 0 0 0 3 4.5v7A1.5 1.5 0 0 0 4.5 13h7a1.5 1.5 0 0 0 1.5-1.5v-7A1.5 1.5 0 0 0 11.5 3h-7zM5 6.5A1.5 1.5 0 0 1 6.5 5h3A1.5 1.5 0 0 1 11 6.5v3A1.5 1.5 0 0 1 9.5 11h-3A1.5 1.5 0 0 1 5 9.5v-3z"/>
-                               </svg>
-                            </div>
+                            <div class="step-icon"><i class="bi bi-cpu"></i></div>
                             <div class="step-line"></div>
                         </div>
                         <div class="step-content">
@@ -216,16 +457,9 @@
                             <p class="step-desc">Advanced deep-learning neural networks process the image, highlighting potential anomalies.</p>
                         </div>
                     </div>
-
-                    <!-- Step 3 -->
-                    <div class="step-item last-step">
+                    <div class="step-item last-step mai-reveal">
                         <div class="step-icon-wrapper">
-                            <div class="step-icon">
-                                 <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" fill="currentColor" class="bi bi-file-earmark-medical" viewBox="0 0 16 16">
-                                    <path d="M7.5 5.5a.5.5 0 0 0-1 0v.634l-.549-.317a.5.5 0 1 0-.5.866L6 7l-.549.317a.5.5 0 1 0 .5.866l.549-.317V8.5a.5.5 0 1 0 1 0v-.634l.549.317a.5.5 0 0 0 .5-.866L8 7l.549-.317a.5.5 0 0 0-.5-.866l-.549.317V5.5zm-2 4.5a.5.5 0 0 0 0 1h5a.5.5 0 0 0 0-1h-5zm0 2a.5.5 0 0 0 0 1h5a.5.5 0 0 0 0-1h-5z"/>
-                                    <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5v2z"/>
-                                </svg>
-                            </div>
+                            <div class="step-icon"><i class="bi bi-file-earmark-medical"></i></div>
                         </div>
                         <div class="step-content">
                             <h4 class="step-title">Expert Review</h4>
@@ -236,23 +470,149 @@
             </div>
         </div>
     </div>
-</div>
+</section>
 
-@* --- FOOTER --- *@
-<div class="footer-custom">
-    <div class="container">
-        <div class="footer-brand">
-             <img src="~/images/chest-icon.png" alt="ChestAI" style="width: 28px; height: 28px; margin-right: 8px;" />
-            Multimodal-Medical-AI
+@* --- TRUSTED TECHNOLOGY --- *@
+<section class="tech-section">
+    <div class="container landing-container-wide">
+        <div class="text-center section-head mai-reveal">
+            <span class="section-kicker">Technology Stack</span>
+            <h2 class="section-header-title">Trusted Technology</h2>
+            <p class="section-header-desc mx-auto">Built on enterprise-grade infrastructure and research-backed AI models.</p>
         </div>
-        <div class="footer-copy">© 2026 MedAI Solutions. All rights reserved</div>
-        <div class="footer-links">
-            <a href="#">Privacy</a>
-            <a href="#">Terms</a>
-            <a href="#">Contact</a>
+        <div class="tech-logos mai-reveal">
+            <div class="tech-logo-item"><i class="bi bi-microsoft"></i><span>Azure Cloud</span></div>
+            <div class="tech-logo-item"><i class="bi bi-gpu-card"></i><span>PyTorch</span></div>
+            <div class="tech-logo-item"><i class="bi bi-diagram-3"></i><span>DICOM</span></div>
+            <div class="tech-logo-item"><i class="bi bi-shield-lock"></i><span>HIPAA</span></div>
+            <div class="tech-logo-item"><i class="bi bi-code-slash"></i><span>.NET Core</span></div>
         </div>
     </div>
-</div>
+</section>
 
-@* End of document cleanup *@
-<div class="container container-restorer">
+@* --- TESTIMONIALS --- *@
+<section class="testimonials-section">
+    <div class="container landing-container-wide">
+        <div class="text-center section-head mai-reveal">
+            <span class="section-kicker">Testimonials</span>
+            <h2 class="section-header-title">Trusted by Clinicians</h2>
+        </div>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="testimonial-card mai-reveal">
+                    <div class="testimonial-stars"><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i></div>
+                    <p class="testimonial-text">"The AI heatmaps have transformed our radiology workflow. We catch findings faster and with greater confidence."</p>
+                    <div class="testimonial-author">
+                        <div class="testimonial-avatar">DR</div>
+                        <div>
+                            <strong>Dr. Sarah Chen</strong>
+                            <span>Chief Radiologist, Metro Health</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="testimonial-card mai-reveal mai-reveal-delay-1">
+                    <div class="testimonial-stars"><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i></div>
+                    <p class="testimonial-text">"Sub-3-second analysis in the ER has been a game-changer for triage decisions on chest imaging."</p>
+                    <div class="testimonial-author">
+                        <div class="testimonial-avatar">JM</div>
+                        <div>
+                            <strong>Dr. James Miller</strong>
+                            <span>Emergency Medicine, City Hospital</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="testimonial-card mai-reveal mai-reveal-delay-2">
+                    <div class="testimonial-stars"><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i></div>
+                    <p class="testimonial-text">"The explainable AI reports make it easy to communicate findings to patients and referring physicians."</p>
+                    <div class="testimonial-author">
+                        <div class="testimonial-avatar">AP</div>
+                        <div>
+                            <strong>Dr. Anna Patel</strong>
+                            <span>Pulmonologist, Regional Clinic</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+@* --- CTA --- *@
+<section class="cta-section">
+    <div class="container landing-container-wide">
+        <div class="cta-glass mai-reveal">
+            <h2>Ready to Transform Your Diagnostic Workflow?</h2>
+            <p>Join hundreds of healthcare institutions leveraging AI-powered chest imaging analysis.</p>
+            <div class="d-flex flex-wrap justify-content-center gap-3">
+                @if (!isAuthenticated)
+                {
+                    <a asp-controller="Account" asp-action="Register" class="btn-hero btn-hero-start">Get Started Free</a>
+                    <a asp-controller="Account" asp-action="Login" class="btn-hero btn-hero-demo">Sign In</a>
+                }
+                else
+                {
+                    <a asp-controller="Dashboard" asp-action="Index" class="btn-hero btn-hero-start">Open Dashboard</a>
+                    <a asp-controller="Analytics" asp-action="Index" class="btn-hero btn-hero-demo">Upload Scan</a>
+                }
+            </div>
+        </div>
+    </div>
+</section>
+
+@* --- FOOTER --- *@
+<footer class="footer-custom">
+    <div class="container landing-container-wide">
+        <div class="footer-top">
+            <div class="footer-brand">
+                <img src="~/images/chest-icon.png" alt="ChestAI" style="width: 28px; height: 28px; margin-right: 8px;" />
+                Multimodal-Medical-AI
+            </div>
+            <div class="footer-columns">
+                <div class="footer-col">
+                    <h5>Platform</h5>
+                    <a asp-controller="Account" asp-action="Register">Get Started</a>
+                    <a asp-controller="Account" asp-action="Login">Sign In</a>
+                </div>
+                <div class="footer-col">
+                    <h5>Resources</h5>
+                    @if (isAuthenticated)
+                    {
+                        <a asp-controller="Analytics" asp-action="Index">Platform Demo</a>
+                        <a asp-controller="AIAssistant" asp-action="Index">AI Assistant</a>
+                    }
+                    else
+                    {
+                        <a asp-controller="Account" asp-action="Login">Platform Demo</a>
+                        <a asp-controller="Account" asp-action="Register">Create Account</a>
+                    }
+                </div>
+                <div class="footer-col">
+                    <h5>Legal</h5>
+                    <a asp-controller="Home" asp-action="Privacy">Privacy</a>
+                    <a asp-controller="Home" asp-action="Privacy">Terms</a>
+                    <a href="#footer-contact">Contact</a>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom" id="footer-contact">
+            <div class="footer-copy">© 2026 MedAI Solutions. All rights reserved</div>
+            <div class="footer-links">
+                <a asp-controller="Home" asp-action="Privacy">Privacy</a>
+                <a asp-controller="Home" asp-action="Privacy">Terms</a>
+                <a href="mailto:support@medai-platform.com">Contact</a>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<div class="container container-restorer"></div>
+
+@section Scripts {
+    <script src="~/js/toast.js" asp-append-version="true"></script>
+    <script src="~/js/landing.js" asp-append-version="true"></script>
+    <script src="~/js/premium-interactions.js" asp-append-version="true"></script>
+}

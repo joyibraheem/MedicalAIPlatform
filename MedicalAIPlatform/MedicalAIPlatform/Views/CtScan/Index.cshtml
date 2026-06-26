@@ -53,10 +53,13 @@
             </button>
         </div>
         <div class="ct-toolbar__group">
+            <button type="button" class="ct-tool-btn" id="btnRotateLeft" disabled title="Rotate left"><i class="bi bi-arrow-90deg-left"></i></button>
+            <button type="button" class="ct-tool-btn" id="btnRotateRight" disabled title="Rotate right"><i class="bi bi-arrow-90deg-right"></i></button>
             <button type="button" class="ct-tool-btn" id="btnZoomIn" disabled title="Zoom in"><i class="bi bi-zoom-in"></i></button>
             <button type="button" class="ct-tool-btn" id="btnZoomOut" disabled title="Zoom out"><i class="bi bi-zoom-out"></i></button>
             <button type="button" class="ct-tool-btn" id="btnPanMode" disabled title="Pan mode"><i class="bi bi-arrows-move"></i></button>
-            <button type="button" class="ct-tool-btn" id="btnResetViewport" disabled title="Reset viewport"><i class="bi bi-arrow-counterclockwise"></i></button>
+            <button type="button" class="ct-tool-btn" id="btnResetViewport" disabled title="Reset view"><i class="bi bi-arrow-counterclockwise"></i></button>
+            <button type="button" class="ct-tool-btn" id="btnFullscreen" disabled title="Full screen"><i class="bi bi-fullscreen"></i></button>
             <div class="dropdown">
                 <button type="button" class="ct-tool-btn dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="bi bi-three-dots"></i>
@@ -117,22 +120,61 @@
             </div>
 
             <div class="ct-viewport-wrap d-none" id="viewportWrap">
-                <div class="ct-viewport" id="viewport">
-                    <img id="mainSliceImage" alt="CT slice" draggable="false" />
-                    <div class="ct-viewport-overlay" aria-hidden="true">
-                        <span id="overlaySeries" class="ct-overlay-series"></span>
-                        <span id="overlaySlice">1 / 1</span>
-                        <span id="overlayZoom">100%</span>
+                <div class="ct-viewport-row">
+                    <div class="ct-viewport-column">
+                        <div class="ct-viewport" id="viewport">
+                            <img id="mainSliceImage" alt="CT slice" draggable="false" />
+                            <div class="ct-viewport-hud" aria-hidden="true">
+                                <div class="ct-hud-corner ct-hud-tl" id="hudTopLeft"></div>
+                                <div class="ct-hud-corner ct-hud-tr" id="hudTopRight"></div>
+                                <div class="ct-hud-corner ct-hud-bl" id="hudBottomLeft"></div>
+                                <div class="ct-hud-corner ct-hud-br" id="hudBottomRight"></div>
+                            </div>
+                            <div class="ct-viewport-overlay" aria-hidden="true">
+                                <span id="overlaySeries" class="ct-overlay-series"></span>
+                                <span id="overlaySlice">1 / 1</span>
+                                <span id="overlayZoom">100%</span>
+                            </div>
+                            <div class="ct-viewport-loading d-none" id="viewportLoading">
+                                <div class="ct-spinner"></div>
+                                <span>Loading slice…</span>
+                            </div>
+                        </div>
+                        <div class="ct-viewport-grid d-none" id="viewportGrid" aria-label="Multi-series view"></div>
+                        <div class="ct-viewport-toolbar">
+                            <span id="currentSliceLabel">—</span>
+                            <span id="zoomLabel">100%</span>
+                        </div>
                     </div>
-                    <div class="ct-viewport-loading d-none" id="viewportLoading">
-                        <div class="ct-spinner"></div>
-                        <span>Loading slice…</span>
-                    </div>
-                </div>
-                <div class="ct-viewport-grid d-none" id="viewportGrid" aria-label="Multi-series view"></div>
-                <div class="ct-viewport-toolbar">
-                    <span id="currentSliceLabel">—</span>
-                    <span id="zoomLabel">100%</span>
+
+                    <aside class="ct-meta-sidebar" id="metaSidebar" aria-label="Image metadata">
+                        <div class="ct-meta-panel">
+                            <div class="ct-meta-panel__header">
+                                <i class="bi bi-card-text"></i>
+                                <span>Image Information</span>
+                            </div>
+                            <div class="ct-meta-panel__body" id="imageInfoBody">
+                                <p class="ct-meta-empty">Upload a scan to view metadata.</p>
+                            </div>
+                        </div>
+                        <div class="ct-meta-panel ct-meta-panel--collapsible">
+                            <button type="button" class="ct-meta-panel__header ct-meta-panel__toggle"
+                                    data-bs-toggle="collapse" data-bs-target="#dicomTagsCollapse"
+                                    aria-expanded="true" aria-controls="dicomTagsCollapse">
+                                <span><i class="bi bi-tags"></i> DICOM Tags</span>
+                                <i class="bi bi-chevron-down ct-meta-chevron"></i>
+                            </button>
+                            <div class="collapse show" id="dicomTagsCollapse">
+                                <div class="ct-meta-panel__body">
+                                    <input type="search" class="ct-meta-search" id="dicomTagSearch"
+                                           placeholder="Filter tags…" autocomplete="off" disabled />
+                                    <div class="ct-dicom-tags" id="dicomTagsBody">
+                                        <p class="ct-meta-empty">No DICOM metadata available for this file.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </aside>
                 </div>
             </div>
         </main>

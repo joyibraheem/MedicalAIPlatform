@@ -13,11 +13,19 @@ public sealed class PredictionFeedbackService
 
     private readonly ApplicationDbContext _db;
     private readonly UserManager<ApplicationUser> _users;
+    private readonly ModelTrainingDataService _trainingData;
+    private readonly ModelRetrainingOrchestrator _retraining;
 
-    public PredictionFeedbackService(ApplicationDbContext db, UserManager<ApplicationUser> users)
+    public PredictionFeedbackService(
+        ApplicationDbContext db,
+        UserManager<ApplicationUser> users,
+        ModelTrainingDataService trainingData,
+        ModelRetrainingOrchestrator retraining)
     {
         _db = db;
         _users = users;
+        _trainingData = trainingData;
+        _retraining = retraining;
     }
 
     private void QueueAudit(Guid feedbackId, string actorUserId, string action, object? detail)
@@ -87,6 +95,8 @@ public sealed class PredictionFeedbackService
 
             QueueAudit(pending.Id, doctorUserId, PredictionFeedbackStatuses.AuditUpdated, new { dto.DoctorAction });
             await _db.SaveChangesAsync(ct).ConfigureAwait(false);
+            await _trainingData.RecordFromFeedbackAsync(pending, ct).ConfigureAwait(false);
+            QueueRetrainingIfModified(pending);
             return (true, "Feedback updated.", pending.Id);
         }
 
@@ -118,7 +128,22 @@ public sealed class PredictionFeedbackService
             new { row.DoctorAction, row.Modality, row.ModelKey });
         await _db.SaveChangesAsync(ct).ConfigureAwait(false);
 
+        await _trainingData.RecordFromFeedbackAsync(row, ct).ConfigureAwait(false);
+        QueueRetrainingIfModified(row);
+
         return (true, "Feedback submitted for review.", row.Id);
+    }
+
+    private void QueueRetrainingIfModified(PredictionFeedback feedback)
+    {
+        if (feedback.DoctorAction != PredictionFeedbackStatuses.DoctorModify)
+            return;
+
+        var modelName = ModelTrainingNames.NormalizeModelKey(feedback.ModelKey);
+        if (modelName is null)
+            return;
+
+        _retraining.QueueRetrainingCheck(modelName);
     }
 
     public async Task<IReadOnlyList<PredictionFeedbackListItemDto>> GetPendingAsync(int skip, int take,

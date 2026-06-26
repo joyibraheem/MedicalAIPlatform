@@ -13,7 +13,8 @@ public sealed class AnalyticsController : Controller
 {
     private sealed record ChexNetResolveOutcome(
         Dictionary<string, CheXNetPredictionResponse> Map,
-        List<string> PipelineNotes);
+        List<string> PipelineNotes,
+        PatientMedicalHistory? DicomMetadata = null);
 
     private const long MaxAnalyticsUploadBytes = 512L * 1024 * 1024;
 
@@ -24,6 +25,7 @@ public sealed class AnalyticsController : Controller
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly DicomInferencePipelineOrchestrator _dicomPipeline;
     private readonly AnalyticsCtInferenceExecutor _ctInference;
+    private readonly TrainingAssetPersistenceService _trainingAssets;
     private readonly ILogger<AnalyticsController> _logger;
 
     private static readonly DicomAggregationMethod DefaultSliceAggregation = DicomAggregationMethod.MaxPooling;
@@ -36,6 +38,7 @@ public sealed class AnalyticsController : Controller
         UserManager<ApplicationUser> userManager,
         DicomInferencePipelineOrchestrator dicomPipeline,
         AnalyticsCtInferenceExecutor ctInference,
+        TrainingAssetPersistenceService trainingAssets,
         ILogger<AnalyticsController> logger)
     {
         _cheXNetApi = cheXNetApi;
@@ -45,6 +48,7 @@ public sealed class AnalyticsController : Controller
         _userManager = userManager;
         _dicomPipeline = dicomPipeline;
         _ctInference = ctInference;
+        _trainingAssets = trainingAssets;
         _logger = logger;
     }
 
@@ -90,7 +94,21 @@ public sealed class AnalyticsController : Controller
             else if (results.TryGetValue("CheXNet", out var chex) && !string.IsNullOrEmpty(chex.PreviewImageDataUrl))
                 previewUrl = chex.PreviewImageDataUrl;
 
-            _stateService.SetResults(results, null, null, previewUrl, null, null, outcome.PipelineNotes);
+            _stateService.SetResults(
+                results,
+                null,
+                null,
+                previewUrl,
+                null,
+                null,
+                outcome.PipelineNotes,
+                cheXNetSourceJson: (await _trainingAssets.PersistCheXNetAsync(
+                    User.FindFirstValue(ClaimTypes.NameIdentifier)!,
+                    bytes,
+                    SafeFileName(xrayFile),
+                    xrayFile.ContentType ?? "",
+                    outcome.DicomMetadata,
+                    cancellationToken).ConfigureAwait(false)).ToJson());
 
             return Json(new { success = true, redirect = Url.Action("XRay") });
         }
@@ -110,7 +128,11 @@ public sealed class AnalyticsController : Controller
         try
         {
             var results = await _bioBertApi.PredictAsync(clinicalText);
-            _stateService.SetResults(null, results, null, null, null, clinicalText);
+            var bioSource = await _trainingAssets.PersistBioBertAsync(
+                User.FindFirstValue(ClaimTypes.NameIdentifier)!,
+                clinicalText,
+                ct: HttpContext.RequestAborted).ConfigureAwait(false);
+            _stateService.SetResults(null, results, null, null, null, clinicalText, bioBertSourceJson: bioSource.ToJson());
             return Json(new { success = true, redirect = Url.Action("Text") });
         }
         catch (Exception ex)
@@ -140,7 +162,19 @@ public sealed class AnalyticsController : Controller
             else if (!string.IsNullOrEmpty(results.PreviewImageDataUrl))
                 ctPreviewUrl = results.PreviewImageDataUrl;
 
-            _stateService.SetResults(null, null, results, null, ctPreviewUrl, null);
+            _stateService.SetResults(
+                null,
+                null,
+                results,
+                null,
+                ctPreviewUrl,
+                null,
+                lungCancerSourceJson: (await _trainingAssets.PersistLungCancerAsync(
+                    User.FindFirstValue(ClaimTypes.NameIdentifier)!,
+                    bytes,
+                    SafeFileName(ctFile),
+                    ctFile.ContentType ?? "",
+                    ct: cancellationToken).ConfigureAwait(false)).ToJson());
             return Json(new { success = true, redirect = Url.Action("CT") });
         }
         catch (Exception ex)
@@ -278,6 +312,28 @@ public sealed class AnalyticsController : Controller
             else if (lungResults != null && !string.IsNullOrEmpty(lungResults.PreviewImageDataUrl))
                 ctDataUrl = lungResults.PreviewImageDataUrl;
 
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+            string? chexSourceJson = null;
+            string? bioSourceJson = null;
+            string? lungSourceJson = null;
+            if (xRayBytes != null && xrayFile != null)
+            {
+                chexSourceJson = (await _trainingAssets.PersistCheXNetAsync(
+                    userId, xRayBytes, SafeFileName(xrayFile), xrayFile.ContentType ?? "",
+                    chexOutcome?.DicomMetadata, cancellationToken).ConfigureAwait(false)).ToJson();
+            }
+            if (clinicalText != null)
+            {
+                bioSourceJson = (await _trainingAssets.PersistBioBertAsync(userId, clinicalText,
+                    ct: cancellationToken).ConfigureAwait(false)).ToJson();
+            }
+            if (ctBytes != null && ctFile != null)
+            {
+                lungSourceJson = (await _trainingAssets.PersistLungCancerAsync(
+                    userId, ctBytes, SafeFileName(ctFile), ctFile.ContentType ?? "",
+                    ct: cancellationToken).ConfigureAwait(false)).ToJson();
+            }
+
             _stateService.SetResults(
                 chexResults,
                 bioResults,
@@ -285,7 +341,10 @@ public sealed class AnalyticsController : Controller
                 xrayDataUrl,
                 ctDataUrl,
                 clinicalText,
-                chexOutcome?.PipelineNotes ?? []);
+                chexOutcome?.PipelineNotes ?? [],
+                chexSourceJson,
+                lungSourceJson,
+                bioSourceJson);
 
             if (warnings.Count > 0)
                 TempData["CombinedWarnings"] = string.Join(" • ", warnings);
@@ -437,7 +496,7 @@ public sealed class AnalyticsController : Controller
             {
                 ["CheXNet"] = viewModel,
             };
-            return new ChexNetResolveOutcome(map, notes);
+            return new ChexNetResolveOutcome(map, notes, pipe.Metadata?.PatientMedicalHistory);
         }
 
         _logger.LogInformation(

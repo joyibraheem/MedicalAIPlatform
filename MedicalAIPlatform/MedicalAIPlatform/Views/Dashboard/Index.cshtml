@@ -1,98 +1,145 @@
 @model MedicalAIPlatform.Models.DashboardViewModel
 @{
     ViewData["Title"] = "Dashboard";
+    Layout = "_DoctorLayout";
+
+    var hour = DateTime.Now.Hour;
+    var greetingKey = hour < 12 ? "dashboard_good_morning" : hour < 17 ? "dashboard_good_afternoon" : "dashboard_good_evening";
+    var greetingFallback = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 }
 
-<div class="container-fluid">
-    <h1 class="mt-4">Dashboard</h1>
-    <hr />
+<link rel="stylesheet" href="~/css/medical-platform.css" asp-append-version="true" />
 
-    @if (Model.IsDoctor || !Model.IsAdmin)
-    {
-        Layout = "_DoctorLayout";
-        
-        <!-- Dashboard Content -->
-        
-        <!-- Page Header (Greeting) -->
-        <div class="dash-header">
-            <div class="user-greeting">
-                <img src="https://ui-avatars.com/api/?name=@Model.UserName&background=random&color=fff" class="user-avatar-small" alt="Profile">
-                <div class="greeting-text">
-                    <h2><span data-i18n="dashboard_good_morning">Good Morning</span> @Model.UserName</h2>
-                    <p data-i18n="dashboard_scan_alerts_today">you have @Model.UrgentPatientAlertsCount scan alerts today</p>
-                </div>
-            </div>
-            <!-- Actions (Notifications only, Settings is floating) -->
-            <div class="header-actions">
-                 <button class="icon-btn" title="Notifications">
-                    <i class="bi bi-bell-fill" style="color:#1e293b;"></i>
-                </button>
+<div class="doc-dash-root">
+    <header class="doc-dash-hero mai-reveal">
+        <div class="doc-dash-hero-badge">
+            <i class="bi bi-heart-pulse"></i>
+            <span>Clinical workspace</span>
+        </div>
+        <div class="doc-dash-hero-row">
+            <img src="https://ui-avatars.com/api/?name=@Uri.EscapeDataString(Model.UserName)&background=1D4581&color=fff&size=128"
+                 class="doc-dash-avatar" alt="" width="72" height="72" />
+            <div>
+                <h1 class="doc-dash-title">
+                    <span data-i18n="@greetingKey">@greetingFallback</span>, @Model.UserName
+                </h1>
+                <p class="doc-dash-lead">
+                    Upload chest imaging, manage patient records, and review AI-assisted findings — all from your clinical workspace.
+                </p>
             </div>
         </div>
+    </header>
 
-        <!-- Stats Stack -->
-        <div class="stats-stack">
-            <!-- Pending Reports -->
-            <div class="dash-stat-card">
-                <div class="stat-icon-circle bg-icon-blue">
-                    <i class="bi bi-file-earmark-text"></i>
-                </div>
-                <div class="stat-content">
-                    <h3>@Model.PendingAIReportsCount.ToString("00")</h3>
-                    <p data-i18n="dashboard_pending_ai_reports">Pending AI Reports</p>
-                </div>
-            </div>
-
-            <!-- Urgent Alerts -->
-            <div class="dash-stat-card">
-                <div class="stat-icon-circle bg-icon-red">
-                    <i class="bi bi-exclamation-circle"></i>
-                </div>
-                <div class="stat-content">
-                    <h3 class="text-danger-custom">@Model.UrgentPatientAlertsCount.ToString("00")</h3>
-                    <p class="text-danger-custom" data-i18n="dashboard_urgent_patient_alerts">Urgent patient Alerts</p>
-                </div>
-            </div>
+    <section class="doc-dash-section mai-reveal" aria-labelledby="doc-dash-quick-heading">
+        <div class="doc-dash-section-head">
+            <h2 id="doc-dash-quick-heading" class="doc-dash-section-title">
+                <i class="bi bi-lightning-charge-fill"></i> Quick actions
+            </h2>
+            <p class="doc-dash-section-desc">Open the tools you use for chest X-ray and CT workflows.</p>
         </div>
-
-        <!-- Upload Card -->
-        <div class="upload-card">
-            <h3 data-i18n="dashboard_upload_new_xray">Upload New X-Ray</h3>
-            <p data-i18n="dashboard_start_new_scan">start a new AI chest scan here</p>
-            <a asp-controller="Analytics" asp-action="Index" class="upload-btn" style="text-decoration:none; display:inline-flex; align-items:center;" data-i18n="dashboard_upload_now">
-                Upload Now <i class="bi bi-arrow-right-short" style="font-size:1.2rem;"></i>
+        <div class="doc-dash-quick-grid doc-dash-quick-grid-3">
+            <a asp-controller="Analytics" asp-action="Index" class="doc-dash-quick-card doc-dash-quick-primary">
+                <div class="doc-dash-quick-icon"><i class="bi bi-cloud-upload-fill"></i></div>
+                <div>
+                    <strong data-i18n="dashboard_upload_new_xray">Upload &amp; analyze</strong>
+                    <span data-i18n="dashboard_start_new_scan">Chest X-ray or CT inference</span>
+                </div>
+                <i class="bi bi-arrow-right doc-dash-quick-arrow"></i>
+            </a>
+            <a asp-controller="Patient" asp-action="Index" class="doc-dash-quick-card">
+                <div class="doc-dash-quick-icon"><i class="bi bi-people-fill"></i></div>
+                <div>
+                    <strong data-i18n="nav_patients">Patients</strong>
+                    <span>Records, scans &amp; medical reports</span>
+                </div>
+                <i class="bi bi-arrow-right doc-dash-quick-arrow"></i>
+            </a>
+            <a asp-controller="CtScan" asp-action="Index" class="doc-dash-quick-card">
+                <div class="doc-dash-quick-icon"><i class="bi bi-box-seam-fill"></i></div>
+                <div>
+                    <strong>CT scan viewer</strong>
+                    <span>Review volumetric CT studies</span>
+                </div>
+                <i class="bi bi-arrow-right doc-dash-quick-arrow"></i>
+            </a>
+            <a asp-controller="AIAssistant" asp-action="Index" class="doc-dash-quick-card">
+                <div class="doc-dash-quick-icon"><i class="bi bi-chat-heart-fill"></i></div>
+                <div>
+                    <strong data-i18n="nav_ai_assistant">AI assistant</strong>
+                    <span>Clinical Q&amp;A on your cases</span>
+                </div>
+                <i class="bi bi-arrow-right doc-dash-quick-arrow"></i>
+            </a>
+            <a asp-controller="Analytics" asp-action="Combined" class="doc-dash-quick-card">
+                <div class="doc-dash-quick-icon"><i class="bi bi-bezier2"></i></div>
+                <div>
+                    <strong>Combined analysis</strong>
+                    <span>Multi-modal X-ray &amp; text results</span>
+                </div>
+                <i class="bi bi-arrow-right doc-dash-quick-arrow"></i>
+            </a>
+            <a asp-controller="Settings" asp-action="Index" class="doc-dash-quick-card">
+                <div class="doc-dash-quick-icon doc-dash-quick-icon-muted"><i class="bi bi-gear-wide-connected"></i></div>
+                <div>
+                    <strong>Settings</strong>
+                    <span>Profile, preferences &amp; help</span>
+                </div>
+                <i class="bi bi-arrow-right doc-dash-quick-arrow"></i>
             </a>
         </div>
+    </section>
 
-        <!-- Latest Patient Scans -->
-        <div class="latest-scans-section">
-            <div class="scans-header">
-                <h4 data-i18n="dashboard_latest_patient_scans">Latest Patient Scans</h4>
-                <a href="#" class="link-see-all" data-i18n="dashboard_see_all">See All</a>
-            </div>
-
-            @if (Model.LatestScans != null && Model.LatestScans.Any())
-            {
-                @foreach (var scan in Model.LatestScans)
-                {
-                    <div class="scan-list-item">
-                        <div class="scan-user-info">
-                            <img src="https://ui-avatars.com/api/?name=@scan.PatientName&background=random&color=fff" class="scan-avatar" alt="Patient">
-                            <div class="scan-text">
-                                <h5>@scan.PatientName</h5>
-                                <p><span data-i18n="dashboard_scan_id">scan ID:</span> @scan.ScanId</p>
-                            </div>
-                        </div>
-                        <span class="status-pill @(scan.Status == "High Risk" ? "status-high-risk" : "status-normal")">
-                            @scan.Status
-                        </span>
-                    </div>
-                }
-            }
-            else
-            {
-                <div class="text-muted text-center" data-i18n="dashboard_no_recent_scans">No recent scans found.</div>
-            }
+    <section class="doc-dash-section mai-reveal" aria-labelledby="doc-dash-workflow-heading">
+        <div class="doc-dash-section-head">
+            <h2 id="doc-dash-workflow-heading" class="doc-dash-section-title">
+                <i class="bi bi-diagram-3-fill"></i> Clinical workflow
+            </h2>
+            <p class="doc-dash-section-desc">A typical path through the platform — each step links to an existing module.</p>
         </div>
-    }
+        <div class="doc-dash-workflow">
+            <a asp-controller="Patient" asp-action="Create" class="doc-dash-workflow-step">
+                <span class="doc-dash-workflow-num">1</span>
+                <div>
+                    <strong>Register patient</strong>
+                    <span>Add a patient and attach imaging</span>
+                </div>
+                <i class="bi bi-person-plus"></i>
+            </a>
+            <a asp-controller="Analytics" asp-action="Index" class="doc-dash-workflow-step">
+                <span class="doc-dash-workflow-num">2</span>
+                <div>
+                    <strong>Run AI analysis</strong>
+                    <span>Upload X-ray or CT for inference</span>
+                </div>
+                <i class="bi bi-cpu"></i>
+            </a>
+            <a asp-controller="Patient" asp-action="Index" class="doc-dash-workflow-step">
+                <span class="doc-dash-workflow-num">3</span>
+                <div>
+                    <strong>Review &amp; report</strong>
+                    <span>Open patient chart and generate reports</span>
+                </div>
+                <i class="bi bi-file-earmark-medical"></i>
+            </a>
+        </div>
+    </section>
+
+    <section class="doc-dash-cta mai-reveal">
+        <div class="doc-dash-cta-content">
+            <div class="doc-dash-cta-icon" aria-hidden="true"><i class="bi bi-lungs-fill"></i></div>
+            <div>
+                <h2 data-i18n="dashboard_upload_new_xray">Start a new AI chest analysis</h2>
+                <p data-i18n="dashboard_start_new_scan">Upload DICOM or image files for X-ray and CT inference with explainable heatmaps.</p>
+            </div>
+        </div>
+        <a asp-controller="Analytics" asp-action="Index" class="doc-dash-cta-btn" data-i18n="dashboard_upload_now">
+            Upload now <i class="bi bi-arrow-right"></i>
+        </a>
+    </section>
 </div>
+
+@section Scripts {
+    <script>
+        document.body.classList.add('doctor-dash-page');
+    </script>
+}

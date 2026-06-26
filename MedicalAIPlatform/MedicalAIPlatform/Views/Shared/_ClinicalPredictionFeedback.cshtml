@@ -8,7 +8,8 @@
      data-model="@Model.ModelKey"
      data-related-job="@(Model.RelatedJobId?.ToString() ?? "")"
      data-study="@(Model.StudyInstanceUid ?? "")"
-     data-series="@(Model.SeriesInstanceUid ?? "")">
+     data-series="@(Model.SeriesInstanceUid ?? "")"
+     data-source-id="fb-source-@Model.CorrelationId.ToString("N")">
     <h4 class="h6 fw-semibold mb-1">Clinical validation</h4>
     <p class="small text-muted mb-3">
         Accept if the AI output is correct, or modify it. Submissions are reviewed before use in training — models are not retrained inside this app.
@@ -23,6 +24,12 @@
 <script type="application/json" id="fb-json-@Model.CorrelationId.ToString("N")">
 @Html.Raw(Model.PredictionJson)
 </script>
+@if (!string.IsNullOrWhiteSpace(Model.TrainingSourceJson))
+{
+<script type="application/json" id="fb-source-@Model.CorrelationId.ToString("N")">
+@Html.Raw(Model.TrainingSourceJson)
+</script>
+}
 <script>
 (function () {
     window.__clinicalFeedbackClassLists = window.__clinicalFeedbackClassLists || {};

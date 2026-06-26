@@ -1,6 +1,222 @@
-﻿@{
-    ViewData["Title"] = "Privacy Policy";
+@{
+    ViewData["Title"] = "Documentation & Privacy";
+    Layout = User.Identity?.IsAuthenticated == true ? "_DoctorLayout" : "_Layout";
+    var isAuthenticated = User.Identity?.IsAuthenticated == true;
 }
-<h1>@ViewData["Title"]</h1>
 
-<p>Use this page to detail your site's privacy policy.</p>
+<link rel="stylesheet" href="~/css/settings.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/css/doc-privacy.css" asp-append-version="true" />
+
+<div class="settings-dashboard settings-content doc-privacy-page">
+    <header class="settings-page-hero">
+        <div class="settings-page-hero-text">
+            @if (isAuthenticated)
+            {
+                <a asp-controller="Settings" asp-action="Index" class="doc-privacy-back">
+                    <i class="bi bi-arrow-left"></i> Back to Settings
+                </a>
+            }
+            <p class="settings-kicker">Medical AI Platform</p>
+            <h1 class="settings-page-title">Documentation &amp; Privacy</h1>
+            <p class="settings-page-lead">Project documentation, platform overview, and legal information for clinical operators and IT teams.</p>
+        </div>
+    </header>
+
+    <nav class="doc-privacy-nav sd-card" aria-label="Documentation sections">
+        <a href="#project-documentation"><i class="bi bi-journal-text"></i> Project Documentation</a>
+        <a href="#platform-overview"><i class="bi bi-grid-1x2"></i> Platform Overview</a>
+        <a href="#features-overview"><i class="bi bi-stars"></i> Features Overview</a>
+        <a href="#privacy-policy"><i class="bi bi-shield-check"></i> Privacy Policy</a>
+        <a href="#terms-of-use"><i class="bi bi-file-earmark-text"></i> Terms of Use</a>
+        <a href="#data-protection"><i class="bi bi-lock"></i> Data Protection</a>
+        <a href="#contact"><i class="bi bi-envelope"></i> Contact</a>
+    </nav>
+
+    <article class="sd-card doc-privacy-section" id="project-documentation">
+        <div class="sd-card-head">
+            <div class="sd-card-head-icon" aria-hidden="true"><i class="bi bi-journal-text"></i></div>
+            <div>
+                <h2 class="sd-card-title">Project Documentation</h2>
+                <p class="sd-card-desc">Multimodal Medical AI — chest imaging analysis for supervised clinical workflows.</p>
+            </div>
+        </div>
+        <div class="doc-privacy-body">
+            <p>Medical AI Platform is an ASP.NET Core application that integrates deep-learning models for chest X-ray and CT analysis, patient record management, structured reporting, and an AI clinical assistant.</p>
+            <ul>
+                <li><strong>Primary users:</strong> Radiologists, pulmonologists, and authorized clinical staff.</li>
+                <li><strong>Core modules:</strong> Analytics (upload &amp; inference), Patients, CT Scan viewer, AI Assistant, Dashboard, and Admin (role-gated).</li>
+                <li><strong>AI engines:</strong> CheXNet-based chest X-ray pathology detection and LungAI CT analysis, orchestrated through secure background job queues.</li>
+                <li><strong>Intended use:</strong> Decision support only — all outputs require qualified clinician review before clinical action.</li>
+            </ul>
+        </div>
+    </article>
+
+    <article class="sd-card doc-privacy-section" id="platform-overview">
+        <div class="sd-card-head">
+            <div class="sd-card-head-icon sd-icon-account" aria-hidden="true"><i class="bi bi-grid-1x2"></i></div>
+            <div>
+                <h2 class="sd-card-title">Platform Overview</h2>
+                <p class="sd-card-desc">How the system is organized for day-to-day clinical operations.</p>
+            </div>
+        </div>
+        <div class="doc-privacy-body">
+            <p>The platform follows a modular clinical workflow:</p>
+            <ol>
+                <li><strong>Patient intake</strong> — Register patients and attach imaging studies to their record.</li>
+                <li><strong>Upload &amp; analyze</strong> — Submit DICOM or standard image formats via Analytics for AI inference.</li>
+                <li><strong>Review results</strong> — Inspect heatmaps, probability scores, and structured findings in the Analytics and CT Scan modules.</li>
+                <li><strong>Report &amp; collaborate</strong> — Generate medical reports and use the AI Assistant for contextual Q&amp;A on completed analyses.</li>
+                <li><strong>Administration</strong> — Administrators manage doctor approvals, model fine-tuning, and feedback review.</li>
+            </ol>
+            <p>Authentication is role-based (Doctor / Admin). All sessions are tied to verified user accounts with audit-friendly activity logging.</p>
+        </div>
+    </article>
+
+    <article class="sd-card doc-privacy-section" id="features-overview">
+        <div class="sd-card-head">
+            <div class="sd-card-head-icon sd-icon-prefs" aria-hidden="true"><i class="bi bi-stars"></i></div>
+            <div>
+                <h2 class="sd-card-title">Features Overview</h2>
+                <p class="sd-card-desc">Key capabilities available in the current release.</p>
+            </div>
+        </div>
+        <div class="doc-privacy-body">
+            <div class="doc-feature-grid">
+                <div class="doc-feature-item">
+                    <i class="bi bi-lungs"></i>
+                    <h3>Chest X-Ray AI</h3>
+                    <p>Multi-label thoracic pathology detection with explainable heatmap overlays.</p>
+                </div>
+                <div class="doc-feature-item">
+                    <i class="bi bi-box"></i>
+                    <h3>CT Analysis</h3>
+                    <p>3D-aware lung CT inference with viewer integration for slice review.</p>
+                </div>
+                <div class="doc-feature-item">
+                    <i class="bi bi-people"></i>
+                    <h3>Patient Management</h3>
+                    <p>Centralized records, scan history, and structured medical reports per patient.</p>
+                </div>
+                <div class="doc-feature-item">
+                    <i class="bi bi-chat-dots"></i>
+                    <h3>AI Assistant</h3>
+                    <p>Clinical Q&amp;A grounded in completed analysis context and medical knowledge.</p>
+                </div>
+                <div class="doc-feature-item">
+                    <i class="bi bi-file-earmark-medical"></i>
+                    <h3>Smart Reports</h3>
+                    <p>Auto-generated structured reports with clinician validation workflow.</p>
+                </div>
+                <div class="doc-feature-item">
+                    <i class="bi bi-shield-lock"></i>
+                    <h3>Admin Console</h3>
+                    <p>Doctor onboarding, fine-tuning dashboard, and prediction feedback review.</p>
+                </div>
+            </div>
+        </div>
+    </article>
+
+    <article class="sd-card doc-privacy-section" id="privacy-policy">
+        <div class="sd-card-head">
+            <div class="sd-card-head-icon" aria-hidden="true"><i class="bi bi-shield-check"></i></div>
+            <div>
+                <h2 class="sd-card-title">Privacy Policy</h2>
+                <p class="sd-card-desc">How we handle personal and health-related information.</p>
+            </div>
+        </div>
+        <div class="doc-privacy-body">
+            <p>Medical AI Platform processes patient demographics, contact details, medical imaging, and AI-generated findings solely to support authorized clinical workflows.</p>
+            <ul>
+                <li>We collect only data necessary to deliver imaging analysis, reporting, and account management.</li>
+                <li>Patient data is accessible only to authenticated users with appropriate clinical or administrative roles.</li>
+                <li>We do not sell personal health information to third parties.</li>
+                <li>De-identified, aggregated metrics may be used to improve model performance with appropriate governance.</li>
+                <li>Users may request information about data held in their account by contacting support.</li>
+            </ul>
+        </div>
+    </article>
+
+    <article class="sd-card doc-privacy-section" id="terms-of-use">
+        <div class="sd-card-head">
+            <div class="sd-card-head-icon" aria-hidden="true"><i class="bi bi-file-earmark-text"></i></div>
+            <div>
+                <h2 class="sd-card-title">Terms of Use</h2>
+                <p class="sd-card-desc">Conditions governing access to the platform.</p>
+            </div>
+        </div>
+        <div class="doc-privacy-body">
+            <ul>
+                <li>Access is restricted to authorized healthcare professionals and approved administrators.</li>
+                <li>AI outputs are informational and must not be used as the sole basis for diagnosis or treatment.</li>
+                <li>Users are responsible for maintaining credential confidentiality and logging out on shared workstations.</li>
+                <li>Uploading data requires appropriate patient consent and compliance with local regulations.</li>
+                <li>We may suspend accounts that violate acceptable-use policies or pose a security risk.</li>
+            </ul>
+        </div>
+    </article>
+
+    <article class="sd-card doc-privacy-section" id="data-protection">
+        <div class="sd-card-head">
+            <div class="sd-card-head-icon sd-icon-help" aria-hidden="true"><i class="bi bi-lock"></i></div>
+            <div>
+                <h2 class="sd-card-title">Data Protection &amp; Security</h2>
+                <p class="sd-card-desc">Technical and organizational safeguards.</p>
+            </div>
+        </div>
+        <div class="doc-privacy-body">
+            <ul>
+                <li><strong>Encryption in transit:</strong> HTTPS/TLS for all web and API communication.</li>
+                <li><strong>Access control:</strong> Role-based authorization (Doctor, Admin) with authenticated sessions.</li>
+                <li><strong>Imaging pipeline:</strong> Temporary job storage with controlled processing queues; files handled per institutional policy.</li>
+                <li><strong>Audit readiness:</strong> User-linked actions for uploads, reports, and administrative changes.</li>
+                <li><strong>HIPAA-aligned design:</strong> Architecture supports HIPAA-compliant deployment when hosted in a qualified environment.</li>
+            </ul>
+            <p class="doc-privacy-note">Deploying organizations remain responsible for BAA agreements, network segmentation, and backup policies in their environment.</p>
+        </div>
+    </article>
+
+    <article class="sd-card doc-privacy-section" id="contact">
+        <div class="sd-card-head">
+            <div class="sd-card-head-icon" aria-hidden="true"><i class="bi bi-envelope"></i></div>
+            <div>
+                <h2 class="sd-card-title">Contact Information</h2>
+                <p class="sd-card-desc">Support, privacy inquiries, and documentation feedback.</p>
+            </div>
+        </div>
+        <div class="doc-privacy-body">
+            <dl class="doc-contact-list">
+                <div>
+                    <dt>Clinical &amp; technical support</dt>
+                    <dd><a href="mailto:support@medicalai.local">support@medicalai.local</a></dd>
+                </div>
+                <div>
+                    <dt>Privacy &amp; data requests</dt>
+                    <dd><a href="mailto:privacy@medicalai.local">privacy@medicalai.local</a></dd>
+                </div>
+                <div>
+                    <dt>Platform</dt>
+                    <dd>Multimodal Medical AI — Medical AI Platform v2026</dd>
+                </div>
+            </dl>
+            @if (isAuthenticated)
+            {
+                <a asp-controller="Settings" asp-action="Index" class="btn sd-btn-secondary doc-privacy-settings-link">
+                    <i class="bi bi-gear"></i> Return to Settings
+                </a>
+            }
+        </div>
+    </article>
+
+    <footer class="settings-dashboard-footer">
+        <p class="settings-footer-disclaimer">
+            For supervised clinical support only — not a substitute for professional judgment or definitive diagnosis.
+        </p>
+    </footer>
+</div>
+
+@if (isAuthenticated)
+{
+    @section Scripts {
+        <script>document.body.classList.add('settings-page');</script>
+    }
+}

@@ -17,6 +17,8 @@ public sealed class DicomDatasetLoaderService : IDicomDatasetLoaderService
     {
         _log.LogInformation("Opening DICOM from stream ({Length} bytes if seekable)",
             stream.CanSeek ? stream.Length : null);
-        return await DicomFile.OpenAsync(stream, FileReadOption.ReadLargeOnDemand).ConfigureAwait(false);
+        // ReadAll: load metadata + pixel data while the stream is still open. ReadLargeOnDemand
+        // defers pixel reads and breaks when callers pass a MemoryStream that is disposed after Open.
+        return await DicomFile.OpenAsync(stream, FileReadOption.ReadAll).ConfigureAwait(false);
     }
 }

@@ -1,0 +1,173 @@
+/* Documentation & Privacy — extends settings.css */
+.doc-privacy-page {
+    max-width: 880px;
+}
+
+.doc-privacy-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #127FEC;
+    text-decoration: none;
+    margin-bottom: 1rem;
+}
+
+.doc-privacy-back:hover {
+    color: #1D4581;
+    text-decoration: underline;
+}
+
+.doc-privacy-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+}
+
+.doc-privacy-nav a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.45rem 0.85rem;
+    border-radius: 999px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #475569;
+    background: rgba(18, 127, 236, 0.08);
+    text-decoration: none;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.doc-privacy-nav a:hover {
+    background: rgba(18, 127, 236, 0.16);
+    color: #1D4581;
+}
+
+.doc-privacy-section {
+    margin-bottom: 1.25rem;
+}
+
+.doc-privacy-body {
+    padding: 0 1.5rem 1.5rem;
+    color: #334155;
+    line-height: 1.7;
+    font-size: 0.95rem;
+}
+
+.doc-privacy-body p {
+    margin-bottom: 1rem;
+}
+
+.doc-privacy-body ul,
+.doc-privacy-body ol {
+    padding-left: 1.25rem;
+    margin-bottom: 1rem;
+}
+
+.doc-privacy-body li {
+    margin-bottom: 0.45rem;
+}
+
+.doc-feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1rem;
+}
+
+.doc-feature-item {
+    padding: 1rem;
+    border-radius: 14px;
+    background: rgba(18, 127, 236, 0.06);
+    border: 1px solid rgba(18, 127, 236, 0.1);
+}
+
+.doc-feature-item i {
+    font-size: 1.35rem;
+    color: #127FEC;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.doc-feature-item h3 {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: #1D4581;
+    margin-bottom: 0.35rem;
+}
+
+.doc-feature-item p {
+    font-size: 0.875rem;
+    margin-bottom: 0;
+    color: #64748b;
+}
+
+.doc-privacy-note {
+    font-size: 0.875rem;
+    color: #64748b;
+    font-style: italic;
+    margin-bottom: 0;
+}
+
+.doc-contact-list {
+    display: grid;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.doc-contact-list dt {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #64748b;
+    margin-bottom: 0.2rem;
+}
+
+.doc-contact-list dd {
+    margin: 0;
+    font-weight: 500;
+    color: #0f172a;
+}
+
+.doc-contact-list a {
+    color: #127FEC;
+    text-decoration: none;
+}
+
+.doc-contact-list a:hover {
+    text-decoration: underline;
+}
+
+.doc-privacy-settings-link {
+    margin-top: 0.5rem;
+}
+
+html[data-theme="dark"] .doc-privacy-body,
+body.dark-mode .doc-privacy-body {
+    color: rgba(255, 255, 255, 0.88);
+}
+
+html[data-theme="dark"] .doc-privacy-nav a,
+body.dark-mode .doc-privacy-nav a {
+    color: rgba(255, 255, 255, 0.85);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+html[data-theme="dark"] .doc-feature-item,
+body.dark-mode .doc-feature-item {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+html[data-theme="dark"] .doc-feature-item h3,
+body.dark-mode .doc-feature-item h3 {
+    color: #93c5fd;
+}
+
+html[data-theme="dark"] .doc-contact-list dd,
+body.dark-mode .doc-contact-list dd {
+    color: #f1f5f9;
+}

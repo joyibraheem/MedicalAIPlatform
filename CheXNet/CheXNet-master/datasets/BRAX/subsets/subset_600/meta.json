@@ -1,0 +1,152 @@
+{
+  "pipeline": "BRAX",
+  "subset_size_requested": 600,
+  "subset_size_selected": 600,
+  "train_count": 480,
+  "val_count": 120,
+  "usable_rows_in_master": 606,
+  "missing_images_in_master": 40361,
+  "random_seed": 42,
+  "val_ratio": 0.2,
+  "sampling": "class_diverse_round_robin",
+  "split_method": "greedy_multilabel_stratification",
+  "split_verified": true,
+  "split_class_statistics": [
+    {
+      "class": "Atelectasis",
+      "train_positives": 46,
+      "val_positives": 12,
+      "train_pct": 9.58,
+      "val_pct": 10.0
+    },
+    {
+      "class": "Cardiomegaly",
+      "train_positives": 46,
+      "val_positives": 12,
+      "train_pct": 9.58,
+      "val_pct": 10.0
+    },
+    {
+      "class": "Effusion",
+      "train_positives": 20,
+      "val_positives": 5,
+      "train_pct": 4.17,
+      "val_pct": 4.17
+    },
+    {
+      "class": "Infiltration",
+      "train_positives": 48,
+      "val_positives": 12,
+      "train_pct": 10.0,
+      "val_pct": 10.0
+    },
+    {
+      "class": "Mass",
+      "train_positives": 18,
+      "val_positives": 5,
+      "train_pct": 3.75,
+      "val_pct": 4.17
+    },
+    {
+      "class": "Nodule",
+      "train_positives": 18,
+      "val_positives": 5,
+      "train_pct": 3.75,
+      "val_pct": 4.17
+    },
+    {
+      "class": "Pneumonia",
+      "train_positives": 14,
+      "val_positives": 4,
+      "train_pct": 2.92,
+      "val_pct": 3.33
+    },
+    {
+      "class": "Pneumothorax",
+      "train_positives": 2,
+      "val_positives": 1,
+      "train_pct": 0.42,
+      "val_pct": 0.83
+    },
+    {
+      "class": "Consolidation",
+      "train_positives": 39,
+      "val_positives": 10,
+      "train_pct": 8.12,
+      "val_pct": 8.33
+    },
+    {
+      "class": "Edema",
+      "train_positives": 0,
+      "val_positives": 0,
+      "train_pct": 0.0,
+      "val_pct": 0.0
+    },
+    {
+      "class": "Emphysema",
+      "train_positives": 0,
+      "val_positives": 0,
+      "train_pct": 0.0,
+      "val_pct": 0.0
+    },
+    {
+      "class": "Fibrosis",
+      "train_positives": 0,
+      "val_positives": 0,
+      "train_pct": 0.0,
+      "val_pct": 0.0
+    },
+    {
+      "class": "Pleural_Thickening",
+      "train_positives": 1,
+      "val_positives": 0,
+      "train_pct": 0.21,
+      "val_pct": 0.0
+    },
+    {
+      "class": "Hernia",
+      "train_positives": 0,
+      "val_positives": 0,
+      "train_pct": 0.0,
+      "val_pct": 0.0
+    }
+  ],
+  "train_label_coverage": {
+    "Atelectasis": 46,
+    "Cardiomegaly": 46,
+    "Effusion": 20,
+    "Infiltration": 48,
+    "Mass": 18,
+    "Nodule": 18,
+    "Pneumonia": 14,
+    "Pneumothorax": 2,
+    "Consolidation": 39,
+    "Edema": 0,
+    "Emphysema": 0,
+    "Fibrosis": 0,
+    "Pleural_Thickening": 1,
+    "Hernia": 0
+  },
+  "val_label_coverage": {
+    "Atelectasis": 12,
+    "Cardiomegaly": 12,
+    "Effusion": 5,
+    "Infiltration": 12,
+    "Mass": 5,
+    "Nodule": 5,
+    "Pneumonia": 4,
+    "Pneumothorax": 1,
+    "Consolidation": 10,
+    "Edema": 0,
+    "Emphysema": 0,
+    "Fibrosis": 0,
+    "Pleural_Thickening": 0,
+    "Hernia": 0
+  },
+  "brax_root": "D:\\project t5rog\\MedicalAIPlatform final\\MedicalAIPlatform final\\CheXNet\\CheXNet-master\\datasets\\BRAX",
+  "data_root": "D:\\project t5rog\\MedicalAIPlatform final\\MedicalAIPlatform final\\CheXNet\\CheXNet-master\\datasets\\BRAX\\brax",
+  "train_list": "D:\\project t5rog\\MedicalAIPlatform final\\MedicalAIPlatform final\\CheXNet\\CheXNet-master\\datasets\\BRAX\\subsets\\subset_600\\train_list.txt",
+  "val_list": "D:\\project t5rog\\MedicalAIPlatform final\\MedicalAIPlatform final\\CheXNet\\CheXNet-master\\datasets\\BRAX\\subsets\\subset_600\\val_list.txt",
+  "subset_csv": "D:\\project t5rog\\MedicalAIPlatform final\\MedicalAIPlatform final\\CheXNet\\CheXNet-master\\datasets\\BRAX\\subsets\\subset_600\\subset.csv",
+  "data_dir_for_training": "D:\\project t5rog\\MedicalAIPlatform final\\MedicalAIPlatform final\\CheXNet\\CheXNet-master\\datasets\\BRAX\\brax"
+}

@@ -316,6 +316,21 @@ public sealed class AnalyticsJobQueueService
 
             var viewState = AnalyticsSessionSnapshot.FromSetResults(
                 null, null, lung, null, ctPreviewUrl, null, null, pipelineNotesProvided: false);
+            try
+            {
+                var assets = scope.ServiceProvider.GetRequiredService<TrainingAssetPersistenceService>();
+                var source = await assets.CopyJobAssetAsync(
+                    ModelTrainingNames.LungCancer, userId, jobId, input.TempPath, input.FileName, input.ContentType)
+                    .ConfigureAwait(false);
+                viewState = AnalyticsSessionSnapshot.FromSetResults(
+                    null, null, lung, null, ctPreviewUrl, null, null, pipelineNotesProvided: false,
+                    lungCancerSourceJson: source.ToJson(), relatedJobId: jobId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not persist CT training asset for job {JobId}", jobId);
+            }
+
             _sessionStore.SetForJob(userId, jobId, viewState);
 
             var topProbs = lung.Probabilities
@@ -468,6 +483,21 @@ public sealed class AnalyticsJobQueueService
 
             var viewState = AnalyticsSessionSnapshot.FromSetResults(
                 map, null, null, previewUrl, null, null, notes, pipelineNotesProvided: notes is not null);
+            try
+            {
+                var assets = scope.ServiceProvider.GetRequiredService<TrainingAssetPersistenceService>();
+                var source = await assets.CopyJobAssetAsync(
+                    ModelTrainingNames.CheXNet, userId, jobId, input.TempPath, input.FileName, input.ContentType)
+                    .ConfigureAwait(false);
+                viewState = AnalyticsSessionSnapshot.FromSetResults(
+                    map, null, null, previewUrl, null, null, notes, pipelineNotesProvided: notes is not null,
+                    cheXNetSourceJson: source.ToJson(), relatedJobId: jobId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not persist X-Ray training asset for job {JobId}", jobId);
+            }
+
             _sessionStore.SetForJob(userId, jobId, viewState);
 
             string predicted = "Unknown";

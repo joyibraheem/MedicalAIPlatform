@@ -28,6 +28,18 @@ public sealed class AnalyticsSessionSnapshot
     [JsonPropertyName("clinicalText")]
     public string? ClinicalText { get; init; }
 
+    [JsonPropertyName("cheXNetSourceJson")]
+    public string? CheXNetSourceJson { get; init; }
+
+    [JsonPropertyName("lungCancerSourceJson")]
+    public string? LungCancerSourceJson { get; init; }
+
+    [JsonPropertyName("bioBertSourceJson")]
+    public string? BioBertSourceJson { get; init; }
+
+    [JsonPropertyName("relatedJobId")]
+    public Guid? RelatedJobId { get; init; }
+
     /// <summary>Merges <paramref name="patch"/> into <paramref name="existing"/>; non-null patch fields win.</summary>
     public static AnalyticsSessionSnapshot Merge(AnalyticsSessionSnapshot existing, AnalyticsSessionSnapshot patch)
     {
@@ -39,6 +51,10 @@ public sealed class AnalyticsSessionSnapshot
             XRayImageDataUrl = patch.XRayImageDataUrl ?? existing.XRayImageDataUrl,
             CTImageDataUrl = patch.CTImageDataUrl ?? existing.CTImageDataUrl,
             ClinicalText = patch.ClinicalText ?? existing.ClinicalText,
+            CheXNetSourceJson = patch.CheXNetSourceJson ?? existing.CheXNetSourceJson,
+            LungCancerSourceJson = patch.LungCancerSourceJson ?? existing.LungCancerSourceJson,
+            BioBertSourceJson = patch.BioBertSourceJson ?? existing.BioBertSourceJson,
+            RelatedJobId = patch.RelatedJobId ?? existing.RelatedJobId,
             PipelineNotes = patch._pipelineNotesProvided
                 ? patch.PipelineNotes
                 : existing.PipelineNotes
@@ -56,7 +72,11 @@ public sealed class AnalyticsSessionSnapshot
         string? ctImageDataUrl,
         string? clinicalText,
         IReadOnlyList<string>? pipelineNotes,
-        bool pipelineNotesProvided)
+        bool pipelineNotesProvided,
+        string? cheXNetSourceJson = null,
+        string? lungCancerSourceJson = null,
+        string? bioBertSourceJson = null,
+        Guid? relatedJobId = null)
     {
         return new AnalyticsSessionSnapshot
         {
@@ -66,6 +86,10 @@ public sealed class AnalyticsSessionSnapshot
             XRayImageDataUrl = xrayImageDataUrl,
             CTImageDataUrl = ctImageDataUrl,
             ClinicalText = clinicalText,
+            CheXNetSourceJson = cheXNetSourceJson,
+            LungCancerSourceJson = lungCancerSourceJson,
+            BioBertSourceJson = bioBertSourceJson,
+            RelatedJobId = relatedJobId,
             PipelineNotes = pipelineNotes ?? [],
             _pipelineNotesProvided = pipelineNotesProvided
         };

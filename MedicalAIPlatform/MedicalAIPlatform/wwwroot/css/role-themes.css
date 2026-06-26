@@ -1,0 +1,131 @@
+/*
+ * Role-based visual themes — frontend only, no backend changes
+ * Admin: deep violet / operations palette
+ * Doctor: clinical blue / teal palette
+ */
+
+body.role-admin {
+    --role-accent: #7c3aed;
+    --role-accent-soft: rgba(124, 58, 237, 0.12);
+    --role-accent-hover: #6d28d9;
+    --role-gradient: linear-gradient(135deg, #5b21b6 0%, #7c3aed 50%, #a78bfa 100%);
+    --role-glow: rgba(124, 58, 237, 0.22);
+    --role-badge-bg: rgba(124, 58, 237, 0.15);
+    --role-badge-text: #5b21b6;
+}
+
+body.role-doctor {
+    --role-accent: #127FEC;
+    --role-accent-soft: rgba(18, 127, 236, 0.12);
+    --role-accent-hover: #0B67C3;
+    --role-gradient: linear-gradient(135deg, #1D4581 0%, #127FEC 50%, #38bdf8 100%);
+    --role-glow: rgba(18, 127, 236, 0.22);
+    --role-badge-bg: rgba(18, 127, 236, 0.12);
+    --role-badge-text: #1D4581;
+}
+
+html[data-theme="dark"] body.role-admin {
+    --role-badge-text: #c4b5fd;
+}
+
+html[data-theme="dark"] body.role-doctor {
+    --role-badge-text: #93c5fd;
+}
+
+/* Role welcome banner (home + app) */
+.role-welcome-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+    padding: 1rem 1.35rem;
+    border-radius: 16px;
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--role-accent-soft);
+    background: var(--role-accent-soft);
+    backdrop-filter: blur(12px);
+}
+
+.role-welcome-banner strong {
+    color: var(--role-badge-text);
+}
+
+.role-welcome-banner span {
+    font-size: 0.88rem;
+    color: var(--mai-text-muted, #64748b);
+}
+
+.role-quick-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.role-quick-actions a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.45rem 0.9rem;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-decoration: none;
+    background: rgba(255, 255, 255, 0.85);
+    color: var(--role-badge-text);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.role-quick-actions a:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px var(--role-glow);
+}
+
+html[data-theme="dark"] .role-quick-actions a {
+    background: rgba(30, 41, 59, 0.75);
+    border-color: rgba(148, 163, 184, 0.2);
+}
+
+/* Doctor layout — role-tinted upload card */
+body.role-admin .upload-card {
+    background: linear-gradient(135deg, #5b21b6 0%, #7c3aed 100%);
+    box-shadow: 0 12px 36px rgba(91, 33, 182, 0.35);
+}
+
+body.role-admin .dash-stat-card:hover {
+    border-color: rgba(124, 58, 237, 0.25);
+}
+
+body.role-doctor .dash-stat-card:hover {
+    border-color: rgba(18, 127, 236, 0.25);
+}
+
+body.role-admin .stat-icon-circle.bg-icon-blue {
+    background: linear-gradient(135deg, #7c3aed, #5b21b6);
+}
+
+/* Admin dashboard accent overrides */
+body.role-admin .admin-kpi-icon {
+    background: linear-gradient(145deg, #7c3aed, #5b21b6);
+}
+
+body.role-admin .admin-card-head-icon {
+    background: rgba(124, 58, 237, 0.14);
+    color: #7c3aed;
+}
+
+/* Nav role badge */
+.nav-role-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.65rem;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background: var(--role-badge-bg);
+    color: var(--role-badge-text);
+    margin-left: 0.5rem;
+}

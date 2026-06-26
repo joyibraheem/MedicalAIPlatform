@@ -21,6 +21,7 @@
     <title>@ViewData["Title"] - MedicalAIPlatform</title>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/auth.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/medical-platform.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/responsive.css" asp-append-version="true" />
     <style>
         #darkOverlay {
@@ -57,6 +58,10 @@
 
         <form asp-action="Login" method="post">
             <input type="hidden" asp-for="ReturnUrl" />
+            @if (TempData["RegistrationSuccess"] is string registrationSuccess)
+            {
+                <div class="alert alert-success small mb-2">@registrationSuccess</div>
+            }
             <div asp-validation-summary="ModelOnly" class="text-danger small mb-2"></div>
 
             <!-- Email -->
@@ -120,5 +125,6 @@
     
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/toast.js" asp-append-version="true"></script>
 </body>
 </html>

@@ -9,10 +9,8 @@ public sealed class ClinicalFeedbackPanelVm
 
     public string ModelKey { get; init; } = "";
 
-    /// <summary>JSON object string (no raw images).</summary>
     public string PredictionJson { get; init; } = "{}";
 
-    /// <summary>JSON array of class / label strings for modify dropdown.</summary>
     public string ClassNamesJson { get; init; } = "[]";
 
     public Guid? RelatedJobId { get; init; }
@@ -20,4 +18,7 @@ public sealed class ClinicalFeedbackPanelVm
     public string? StudyInstanceUid { get; init; }
 
     public string? SeriesInstanceUid { get; init; }
+
+    /// <summary>Serialized <see cref="TrainingSourceData"/> for retraining asset linkage.</summary>
+    public string? TrainingSourceJson { get; init; }
 }

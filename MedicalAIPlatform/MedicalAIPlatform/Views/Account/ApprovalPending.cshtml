@@ -38,13 +38,14 @@
             </div>
             <h1 class="auth-title-large">Approval pending</h1>
             <p class="auth-subtitle-small">
+                Your account is pending administrator approval.
                 @if (Model.ProfileSubmitted)
                 {
-                    @:Your profile was submitted successfully. An administrator will review your credentials shortly.
+                    @: An administrator will review your credentials shortly.
                 }
                 else
                 {
-                    @:Please complete your doctor profile to begin the review process.
+                    @: Please complete your doctor profile to begin the review process.
                 }
             </p>
             <p class="small text-muted">Medical features remain locked until your account is verified.</p>

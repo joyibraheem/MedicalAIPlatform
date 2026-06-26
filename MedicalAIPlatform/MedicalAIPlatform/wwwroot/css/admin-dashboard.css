@@ -568,3 +568,51 @@ body.dark-mode .admin-btn-outline {
     font-size: 0.82rem;
     color: var(--adm-muted);
 }
+
+/* Enhanced chart styling */
+.admin-chart-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.admin-chart-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #2563eb, #127FEC, #8b5cf6);
+    border-radius: 20px 20px 0 0;
+    opacity: 0.85;
+}
+
+.admin-kpi-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.admin-kpi-card::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -30%;
+    width: 120px;
+    height: 120px;
+    background: radial-gradient(circle, rgba(37, 99, 235, 0.08), transparent 70%);
+    pointer-events: none;
+}
+
+.admin-card {
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.admin-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 20px 55px rgba(15, 23, 42, 0.14);
+}
+
+html[data-theme="dark"] .admin-card:hover,
+body.dark-mode .admin-card:hover {
+    box-shadow: 0 24px 65px rgba(0, 0, 0, 0.5);
+}

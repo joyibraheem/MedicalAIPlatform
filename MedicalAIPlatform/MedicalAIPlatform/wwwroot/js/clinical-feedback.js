@@ -115,6 +115,18 @@
             });
     }
 
+    function readTrainingSource(sourceId) {
+        if (!sourceId) return null;
+        var el = document.getElementById(sourceId);
+        if (!el || !el.textContent) return null;
+        try {
+            return JSON.parse(el.textContent.trim());
+        } catch (e) {
+            console.warn('[ClinicalFeedback] invalid training source JSON', e);
+            return null;
+        }
+    }
+
     function wirePanel(panel) {
         var jsonId = panel.getAttribute('data-json-id');
         var modality = panel.getAttribute('data-modality') || '';
@@ -123,6 +135,9 @@
         var relJob = panel.getAttribute('data-related-job');
         var study = panel.getAttribute('data-study');
         var series = panel.getAttribute('data-series');
+        var sourceId = panel.getAttribute('data-source-id');
+        var trainingSourceObj = readTrainingSource(sourceId);
+        var trainingSourceJson = trainingSourceObj ? JSON.stringify(trainingSourceObj) : null;
 
         var pred = readPrediction(jsonId);
         if (!pred) {
@@ -140,7 +155,8 @@
                 modelKey: modelKey,
                 originalPredictionJson: JSON.stringify(pred),
                 doctorAction: 'Accept',
-                clinicalNotes: null
+                clinicalNotes: null,
+                trainingAssetPointerJson: trainingSourceJson
             };
             submitPayload(panel, body).then(function (res) {
                 if (res.ok) setStatus(panel, 'Recorded — pending review.', 'ok');
@@ -167,6 +183,9 @@
                 var relJobP = p.getAttribute('data-related-job');
                 var studyP = p.getAttribute('data-study');
                 var seriesP = p.getAttribute('data-series');
+                var sourceIdP = p.getAttribute('data-source-id');
+                var trainingSourceObjP = readTrainingSource(sourceIdP);
+                var trainingSourceJsonP = trainingSourceObjP ? JSON.stringify(trainingSourceObjP) : null;
 
                 var selVal = document.getElementById('clinicalFbCorrectedLabel').value.trim();
                 var custom = document.getElementById('clinicalFbCorrectedLabelCustom').value.trim();
@@ -196,7 +215,8 @@
                     doctorAction: 'Modify',
                     correctedPrimaryLabel: label || null,
                     correctedPrimaryConfidence: conf,
-                    clinicalNotes: notes || null
+                    clinicalNotes: notes || null,
+                    trainingAssetPointerJson: trainingSourceJsonP
                 };
 
                 submitPayload(p, body).then(function (res) {

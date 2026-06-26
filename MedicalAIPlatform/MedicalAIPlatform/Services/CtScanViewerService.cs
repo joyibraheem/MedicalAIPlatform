@@ -481,7 +481,7 @@ public sealed class CtScanViewerService
 
     private async Task<DicomFile> OpenDicomAsync(byte[] bytes, CancellationToken cancellationToken)
     {
-        await using var ms = new MemoryStream(bytes, writable: false);
+        using var ms = new MemoryStream(bytes, writable: false);
         return await _dicomLoader.LoadAsync(ms, cancellationToken).ConfigureAwait(false);
     }
 

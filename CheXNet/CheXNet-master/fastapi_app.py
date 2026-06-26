@@ -14,6 +14,8 @@ import numpy as np
 from PIL import Image
 from torchvision import transforms
 
+from training_pipeline import run_fine_tune
+
 from model import DenseNet121
 from lungai_architecture import ResNetLungCancer, LUNGAI_CLASS_NAMES
 
@@ -510,6 +512,35 @@ async def chat_endpoint(req: ChatRequest) -> JSONResponse:
     if answer == "I can answer questions about the X-ray (CheXNet), text, and CT (LungAI) results. ":
         answer += "Ask about 'xray', 'pneumonia', 'CT', 'lung cancer', or 'text' for details."
     return JSONResponse({"answer": answer.strip()})
+
+
+class TrainingStartRequest(BaseModel):
+    model: str
+    datasetPath: str
+
+
+@app.post("/api/training/start")
+async def training_start(req: TrainingStartRequest) -> JSONResponse:
+    """
+    Fine-tune a model from an exported HITL dataset (JSON).
+    Called by ASP.NET when modified-sample threshold is reached.
+    """
+    try:
+        result = run_fine_tune(req.model, req.datasetPath)
+        return JSONResponse(
+            {
+                "model": result.model,
+                "version": result.version,
+                "file_path": result.file_path,
+                "accuracy": result.accuracy,
+                "f1_score": result.f1_score,
+                "loss": result.loss,
+                "dataset_size": result.dataset_size,
+                "training_log_path": result.training_log_path,
+            }
+        )
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
 
 
 if __name__ == "__main__":

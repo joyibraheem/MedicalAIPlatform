@@ -13,8 +13,16 @@ public class RegisterViewModel
     [Display(Name = "Full name")]
     public string FullName { get; set; } = string.Empty;
 
-    [Display(Name = "Specialization (for doctors)")]
-    public string? Specialization { get; set; }
+    [Required]
+    [Display(Name = "Specialization")]
+    public string Specialization { get; set; } = string.Empty;
+
+    [Required]
+    [Display(Name = "Hospital / Institution")]
+    public string HospitalOrganization { get; set; } = string.Empty;
+
+    [Display(Name = "Medical License Number")]
+    public string? MedicalLicenseNumber { get; set; }
 
     [Required]
     [DataType(DataType.Password)]
@@ -26,10 +34,6 @@ public class RegisterViewModel
     [Display(Name = "Confirm password")]
     [Compare("Password", ErrorMessage = "The password and confirmation password do not match.")]
     public string ConfirmPassword { get; set; } = string.Empty;
-
-    [Required]
-    [Display(Name = "Doctor Verification Code")]
-    public string DoctorVerificationCode { get; set; } = string.Empty;
 }
 
 public class LoginViewModel

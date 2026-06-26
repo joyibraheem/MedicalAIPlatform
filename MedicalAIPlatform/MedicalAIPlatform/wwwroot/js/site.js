@@ -272,5 +272,24 @@
         }
 
         initSettingsPage();
+
+        /** Global scroll reveal for .mai-reveal elements */
+        (function initGlobalReveal() {
+            var els = document.querySelectorAll('.mai-reveal');
+            if (!els.length) return;
+            if (!('IntersectionObserver' in window)) {
+                els.forEach(function (el) { el.classList.add('mai-revealed'); });
+                return;
+            }
+            var obs = new IntersectionObserver(function (entries) {
+                entries.forEach(function (entry) {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('mai-revealed');
+                        obs.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.1, rootMargin: '0px 0px -30px 0px' });
+            els.forEach(function (el) { obs.observe(el); });
+        })();
     });
 })();

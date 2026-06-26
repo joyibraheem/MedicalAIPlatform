@@ -452,6 +452,8 @@ function showError(message) {
         setTimeout(() => {
             alert.style.display = 'none';
         }, 5000);
+    } else if (window.MedicalToast) {
+        window.MedicalToast.error(message);
     } else {
         alert(message);
     }

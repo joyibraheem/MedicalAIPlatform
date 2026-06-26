@@ -55,7 +55,7 @@
                     </div>
                 }
 
-                <partial name="_ClinicalPredictionFeedback" model="ClinicalFeedbackVmBuilder.FromBio(StateService.CurrentBioBertResults)" />
+                <partial name="_ClinicalPredictionFeedback" model="ClinicalFeedbackVmBuilder.FromBio(StateService.CurrentBioBertResults, StateService)" />
             </div>
         }
         else

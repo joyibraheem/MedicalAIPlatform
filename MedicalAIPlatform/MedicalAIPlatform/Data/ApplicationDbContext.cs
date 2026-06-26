@@ -30,6 +30,15 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
     public DbSet<MedicalReportRevision> MedicalReportRevisions { get; set; }
 
+    public DbSet<CheXNetAcceptedData> CheXNetAcceptedData { get; set; }
+    public DbSet<CheXNetModifiedData> CheXNetModifiedData { get; set; }
+    public DbSet<LungCancerAcceptedData> LungCancerAcceptedData { get; set; }
+    public DbSet<LungCancerModifiedData> LungCancerModifiedData { get; set; }
+    public DbSet<BioBERTAcceptedData> BioBERTAcceptedData { get; set; }
+    public DbSet<BioBERTModifiedData> BioBERTModifiedData { get; set; }
+    public DbSet<TrainingJob> TrainingJobs { get; set; }
+    public DbSet<ModelVersion> ModelVersions { get; set; }
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -239,6 +248,69 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .WithMany(r => r.Revisions)
                 .HasForeignKey(e => e.ReportId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        ConfigureTrainingDataTable<CheXNetAcceptedData>(builder, "CheXNetAcceptedData");
+        ConfigureTrainingDataTable<CheXNetModifiedData>(builder, "CheXNetModifiedData", isModified: true);
+        ConfigureTrainingDataTable<LungCancerAcceptedData>(builder, "LungCancerAcceptedData");
+        ConfigureTrainingDataTable<LungCancerModifiedData>(builder, "LungCancerModifiedData", isModified: true);
+        ConfigureTrainingDataTable<BioBERTAcceptedData>(builder, "BioBERTAcceptedData");
+        ConfigureTrainingDataTable<BioBERTModifiedData>(builder, "BioBERTModifiedData", isModified: true);
+
+        builder.Entity<TrainingJob>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.ModelName, e.Status });
+            entity.HasIndex(e => e.StartedAt);
+            entity.Property(e => e.ModelName).HasMaxLength(64).IsRequired();
+            entity.Property(e => e.Status).HasMaxLength(24).IsRequired();
+            entity.Property(e => e.PreviousModelVersion).HasMaxLength(32);
+            entity.Property(e => e.NewModelVersion).HasMaxLength(32);
+            entity.Property(e => e.DatasetPath).HasMaxLength(1024);
+            entity.Property(e => e.ErrorMessage).HasMaxLength(2000);
+            entity.Property(e => e.TrainingLogPath).HasMaxLength(1024);
+        });
+
+        builder.Entity<ModelVersion>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.ModelName, e.IsProduction });
+            entity.HasIndex(e => new { e.ModelName, e.VersionNumber }).IsUnique();
+            entity.Property(e => e.ModelName).HasMaxLength(64).IsRequired();
+            entity.Property(e => e.VersionNumber).HasMaxLength(32).IsRequired();
+            entity.Property(e => e.FilePath).HasMaxLength(1024).IsRequired();
+        });
+    }
+
+    private static void ConfigureTrainingDataTable<TEntity>(
+        ModelBuilder builder,
+        string tableName,
+        bool isModified = false) where TEntity : class
+    {
+        builder.Entity<TEntity>(entity =>
+        {
+            entity.ToTable(tableName);
+            entity.HasKey("Id");
+            entity.HasIndex("SourceFeedbackId").IsUnique().HasFilter("[SourceFeedbackId] IS NOT NULL");
+            entity.HasIndex("IsProcessed");
+            entity.HasIndex("CreatedAt");
+            entity.Property("ModelName").HasMaxLength(64).IsRequired();
+            entity.Property("DoctorId").HasMaxLength(450).IsRequired();
+            entity.Property("DicomStudyUid").HasMaxLength(128);
+            entity.Property("CreatedAt").HasDefaultValueSql("SYSUTCDATETIME()");
+
+            entity.Property("SourceDataJson").HasColumnType("nvarchar(max)");
+
+            if (isModified)
+            {
+                entity.Property("OriginalPrediction").HasMaxLength(512).IsRequired();
+                entity.Property("CorrectedPrediction").HasMaxLength(512).IsRequired();
+            }
+            else
+            {
+                entity.Property("InputDataReference").HasMaxLength(1024).IsRequired();
+                entity.Property("Prediction").HasMaxLength(512).IsRequired();
+            }
         });
     }
 }
