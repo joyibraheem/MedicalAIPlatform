@@ -378,6 +378,25 @@ namespace MedicalAIPlatform.Controllers
                             }
                         }
                     }
+                    else if ((model.Equals(ChestXRayModels.BraxRaddino, StringComparison.OrdinalIgnoreCase)
+                              || model.Equals("BRAX", StringComparison.OrdinalIgnoreCase)
+                              || model.Equals("RADDINO", StringComparison.OrdinalIgnoreCase))
+                             && scan.ScanType == "XRay")
+                    {
+                        if (scan.ImageData != null)
+                        {
+                            var results = await _cheXNetApi.PredictRaddinoAsync(
+                                imageBytes: scan.ImageData,
+                                fileName: scan.FileName ?? "scan.jpg",
+                                contentType: scan.ContentType ?? "image/jpeg");
+
+                            if (results.TryGetValue(ChestXRayModels.BraxRaddino, out var brax))
+                            {
+                                chexnetJson = JsonSerializer.Serialize(brax);
+                                linkedModels.Add(ChestXRayModels.BraxRaddino);
+                            }
+                        }
+                    }
                     else if (model.Equals("BioBert", StringComparison.OrdinalIgnoreCase))
                     {
                         var textToAnalyze = clinicalText ?? scan.PatientHistory?.ConditionDescription ?? "";

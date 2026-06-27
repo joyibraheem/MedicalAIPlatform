@@ -6,8 +6,6 @@
 @using MedicalAIPlatform.Services
 @inject AnalyticsStateService StateService
 
-<link rel="stylesheet" href="~/css/analytics.css" asp-append-version="true" />
-
 <div class="analytics-container">
     <div class="analytics-overlay">
         <!-- Doctor Information Header -->
@@ -36,19 +34,27 @@
             </div>
         }
 
-        @if (StateService.CurrentResults != null && StateService.CurrentResults.ContainsKey("CheXNet"))
+        @if (StateService.CurrentResults != null
+             && ChestXRayResultHelper.TryGetResult(
+                 StateService.CurrentResults,
+                 StateService.SelectedXRayModelId,
+                 out var result,
+                 out var resultKey)
+             && result is not null)
         {
-            var result = StateService.CurrentResults["CheXNet"];
             var probMap = result.Probabilities ?? new Dictionary<string, double>(StringComparer.Ordinal);
             var previewUrl = !string.IsNullOrEmpty(result.PreviewImageDataUrl)
                 ? result.PreviewImageDataUrl
                 : StateService.XRayImageDataUrl;
             var heatmapUrl = result.Heatmap?.DataUrl;
             var heatmapClass = result.Heatmap?.ClassName;
+            var modelLabel = result.ModelUsed ?? ChestXRayModels.GetDisplayName(resultKey);
             
             <div class="results-card">
                 <h2 class="findings-title" data-i18n="analytics_findings_reports">Findings Reports</h2>
-                <a class="model-link" href="#">X-Ray-CheXNet:CheXNet</a>
+                <a class="model-link" href="#">X-Ray: @modelLabel</a>
+
+                <partial name="_ChestXRayModelMetadata" model="result" />
 
                 <div class="row">
                     <div class="col-lg-6">
@@ -138,7 +144,7 @@
                     </div>
                 </div>
 
-                <partial name="_ClinicalPredictionFeedback" model="ClinicalFeedbackVmBuilder.FromCheXNet(result, StateService)" />
+                <partial name="_ClinicalPredictionFeedback" model="ClinicalFeedbackVmBuilder.FromChestXRay(result, resultKey, StateService)" />
             </div>
         }
         else

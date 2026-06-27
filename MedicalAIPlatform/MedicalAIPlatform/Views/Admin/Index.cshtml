@@ -106,6 +106,59 @@
 
     <div class="row g-4 mb-4">
         <div class="col-12 col-xl-8">
+            <section class="admin-card h-100">
+                <div class="admin-card-head">
+                    <div class="admin-card-head-icon admin-icon-blue"><i class="bi bi-lungs-fill"></i></div>
+                    <div>
+                        <h2 class="admin-card-title">Chest X-ray models</h2>
+                        <p class="admin-card-desc mb-0">Production and research inference backends available to clinicians.</p>
+                    </div>
+                </div>
+                <div class="row g-3">
+                    @foreach (var chestModel in Model.ChestXRayModelCards)
+                    {
+                        <div class="col-md-6">
+                            <div class="admin-enroll-row h-100">
+                                <div>
+                                    <div class="fw-semibold">@chestModel.Label</div>
+                                    <div class="admin-muted small mb-1">@chestModel.Description</div>
+                                    <span class="admin-badge @(chestModel.Id == MedicalAIPlatform.Models.ChestXRayModels.CheXNet ? "admin-badge-success" : "admin-badge-warn")">
+                                        @chestModel.Status
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </section>
+        </div>
+        <div class="col-12 col-xl-4">
+            <section class="admin-card h-100">
+                <div class="admin-card-head">
+                    <div class="admin-card-head-icon admin-icon-slate"><i class="bi bi-funnel-fill"></i></div>
+                    <div>
+                        <h2 class="admin-card-title">X-ray analytics filter</h2>
+                        <p class="admin-card-desc mb-0">Separate dashboard statistics by chest model.</p>
+                    </div>
+                </div>
+                <form method="get" asp-action="Index" asp-controller="Admin">
+                    <label class="form-label small fw-semibold" for="xrayFilter">Show statistics for</label>
+                    <select id="xrayFilter" name="xrayFilter" class="form-select form-select-sm mb-3" onchange="this.form.submit()">
+                        @foreach (var option in Model.XRayAnalyticsFilterOptions)
+                        {
+                            <option value="@option.Id" selected="@(string.Equals(Model.XRayAnalyticsFilter, option.Id, StringComparison.OrdinalIgnoreCase))">
+                                @option.Label
+                            </option>
+                        }
+                    </select>
+                </form>
+                <p class="admin-muted small mb-0">Charts below reflect the selected chest X-ray model filter. CT jobs are hidden when a single X-ray model is selected.</p>
+            </section>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-12 col-xl-8">
             <section class="admin-card admin-chart-card h-100">
                 <div class="admin-card-head">
                     <div class="admin-card-head-icon admin-icon-blue"><i class="bi bi-graph-up"></i></div>

@@ -225,6 +225,8 @@ async function analyzeXRay() {
     setLoading('btnXRay', true);
     const formData = new FormData();
     formData.append('xrayFile', xrayFile);
+    const selectedModel = document.getElementById('xrayModel')?.value || 'CheXNet';
+    formData.append('xrayModel', selectedModel);
     const fileName = xrayFile.name || 'Chest X-ray';
 
     try {
@@ -400,7 +402,10 @@ async function analyzeCombined() {
 
     setLoading('btnCombined', true);
     const formData = new FormData();
-    if (xrayFile) formData.append('xrayFile', xrayFile);
+    if (xrayFile) {
+        formData.append('xrayFile', xrayFile);
+        formData.append('xrayModel', document.getElementById('xrayModel')?.value || 'CheXNet');
+    }
     if (clinicalTrim) formData.append('clinicalText', clinicalTrim);
     if (ctFile) formData.append('ctFile', ctFile);
 

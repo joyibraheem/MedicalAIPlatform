@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using MedicalAIPlatform.Models;
 using MedicalAIPlatform.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -62,7 +63,10 @@ public sealed class JobApiController : ControllerBase
     [RequestFormLimits(MultipartBodyLengthLimit = MaxAnalyticsUploadBytes)]
     [RequestSizeLimit(MaxAnalyticsUploadBytes)]
     [IgnoreAntiforgeryToken]
-    public async Task<IActionResult> AnalyzeXRayAsync(IFormFile xrayFile, CancellationToken cancellationToken)
+    public async Task<IActionResult> AnalyzeXRayAsync(
+        IFormFile xrayFile,
+        string? xrayModel,
+        CancellationToken cancellationToken)
     {
         if (xrayFile == null || xrayFile.Length == 0)
             return BadRequest(new { error = "Please upload a chest X-ray file." });
@@ -80,11 +84,13 @@ public sealed class JobApiController : ControllerBase
             var contentType = string.IsNullOrWhiteSpace(xrayFile.ContentType)
                 ? "application/octet-stream"
                 : xrayFile.ContentType.Trim();
+            var modelId = ChestXRayModels.Normalize(xrayModel);
 
-            var jobId = await _jobQueue.StartXRayJobAsync(userId, bytes, safeName, contentType, cancellationToken)
+            var jobId = await _jobQueue
+                .StartXRayJobAsync(userId, bytes, safeName, contentType, modelId, cancellationToken)
                 .ConfigureAwait(false);
 
-            return Ok(new { jobId });
+            return Ok(new { jobId, xRayModelId = modelId });
         }
         catch (Exception ex)
         {

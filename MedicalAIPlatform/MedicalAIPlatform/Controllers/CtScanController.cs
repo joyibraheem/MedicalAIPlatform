@@ -29,7 +29,7 @@ public sealed class CtScanController : Controller
     [HttpGet]
     public async Task<IActionResult> Index(Guid? sessionId, int? scanId)
     {
-        ViewData["Title"] = "CT Scan";
+        ViewData["Title"] = "DICOM Viewer";
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId))
             return Challenge();
@@ -57,6 +57,8 @@ public sealed class CtScanController : Controller
 
         var user = await _userManager.GetUserAsync(User).ConfigureAwait(false);
         ViewBag.DoctorName = user?.FullName ?? user?.UserName ?? User.Identity?.Name ?? "Doctor";
+
+        ViewBag.AiModels = DicomViewerAiModels.Options;
 
         return View();
     }
@@ -116,14 +118,13 @@ public sealed class CtScanController : Controller
         if (session is null)
             return NotFound();
 
-        CtScanAnalysisPanelDto? analysis = session.Analysis is not null
-            ? CtScanRiskMapper.ToPanel(session.Analysis)
-            : null;
+        CtScanAnalysisPanelDto? analysis = _viewer.GetStoredAnalysisPanel(session);
 
         return Json(new
         {
             summary = _viewer.ToSummary(session),
             analysis,
+            selectedAiModel = session.SelectedAiModel,
         });
     }
 
@@ -148,11 +149,23 @@ public sealed class CtScanController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Analyze(Guid sessionId, CancellationToken cancellationToken)
+    public async Task<IActionResult> Analyze(Guid sessionId, string? aiModel, CancellationToken cancellationToken)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId))
             return Unauthorized(new { success = false, error = "Not signed in." });
+
+        if (string.IsNullOrWhiteSpace(aiModel))
+            return BadRequest(new { success = false, error = "Select an AI model before running analysis." });
+
+        if (!DicomViewerAiModels.IsSupported(aiModel))
+        {
+            return BadRequest(new
+            {
+                success = false,
+                error = "Unsupported AI model. Choose CheXNet (Chest X-Ray) or LungAI (CT Scan).",
+            });
+        }
 
         var session = _viewer.GetSession(sessionId, userId);
         if (session is null)
@@ -160,7 +173,7 @@ public sealed class CtScanController : Controller
 
         try
         {
-            var panel = await _viewer.AnalyzeAsync(session, cancellationToken).ConfigureAwait(false);
+            var panel = await _viewer.AnalyzeAsync(session, aiModel, cancellationToken).ConfigureAwait(false);
             if (!string.IsNullOrWhiteSpace(panel.Error))
             {
                 return Json(new

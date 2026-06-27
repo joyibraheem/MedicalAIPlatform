@@ -25,6 +25,27 @@ public sealed class CheXNetPredictionResponse
     [JsonPropertyName("inference_ms")]
     public int InferenceMs { get; set; }
 
+    [JsonPropertyName("model_used")]
+    public string? ModelUsed { get; set; }
+
+    [JsonPropertyName("model_version")]
+    public string? ModelVersion { get; set; }
+
+    [JsonPropertyName("dataset")]
+    public string? Dataset { get; set; }
+
+    [JsonPropertyName("training_date")]
+    public string? TrainingDate { get; set; }
+
+    [JsonPropertyName("predicted_class")]
+    public string? PredictedClass { get; set; }
+
+    [JsonPropertyName("confidence")]
+    public double? Confidence { get; set; }
+
+    [JsonPropertyName("scan_type")]
+    public string? ScanType { get; set; }
+
     /// <summary>Server-built JPEG/PNG thumbnail for DICOM-derived results (ignored for JSON).</summary>
     [JsonIgnore]
     public string PreviewImageMime { get; set; } = "image/jpeg";

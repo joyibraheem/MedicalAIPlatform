@@ -25,6 +25,7 @@ public sealed class CtScanViewerService
     private readonly DicomMetadataParser _metadataParser;
     private readonly DicomSliceExtractionService _sliceExtractor;
     private readonly AnalyticsCtInferenceExecutor _ctInference;
+    private readonly AnalyticsXRayInferenceExecutor _xrayInference;
     private readonly DicomPipelineOptions _pipelineOptions;
     private readonly ILogger<CtScanViewerService> _logger;
 
@@ -35,6 +36,7 @@ public sealed class CtScanViewerService
         DicomMetadataParser metadataParser,
         DicomSliceExtractionService sliceExtractor,
         AnalyticsCtInferenceExecutor ctInference,
+        AnalyticsXRayInferenceExecutor xrayInference,
         IOptions<DicomPipelineOptions> pipelineOptions,
         ILogger<CtScanViewerService> logger)
     {
@@ -44,6 +46,7 @@ public sealed class CtScanViewerService
         _metadataParser = metadataParser;
         _sliceExtractor = sliceExtractor;
         _ctInference = ctInference;
+        _xrayInference = xrayInference;
         _pipelineOptions = pipelineOptions.Value;
         _logger = logger;
     }
@@ -136,26 +139,52 @@ public sealed class CtScanViewerService
     public string? GetSliceFilePath(CtScanViewerSession session, int sliceIndex) =>
         GetSliceFilePath(session, 0, sliceIndex);
 
+    public CtScanAnalysisPanelDto? GetStoredAnalysisPanel(CtScanViewerSession session) =>
+        session.AnalysisPanel
+        ?? (session.Analysis is not null ? CtScanRiskMapper.ToPanel(session.Analysis) : null);
+
     public async Task<CtScanAnalysisPanelDto> AnalyzeAsync(
         CtScanViewerSession session,
+        string aiModel,
         CancellationToken cancellationToken)
     {
-        var safeName = string.IsNullOrWhiteSpace(session.FileName) ? "ct-upload.dcm" : Path.GetFileName(session.FileName);
-        var result = await _ctInference
-            .PredictCtAsync(session.SourceBytes, safeName, session.ContentType, cancellationToken)
-            .ConfigureAwait(false);
+        var modelId = DicomViewerAiModels.Normalize(aiModel);
+        var safeName = string.IsNullOrWhiteSpace(session.FileName) ? "upload.dcm" : Path.GetFileName(session.FileName);
 
-        session.Analysis = result;
+        CtScanAnalysisPanelDto panel;
+        if (string.Equals(modelId, DicomViewerAiModels.CheXNet, StringComparison.Ordinal))
+        {
+            var (map, _) = await _xrayInference
+                .PredictChestAsync(session.SourceBytes, safeName, session.ContentType, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (!map.TryGetValue(ChestXRayModels.CheXNet, out var chex) || chex is null)
+                throw new InvalidOperationException("CheXNet inference returned no result.");
+
+            panel = CtScanRiskMapper.ToPanel(chex, ChestXRayModels.CheXNet);
+        }
+        else
+        {
+            var result = await _ctInference
+                .PredictCtAsync(session.SourceBytes, safeName, session.ContentType, cancellationToken)
+                .ConfigureAwait(false);
+
+            session.Analysis = result;
+            panel = CtScanRiskMapper.ToPanel(result);
+        }
+
+        session.SelectedAiModel = modelId;
+        session.AnalysisPanel = panel;
         _store.Save(session);
 
-        return CtScanRiskMapper.ToPanel(result);
+        return panel;
     }
 
     public byte[] BuildReportBytes(CtScanViewerSession session)
     {
         var sb = new StringBuilder();
         var meta = session.Metadata;
-        sb.AppendLine("Medical AI Platform — CT Scan Analysis Report");
+        sb.AppendLine("Medical AI Platform — DICOM Viewer Analysis Report");
         sb.AppendLine(new string('=', 60));
         sb.AppendLine($"Generated (UTC): {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}");
         sb.AppendLine($"Source file: {session.FileName}");
@@ -186,17 +215,19 @@ public sealed class CtScanViewerService
         sb.AppendLine("AI analysis");
         sb.AppendLine(new string('-', 40));
 
-        if (session.Analysis is null)
+        var panel = GetStoredAnalysisPanel(session);
+        if (panel is null)
         {
-            sb.AppendLine("No analysis has been run. Use Analyze Scan in the CT Viewer first.");
+            sb.AppendLine("No analysis has been run. Select an AI model and use Analyze Scan in the DICOM Viewer first.");
         }
-        else if (!string.IsNullOrWhiteSpace(session.Analysis.Error))
+        else if (!string.IsNullOrWhiteSpace(panel.Error))
         {
-            sb.AppendLine($"Error: {session.Analysis.Error}");
+            sb.AppendLine($"Error: {panel.Error}");
         }
         else
         {
-            var panel = CtScanRiskMapper.ToPanel(session.Analysis);
+            if (!string.IsNullOrWhiteSpace(session.SelectedAiModel))
+                sb.AppendLine($"AI model: {session.SelectedAiModel}");
             sb.AppendLine($"Model: {panel.ModelName}");
             sb.AppendLine($"Predicted disease / class: {panel.PredictedDisease}");
             sb.AppendLine($"Confidence score: {panel.ConfidenceScore:P2}");
@@ -243,7 +274,7 @@ public sealed class CtScanViewerService
         {
             metadata = new PatientMedicalHistory
             {
-                Modality = "CT",
+                Modality = "IMG",
                 BodyPartExamined = "CHEST",
                 NumberOfFrames = 1,
             };
@@ -253,8 +284,8 @@ public sealed class CtScanViewerService
                 new CtSeriesInfo
                 {
                     SeriesIndex = 0,
-                    Label = "CT Image",
-                    Modality = "CT",
+                    Label = "Medical Image",
+                    Modality = "IMG",
                     BodyPartExamined = "CHEST",
                     PreviewSliceIndex = 0,
                     Slices = [slice],
@@ -463,7 +494,7 @@ public sealed class CtScanViewerService
         return new CtScanSliceInfo
         {
             Index = 0,
-            Label = "CT 1/1 CHEST",
+            Label = "Image 1/1",
             Width = image.Width,
             Height = image.Height,
             JpegFileName = jpegName,

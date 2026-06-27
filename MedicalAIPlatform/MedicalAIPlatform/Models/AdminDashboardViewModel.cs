@@ -54,6 +54,14 @@ public sealed class AdminDashboardChartsVm
     public bool HasInferenceSamples { get; init; }
 }
 
+public sealed class AdminChestXRayModelVm
+{
+    public string Id { get; init; } = "";
+    public string Label { get; init; } = "";
+    public string Status { get; init; } = "";
+    public string Description { get; init; } = "";
+}
+
 public class AdminDashboardViewModel
 {
     public AdminKpiCardVm DoctorsCard { get; set; } = new();
@@ -79,6 +87,16 @@ public class AdminDashboardViewModel
     public int PendingDoctorRegistrationsCount { get; set; }
     public int PendingFeedbackReviewsCount { get; set; }
     public int FailedInferenceJobsLast24h { get; set; }
+
+    public List<AdminChestXRayModelVm> ChestXRayModelCards { get; set; } = new();
+    public string XRayAnalyticsFilter { get; set; } = "both";
+    public IReadOnlyList<(string Id, string Label)> XRayAnalyticsFilterOptions { get; set; } =
+        new (string, string)[]
+        {
+            ("both", "Both"),
+            ("CheXNet", "CheXNet (Production)"),
+            ("BRAX_RADDINO", "BRAX Fine-Tuned (RAD-DINO)"),
+        };
 
     public bool IsSystemWorking { get; set; } = true;
 }

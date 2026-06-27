@@ -30,6 +30,7 @@ public sealed class AnalyticsStateService
     public string? LungCancerSourceJson => GetEffectiveSnapshot().LungCancerSourceJson;
     public string? BioBertSourceJson => GetEffectiveSnapshot().BioBertSourceJson;
     public Guid? RelatedJobId => GetEffectiveSnapshot().RelatedJobId;
+    public string SelectedXRayModelId => GetEffectiveSnapshot().SelectedXRayModelId;
 
     /// <summary>Hydrates this request from a loaded snapshot (e.g. job-specific result page).</summary>
     public void HydrateForRequest(AnalyticsSessionSnapshot snapshot) => _requestOverride = snapshot;
@@ -45,7 +46,8 @@ public sealed class AnalyticsStateService
         string? cheXNetSourceJson = null,
         string? lungCancerSourceJson = null,
         string? bioBertSourceJson = null,
-        Guid? relatedJobId = null)
+        Guid? relatedJobId = null,
+        string? selectedXRayModelId = null)
     {
         var userId = RequireUserId();
         var patch = AnalyticsSessionSnapshot.FromSetResults(
@@ -60,7 +62,8 @@ public sealed class AnalyticsStateService
             cheXNetSourceJson,
             lungCancerSourceJson,
             bioBertSourceJson,
-            relatedJobId);
+            relatedJobId,
+            selectedXRayModelId);
 
         _store.MergeLatest(userId, patch);
         _requestOverride = _store.GetLatest(userId) ?? patch;

@@ -43,14 +43,22 @@ public sealed class CheXNetApiHostedService : IHostedService
             return;
         }
 
-        // Something on 8000: check if it has /predict/ct (GET returns 405 = has route, 404 = missing)
-        if (await HasPredictCtAsync(base8000, cancellationToken))
+        // Something on 8000: require full route set (stale uvicorn from before BRAX integration lacks /predict/raddino).
+        if (await HasPredictCtAsync(base8000, cancellationToken)
+            && await HasRouteAsync(base8000, "/predict/raddino", cancellationToken))
         {
-            _logger.LogInformation("CheXNet API at {BaseUrl} already has /predict/ct.", base8000);
+            _logger.LogInformation("CheXNet API at {BaseUrl} already has /predict/ct and /predict/raddino.", base8000);
             return;
         }
 
-        // 8000 has /health but no /predict/ct -> start our full API on 8002 and point app to it
+        if (await HasPredictCtAsync(base8000, cancellationToken))
+        {
+            _logger.LogWarning(
+                "CheXNet API at {BaseUrl} is missing /predict/raddino (likely a stale server). Starting updated API on port 8002.",
+                base8000);
+        }
+
+        // 8000 has /health but not the full route set -> start our API on 8002 and point app to it
         const string port8002 = "8002";
         var base8002 = $"http://{host}:{port8002}";
         if (await TryStartApiAsync(host, port8002, base8002, cancellationToken))
@@ -67,11 +75,17 @@ public sealed class CheXNetApiHostedService : IHostedService
     /// <summary>GET /predict/ct: 405 = route exists, 404 = missing.</summary>
     private static async Task<bool> HasPredictCtAsync(string baseUrl, CancellationToken ct)
     {
+        return await HasRouteAsync(baseUrl, "/predict/ct", ct).ConfigureAwait(false);
+    }
+
+    /// <summary>Any non-404 means the route is registered (405/422/400 are OK for GET on POST-only endpoints).</summary>
+    private static async Task<bool> HasRouteAsync(string baseUrl, string path, CancellationToken ct)
+    {
         try
         {
             using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
-            var resp = await http.GetAsync($"{baseUrl}/predict/ct", ct);
-            return resp.StatusCode == System.Net.HttpStatusCode.MethodNotAllowed; // 405 = route exists, POST only
+            var resp = await http.GetAsync($"{baseUrl.TrimEnd('/')}{path}", ct).ConfigureAwait(false);
+            return resp.StatusCode != System.Net.HttpStatusCode.NotFound;
         }
         catch
         {

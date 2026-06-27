@@ -543,6 +543,67 @@ async def training_start(req: TrainingStartRequest) -> JSONResponse:
         return JSONResponse({"error": str(e)}, status_code=400)
 
 
+# --------- BRAX RAD-DINO (Research / Fine-Tuned) ----------
+import sys
+
+_RADDINO_DIR = os.path.join(_BASE_DIR, "models", "BRAX_RADDINO")
+if _RADDINO_DIR not in sys.path:
+    sys.path.insert(0, _RADDINO_DIR)
+
+try:
+    from raddino_api import predict_dicom_bytes, predict_image_bytes
+
+    _RADDINO_AVAILABLE = True
+except Exception as _raddino_import_err:  # pragma: no cover - optional model package
+    _RADDINO_AVAILABLE = False
+    print(f"[BRAX_RADDINO] Import failed: {_raddino_import_err!s}")
+
+
+@app.post("/predict/raddino")
+async def predict_raddino(file: UploadFile = File(...)) -> JSONResponse:
+    """BRAX fine-tuned RAD-DINO chest X-ray inference (separate from production CheXNet /predict)."""
+    if not _RADDINO_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="BRAX RAD-DINO model is not available. Check models/BRAX_RADDINO/ installation.",
+        )
+
+    allowed = (
+        "image/jpeg",
+        "image/png",
+        "image/jpg",
+        "application/dicom",
+        "application/octet-stream",
+    )
+    content_type = (file.content_type or "").lower()
+    if content_type and content_type not in allowed and not content_type.startswith("image/"):
+        raise HTTPException(
+            status_code=400,
+            detail="Unsupported file type. Upload JPEG, PNG, or DICOM chest X-ray.",
+        )
+
+    try:
+        contents = await file.read()
+    except Exception as exc:  # pragma: no cover
+        raise HTTPException(status_code=400, detail="Could not read uploaded file.") from exc
+
+    if not contents:
+        raise HTTPException(status_code=400, detail="Empty upload.")
+
+    name = (file.filename or "").lower()
+    is_dicom = content_type == "application/dicom" or name.endswith((".dcm", ".dicm"))
+
+    try:
+        if is_dicom:
+            result = predict_dicom_bytes(contents)
+        else:
+            result = predict_image_bytes(contents)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"RAD-DINO inference failed: {exc!s}") from exc
+
+    return JSONResponse(result)
+
+
 if __name__ == "__main__":
     import uvicorn
 

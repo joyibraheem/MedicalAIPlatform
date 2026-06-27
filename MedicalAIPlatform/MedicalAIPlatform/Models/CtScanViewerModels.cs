@@ -13,6 +13,10 @@ public sealed class CtScanViewerSession
     public IReadOnlyList<CtSeriesInfo> Series { get; init; } = [];
     public string TempDirectory { get; init; } = "";
     public LungAICtResponse? Analysis { get; set; }
+    /// <summary>Unified analysis panel for the viewer UI (CheXNet or LungAI).</summary>
+    public CtScanAnalysisPanelDto? AnalysisPanel { get; set; }
+    /// <summary>Last AI model id used for analysis (<see cref="DicomViewerAiModels"/>).</summary>
+    public string? SelectedAiModel { get; set; }
     public int? PatientScanId { get; init; }
     public int? PatientId { get; init; }
     public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
@@ -114,6 +118,31 @@ public static class CtScanRiskMapper
             ModelName = ModelDisplayName(response),
             Probabilities = probs,
             Error = response.Error,
+        };
+    }
+
+    public static CtScanAnalysisPanelDto ToPanel(CheXNetPredictionResponse response) =>
+        ToPanel(response, ChestXRayModels.CheXNet);
+
+    public static CtScanAnalysisPanelDto ToPanel(CheXNetPredictionResponse response, string modelId)
+    {
+        var probs = response.Probabilities ?? new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+        var topEntry = probs.Count == 0
+            ? default(KeyValuePair<string, double>)
+            : probs.OrderByDescending(kv => kv.Value).First();
+        var topProb = response.Confidence ?? topEntry.Value;
+        var predicted = !string.IsNullOrWhiteSpace(response.PredictedClass)
+            ? response.PredictedClass!
+            : (string.IsNullOrWhiteSpace(topEntry.Key) ? "—" : topEntry.Key);
+
+        return new CtScanAnalysisPanelDto
+        {
+            PredictedDisease = predicted,
+            ConfidenceScore = Math.Round(topProb, 4),
+            RiskLevel = MapRiskLevel(topProb),
+            ModelName = response.ModelUsed ?? ChestXRayModels.GetDisplayName(modelId),
+            Probabilities = probs,
+            InferenceMs = response.InferenceMs > 0 ? response.InferenceMs : null,
         };
     }
 }
