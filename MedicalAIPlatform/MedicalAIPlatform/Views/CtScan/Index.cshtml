@@ -1,8 +1,10 @@
 @{
-    ViewData["Title"] = "CT Scan";
+    ViewData["Title"] = "DICOM Viewer";
     Layout = "_DoctorLayout";
     var sessionId = ViewBag.SessionId as Guid?;
     var hasSession = ViewBag.HasSession as bool? ?? false;
+    var aiModels = ViewBag.AiModels as IReadOnlyList<MedicalAIPlatform.Models.DicomViewerAiModelOption>
+                   ?? MedicalAIPlatform.Models.DicomViewerAiModels.Options;
 }
 
 <link rel="stylesheet" href="~/css/responsive.css" asp-append-version="true" />
@@ -25,8 +27,8 @@
                 <i class="bi bi-arrow-left"></i>
             </button>
             <div>
-                <h1 class="ct-viewer-title">CT Scan Viewer</h1>
-                <p class="ct-viewer-subtitle">Medical image viewer with AI-assisted analysis</p>
+                <h1 class="ct-viewer-title">DICOM Viewer</h1>
+                <p class="ct-viewer-subtitle">Universal medical image viewer with AI-assisted analysis</p>
             </div>
         </div>
         <div class="ct-viewer-header__meta">
@@ -67,7 +69,7 @@
                 <ul class="dropdown-menu dropdown-menu-dark ct-dropdown">
                     <li>
                         <label class="dropdown-item mb-0" for="ctUploadInput">
-                            <i class="bi bi-cloud-upload me-2"></i>Upload new scan
+                            <i class="bi bi-cloud-upload me-2"></i>Upload medical image
                         </label>
                         <input type="file" id="ctUploadInput" class="d-none"
                                accept="image/png,image/jpeg,application/dicom,.dcm,.dicm,.zip,application/zip" />
@@ -109,11 +111,11 @@
         <main class="ct-main-panel">
             <div class="ct-empty-state" id="emptyState">
                 <div class="ct-empty-state__icon"><i class="bi bi-images"></i></div>
-                <h2>No scan loaded</h2>
-                <p>Upload a DICOM (.dcm) or chest CT image (PNG/JPG) to begin review.</p>
+                <h2>No image loaded</h2>
+                <p>Upload a DICOM (.dcm), chest X-ray, or CT scan (PNG/JPG) to begin review.</p>
                 <label class="ct-upload-hero" for="ctUploadInputHero">
                     <i class="bi bi-cloud-arrow-up"></i>
-                    <span>Upload CT / DICOM</span>
+                    <span>Upload DICOM / X-Ray / CT</span>
                 </label>
                 <input type="file" id="ctUploadInputHero" class="d-none"
                        accept="image/png,image/jpeg,application/dicom,.dcm,.dicm,.zip,application/zip" />
@@ -123,7 +125,7 @@
                 <div class="ct-viewport-row">
                     <div class="ct-viewport-column">
                         <div class="ct-viewport" id="viewport">
-                            <img id="mainSliceImage" alt="CT slice" draggable="false" />
+                            <img id="mainSliceImage" alt="Medical image slice" draggable="false" />
                             <div class="ct-viewport-hud" aria-hidden="true">
                                 <div class="ct-hud-corner ct-hud-tl" id="hudTopLeft"></div>
                                 <div class="ct-hud-corner ct-hud-tr" id="hudTopRight"></div>
@@ -185,9 +187,20 @@
                 <span>AI Analysis</span>
             </div>
             <div class="ct-ai-panel__body" id="aiPanelBody">
+                <div class="ct-ai-model-select">
+                    <label class="ct-ai-model-select__label" for="aiModelSelect">Select AI model</label>
+                    <select id="aiModelSelect" class="form-select form-select-sm ct-ai-model-select__control" aria-label="Select AI model for analysis">
+                        <option value="">Choose a model…</option>
+                        @foreach (var aiModelOption in aiModels)
+                        {
+                            <option value="@aiModelOption.Id" title="@aiModelOption.Description">@aiModelOption.Label</option>
+                        }
+                    </select>
+                    <p class="ct-ai-model-select__hint">Choose CheXNet for chest DICOM/X-ray or LungAI for CT before analyzing.</p>
+                </div>
                 <div class="ct-ai-placeholder" id="aiPlaceholder">
                     <i class="bi bi-lightning-charge"></i>
-                    <p>Click <strong>Analyze Scan</strong> to run the DICOM pipeline and LungAI inference.</p>
+                    <p>Select an AI model, then click <strong>Analyze Scan</strong> to run inference on this study.</p>
                 </div>
                 <div class="ct-ai-results d-none" id="aiResults">
                     <div class="ct-ai-metric">
@@ -213,8 +226,8 @@
                 </div>
                 <div class="ct-ai-analyzing d-none" id="aiAnalyzing">
                     <div class="ct-spinner"></div>
-                    <p>Running DICOM pipeline &amp; LungAI…</p>
-                    <small>This may take a minute for multi-slice volumes.</small>
+                    <p id="aiAnalyzingMessage">Running AI analysis…</p>
+                    <small id="aiAnalyzingHint">This may take a minute for multi-slice DICOM volumes.</small>
                 </div>
             </div>
         </aside>

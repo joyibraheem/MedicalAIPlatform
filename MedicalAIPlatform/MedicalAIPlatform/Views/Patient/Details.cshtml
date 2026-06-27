@@ -238,7 +238,7 @@
                                         @if (scan.ScanType == "CTScan")
                                         {
                                             <a class="btn btn-sm btn-outline-info" asp-controller="CtScan" asp-action="Index" asp-route-scanId="@scan.Id">
-                                                <i class="bi bi-box"></i> CT Viewer
+                                                <i class="bi bi-box"></i> DICOM Viewer
                                             </a>
                                         }
                                         <button class="btn btn-sm btn-primary link-models-btn" 
@@ -405,20 +405,24 @@
                         
                         <div class="card mb-2" id="chexnetCard" style="border: 2px solid #e0e0e0;">
                             <div class="card-body p-3">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="modelCheXNet" value="CheXNet" onchange="updateModelSelection()" style="width: 20px; height: 20px; cursor: pointer;">
+                                <div class="mb-2 fw-semibold text-primary">Chest X-ray model (choose one)</div>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input chest-xray-model-radio" type="radio" name="chestXrayModel" id="modelCheXNet" value="CheXNet" checked onchange="updateModelSelection()" style="width: 20px; height: 20px; cursor: pointer;">
                                     <label class="form-check-label ms-2" for="modelCheXNet" style="cursor: pointer; width: 100%;">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <div>
-                                                <strong class="text-primary">CheXNet</strong>
-                                                <small class="text-muted d-block">For X-Ray chest image analysis</small>
-                                            </div>
-                                            <span class="badge bg-success" id="chexnetBadge" style="display:none;">
-                                                <i class="bi bi-check-circle"></i> Selected
-                                            </span>
-                                        </div>
+                                        <strong>CheXNet (Production)</strong>
+                                        <small class="text-muted d-block">Default production chest X-ray model</small>
                                     </label>
                                 </div>
+                                <div class="form-check">
+                                    <input class="form-check-input chest-xray-model-radio" type="radio" name="chestXrayModel" id="modelBraxRaddino" value="BRAX_RADDINO" onchange="updateModelSelection()" style="width: 20px; height: 20px; cursor: pointer;">
+                                    <label class="form-check-label ms-2" for="modelBraxRaddino" style="cursor: pointer; width: 100%;">
+                                        <strong>BRAX Fine-Tuned (RAD-DINO)</strong>
+                                        <small class="text-muted d-block">Research / fine-tuned model</small>
+                                    </label>
+                                </div>
+                                <span class="badge bg-success mt-2" id="chexnetBadge" style="display:none;">
+                                    <i class="bi bi-check-circle"></i> Selected
+                                </span>
                             </div>
                         </div>
                         
@@ -485,6 +489,27 @@
 
 @section Scripts {
     <script>
+        function getSelectedChestXrayModel() {
+            const selected = document.querySelector('input[name="chestXrayModel"]:checked:not(:disabled)');
+            return selected ? selected.value : 'CheXNet';
+        }
+
+        function isChestXrayModelSelected() {
+            return !!document.querySelector('input[name="chestXrayModel"]:checked:not(:disabled)');
+        }
+
+        function setDefaultChestXrayModel() {
+            const chexnetRadio = document.getElementById('modelCheXNet');
+            if (chexnetRadio && !chexnetRadio.disabled) {
+                chexnetRadio.checked = true;
+            }
+        }
+
+        function setChestXrayRadiosEnabled(enabled) {
+            document.querySelectorAll('input[name="chestXrayModel"]').forEach(function(radio) {
+                radio.disabled = !enabled;
+            });
+        }
         // Global backdrop monitor - watches for unwanted backdrop creation
         let backdropMonitor = null;
         function startBackdropMonitor() {
@@ -662,8 +687,8 @@
             const linkBtn = document.getElementById('linkModelsBtn');
             
             if (chexnet) {
-                chexnet.checked = false;
-                chexnet.disabled = false;
+                setDefaultChestXrayModel();
+                setChestXrayRadiosEnabled(true);
             }
             if (biobert) {
                 biobert.checked = false;
@@ -878,11 +903,11 @@
                     return;
                 }
                 
-                // Reset all checkboxes first
-                chexnetCheckbox.checked = false;
+                // Reset model controls first
+                setDefaultChestXrayModel();
+                setChestXrayRadiosEnabled(true);
                 biobertCheckbox.checked = false;
                 lungAICheckbox.checked = false;
-                chexnetCheckbox.disabled = false;
                 lungAICheckbox.disabled = false;
                 biobertCheckbox.disabled = false;
                 
@@ -895,14 +920,13 @@
                 
                 // Set up models based on scan type
                 if (normalizedScanType === 'XRay' || lowerScanType === 'xray' || lowerScanType === 'x-ray') {
-                    chexnetCheckbox.disabled = false;
-                    chexnetCheckbox.checked = true;
+                    setChestXrayRadiosEnabled(true);
+                    setDefaultChestXrayModel();
                     lungAICheckbox.disabled = true;
                     lungAICheckbox.checked = false;
-                    console.log('✓ X-Ray detected - CheXNet auto-selected');
+                    console.log('✓ X-Ray detected - default chest model selected');
                 } else if (normalizedScanType === 'CTScan' || lowerScanType === 'ctscan' || lowerScanType === 'ct scan' || lowerScanType === 'ct') {
-                    chexnetCheckbox.disabled = true;
-                    chexnetCheckbox.checked = false;
+                    setChestXrayRadiosEnabled(false);
                     lungAICheckbox.disabled = false;
                     lungAICheckbox.checked = true;
                     console.log('✓ CT Scan detected - LungAI auto-selected');
@@ -1037,7 +1061,7 @@
                     
                     // Verify selection
                     const selected = [];
-                    if (chexnetCheckbox.checked && !chexnetCheckbox.disabled) selected.push('CheXNet');
+                    if (isChestXrayModelSelected()) selected.push(getSelectedChestXrayModel());
                     if (biobertCheckbox.checked && !biobertCheckbox.disabled) selected.push('BioBert');
                     if (lungAICheckbox.checked && !lungAICheckbox.disabled) selected.push('LungAI');
                     
@@ -1047,8 +1071,8 @@
                     if (selected.length === 0) {
                         console.warn('No models selected! Forcing selection...');
                         if (normalizedScanType === 'XRay' || lowerScanType === 'xray' || lowerScanType === 'x-ray') {
-                            chexnetCheckbox.checked = true;
-                            chexnetCheckbox.disabled = false;
+                            setDefaultChestXrayModel();
+                            setChestXrayRadiosEnabled(true);
                         } else if (normalizedScanType === 'CTScan' || lowerScanType === 'ctscan' || lowerScanType === 'ct scan' || lowerScanType === 'ct') {
                             lungAICheckbox.checked = true;
                             lungAICheckbox.disabled = false;
@@ -1104,8 +1128,8 @@
             const models = [];
             
             // Collect checked and enabled models
-            if (chexnetCheckbox.checked && !chexnetCheckbox.disabled) {
-                models.push('CheXNet');
+            if (isChestXrayModelSelected() && !document.querySelector('input[name="chestXrayModel"]:checked')?.disabled) {
+                models.push(getSelectedChestXrayModel());
             }
             if (biobertCheckbox.checked && !biobertCheckbox.disabled) {
                 models.push('BioBert');
@@ -1121,10 +1145,10 @@
                 console.warn('No models selected! Auto-selecting based on scan type...');
                 
                 if (scanType === 'XRay' || lowerScanType === 'xray' || lowerScanType === 'x-ray') {
-                    chexnetCheckbox.checked = true;
-                    chexnetCheckbox.disabled = false;
-                    models.push('CheXNet');
-                    console.log('✓ Auto-selected CheXNet for X-Ray');
+                    setDefaultChestXrayModel();
+                    setChestXrayRadiosEnabled(true);
+                    models.push(getSelectedChestXrayModel());
+                    console.log('✓ Auto-selected chest X-ray model for X-Ray');
                 } else if (scanType === 'CTScan' || lowerScanType === 'ctscan' || lowerScanType === 'ct scan' || lowerScanType === 'ct') {
                     lungAICheckbox.checked = true;
                     lungAICheckbox.disabled = false;
@@ -1276,14 +1300,15 @@
             const lungaiCard = document.getElementById('lungaiCard');
             
             // Update badges
-            if (chexnetBadge) chexnetBadge.style.display = chexnet.checked ? 'inline' : 'none';
+            if (chexnetBadge) chexnetBadge.style.display = isChestXrayModelSelected() ? 'inline' : 'none';
             if (biobertBadge) biobertBadge.style.display = biobert.checked ? 'inline' : 'none';
             if (lungaiBadge) lungaiBadge.style.display = lungai.checked ? 'inline' : 'none';
             
             // Update card borders to highlight selected
             if (chexnetCard) {
-                chexnetCard.style.borderColor = chexnet.checked ? '#0d6efd' : '#e0e0e0';
-                chexnetCard.style.backgroundColor = chexnet.checked ? '#f0f7ff' : '#fff';
+                const chestSelected = isChestXrayModelSelected();
+                chexnetCard.style.borderColor = chestSelected ? '#0d6efd' : '#e0e0e0';
+                chexnetCard.style.backgroundColor = chestSelected ? '#f0f7ff' : '#fff';
             }
             if (biobertCard) {
                 biobertCard.style.borderColor = biobert.checked ? '#0d6efd' : '#e0e0e0';
@@ -1296,7 +1321,7 @@
             
             // Update info text
             const selected = [];
-            if (chexnet && chexnet.checked) selected.push('CheXNet');
+            if (isChestXrayModelSelected()) selected.push(getSelectedChestXrayModel());
             if (biobert && biobert.checked) selected.push('BioBert');
             if (lungai && lungai.checked) selected.push('LungAI');
             

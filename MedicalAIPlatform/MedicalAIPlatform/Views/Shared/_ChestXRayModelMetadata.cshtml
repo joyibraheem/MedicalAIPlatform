@@ -1,0 +1,41 @@
+@model MedicalAIPlatform.Models.CheXNetPredictionResponse
+@using MedicalAIPlatform.Services
+
+@{
+    var topPrediction = ChestXRayResultHelper.GetTopPrediction(Model);
+    var confidence = ChestXRayResultHelper.GetTopConfidence(Model);
+}
+
+<div class="row g-2 mb-3 chest-xray-model-meta small">
+    <div class="col-sm-6 col-lg-4">
+        <span class="text-muted d-block">Model Used</span>
+        <strong>@(Model.ModelUsed ?? "—")</strong>
+    </div>
+    <div class="col-sm-6 col-lg-4">
+        <span class="text-muted d-block">Model Version</span>
+        <strong>@(Model.ModelVersion ?? "—")</strong>
+    </div>
+    <div class="col-sm-6 col-lg-4">
+        <span class="text-muted d-block">Inference Time</span>
+        <strong>@(Model.InferenceMs > 0 ? $"{Model.InferenceMs} ms" : "—")</strong>
+    </div>
+    <div class="col-sm-6 col-lg-4">
+        <span class="text-muted d-block">Confidence</span>
+        <strong>@(confidence is null ? "—" : $"{confidence.Value:P1}")</strong>
+    </div>
+    <div class="col-sm-6 col-lg-4">
+        <span class="text-muted d-block">Prediction</span>
+        <strong>@topPrediction</strong>
+    </div>
+    <div class="col-sm-6 col-lg-4">
+        <span class="text-muted d-block">Dataset</span>
+        <strong>@(string.IsNullOrWhiteSpace(Model.Dataset) ? "—" : Model.Dataset)</strong>
+    </div>
+    @if (!string.IsNullOrWhiteSpace(Model.TrainingDate))
+    {
+        <div class="col-sm-6 col-lg-4">
+            <span class="text-muted d-block">Training Date</span>
+            <strong>@Model.TrainingDate</strong>
+        </div>
+    }
+</div>

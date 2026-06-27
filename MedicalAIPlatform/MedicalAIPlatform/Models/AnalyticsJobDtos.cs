@@ -23,6 +23,30 @@ public sealed class AnalyticsCtJobResultDto
 
     [JsonPropertyName("inferenceNote")]
     public string? InferenceNote { get; init; }
+
+    [JsonPropertyName("modelUsed")]
+    public string ModelUsed { get; init; } = "";
+
+    [JsonPropertyName("modelVersion")]
+    public string ModelVersion { get; init; } = "";
+
+    [JsonPropertyName("confidence")]
+    public double? Confidence { get; init; }
+
+    [JsonPropertyName("inferenceMs")]
+    public int? InferenceMs { get; init; }
+
+    [JsonPropertyName("dataset")]
+    public string Dataset { get; init; } = "";
+
+    [JsonPropertyName("trainingDate")]
+    public string TrainingDate { get; init; } = "";
+
+    [JsonPropertyName("predictionTimeUtc")]
+    public DateTimeOffset? PredictionTimeUtc { get; init; }
+
+    [JsonPropertyName("xRayModelId")]
+    public string XRayModelId { get; init; } = ChestXRayModels.CheXNet;
 }
 
 /// <summary>GET /api/job/status/:id response.</summary>

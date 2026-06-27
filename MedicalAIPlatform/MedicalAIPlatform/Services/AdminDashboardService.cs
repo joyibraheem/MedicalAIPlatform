@@ -22,8 +22,11 @@ public sealed class AdminDashboardService
         _db = db;
     }
 
-    public async Task<AdminDashboardViewModel> BuildAsync(CancellationToken cancellationToken = default)
+    public async Task<AdminDashboardViewModel> BuildAsync(
+        string? xrayAnalyticsFilter = null,
+        CancellationToken cancellationToken = default)
     {
+        var filter = NormalizeXRayAnalyticsFilter(xrayAnalyticsFilter);
         var utcNow = DateTime.UtcNow;
         var todayUtc = utcNow.Date;
         var weekAgo = utcNow.AddDays(-7);
@@ -63,11 +66,19 @@ public sealed class AdminDashboardService
                 && j.CompletedAt >= utcNow.AddDays(-35))
             .OrderByDescending(j => j.CompletedAt)
             .Take(800)
-            .Select(j => new { j.ResultPayloadJson, CompletedAt = j.CompletedAt!.Value, j.CreatedAt })
+            .Select(j => new
+            {
+                j.Kind,
+                j.InputPayloadJson,
+                j.ResultPayloadJson,
+                CompletedAt = j.CompletedAt!.Value,
+                j.CreatedAt
+            })
             .ToListAsync(cancellationToken).ConfigureAwait(false);
 
         var completedJobsWindow = completedJobRows
-            .Select(j => new InferenceJobRow(j.ResultPayloadJson, j.CompletedAt, j.CreatedAt))
+            .Select(j => new InferenceJobRow(j.Kind, j.InputPayloadJson, j.ResultPayloadJson, j.CompletedAt, j.CreatedAt))
+            .Where(j => MatchesXRayAnalyticsFilter(j, filter))
             .ToList();
 
         var failedLast24h = await _db.ChestAiBackgroundJobs.AsNoTracking()
@@ -260,7 +271,17 @@ public sealed class AdminDashboardService
                 TrendLabel = accuracyTrend.arrow,
                 TrendContext = accuracyTrend.context,
                 IconBi = "bi-graph-up-arrow"
-            }
+            },
+            XRayAnalyticsFilter = filter,
+            ChestXRayModelCards = ChestXRayModels.Options
+                .Select(o => new AdminChestXRayModelVm
+                {
+                    Id = o.Id,
+                    Label = o.Label,
+                    Status = o.Status,
+                    Description = o.Description
+                })
+                .ToList()
         };
 
         return vm;
@@ -273,7 +294,12 @@ public sealed class AdminDashboardService
         where role.NormalizedName == "DOCTOR"
         select user;
 
-    private sealed record InferenceJobRow(string? ResultPayloadJson, DateTimeOffset CompletedAt, DateTimeOffset CreatedAt);
+    private sealed record InferenceJobRow(
+        string Kind,
+        string? InputPayloadJson,
+        string? ResultPayloadJson,
+        DateTimeOffset CompletedAt,
+        DateTimeOffset CreatedAt);
 
     private sealed record AccuracySeries(List<string> Labels, List<double> Values);
 
@@ -433,6 +459,80 @@ public sealed class AdminDashboardService
         }
 
         return list;
+    }
+
+    private static string NormalizeXRayAnalyticsFilter(string? filter)
+    {
+        if (string.IsNullOrWhiteSpace(filter) || string.Equals(filter, "both", StringComparison.OrdinalIgnoreCase))
+            return "both";
+
+        if (string.Equals(filter, ChestXRayModels.CheXNet, StringComparison.OrdinalIgnoreCase))
+            return ChestXRayModels.CheXNet;
+
+        if (string.Equals(filter, ChestXRayModels.BraxRaddino, StringComparison.OrdinalIgnoreCase))
+            return ChestXRayModels.BraxRaddino;
+
+        return "both";
+    }
+
+    private static bool MatchesXRayAnalyticsFilter(InferenceJobRow row, string filter)
+    {
+        if (string.Equals(filter, "both", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        if (!string.Equals(row.Kind, ChestAiBackgroundJob.KindXRay, StringComparison.Ordinal))
+            return false;
+
+        return string.Equals(TryGetXRayModelId(row), filter, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string TryGetXRayModelId(InferenceJobRow row)
+    {
+        if (AnalyticsJobResultEnvelope.TryParse(row.ResultPayloadJson, out var summary, out _)
+            && summary is not null
+            && !string.IsNullOrWhiteSpace(summary.XRayModelId))
+        {
+            return ChestXRayModels.Normalize(summary.XRayModelId);
+        }
+
+        if (!string.IsNullOrWhiteSpace(row.ResultPayloadJson))
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(row.ResultPayloadJson);
+                if (doc.RootElement.TryGetProperty("summary", out var summaryEl)
+                    && summaryEl.TryGetProperty("xRayModelId", out var modelEl))
+                {
+                    var id = modelEl.GetString();
+                    if (!string.IsNullOrWhiteSpace(id))
+                        return ChestXRayModels.Normalize(id);
+                }
+            }
+            catch
+            {
+                /* ignore */
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(row.InputPayloadJson))
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(row.InputPayloadJson);
+                if (doc.RootElement.TryGetProperty("xRayModelId", out var modelEl))
+                {
+                    var id = modelEl.GetString();
+                    if (!string.IsNullOrWhiteSpace(id))
+                        return ChestXRayModels.Normalize(id);
+                }
+            }
+            catch
+            {
+                /* ignore */
+            }
+        }
+
+        return ChestXRayModels.CheXNet;
     }
 
     private static string TryPredictedClass(string? json)

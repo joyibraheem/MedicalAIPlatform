@@ -1,4 +1,5 @@
 using MedicalAIPlatform.Models;
+using MedicalAIPlatform.Models.TrainingCenter;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
@@ -38,6 +39,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<BioBERTModifiedData> BioBERTModifiedData { get; set; }
     public DbSet<TrainingJob> TrainingJobs { get; set; }
     public DbSet<ModelVersion> ModelVersions { get; set; }
+    public DbSet<TrainingCenterNotification> TrainingCenterNotifications { get; set; }
+    public DbSet<DatasetArchiveEntry> DatasetArchiveEntries { get; set; }
+    public DbSet<DeploymentHistoryRecord> DeploymentHistoryRecords { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -269,6 +273,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             entity.Property(e => e.DatasetPath).HasMaxLength(1024);
             entity.Property(e => e.ErrorMessage).HasMaxLength(2000);
             entity.Property(e => e.TrainingLogPath).HasMaxLength(1024);
+            entity.Property(e => e.RequestedByUserId).HasMaxLength(450);
+            entity.Property(e => e.ExperimentName).HasMaxLength(256);
         });
 
         builder.Entity<ModelVersion>(entity =>
@@ -279,6 +285,47 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             entity.Property(e => e.ModelName).HasMaxLength(64).IsRequired();
             entity.Property(e => e.VersionNumber).HasMaxLength(32).IsRequired();
             entity.Property(e => e.FilePath).HasMaxLength(1024).IsRequired();
+            entity.Property(e => e.Notes).HasMaxLength(2000);
+            entity.Property(e => e.DatasetVersion).HasMaxLength(64);
+            entity.Property(e => e.DatasetHash).HasMaxLength(128);
+            entity.Property(e => e.ValidationStatus).HasMaxLength(32);
+            entity.Property(e => e.TrainingReportPath).HasMaxLength(1024);
+        });
+
+        builder.Entity<TrainingCenterNotification>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.CreatedAt);
+            entity.Property(e => e.ModelName).HasMaxLength(64).IsRequired();
+            entity.Property(e => e.NotificationType).HasMaxLength(64).IsRequired();
+            entity.Property(e => e.Message).HasMaxLength(2000).IsRequired();
+            entity.Property(e => e.Severity).HasMaxLength(24).IsRequired();
+        });
+
+        builder.Entity<DatasetArchiveEntry>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.PathHash).IsUnique();
+            entity.Property(e => e.Name).HasMaxLength(256).IsRequired();
+            entity.Property(e => e.Path).HasMaxLength(1024).IsRequired();
+            entity.Property(e => e.PathHash).HasMaxLength(128).IsRequired();
+            entity.Property(e => e.Notes).HasMaxLength(2000);
+            entity.Property(e => e.VersionLabel).HasMaxLength(64);
+            entity.Property(e => e.ContentHash).HasMaxLength(128);
+            entity.Property(e => e.ValidationStatus).HasMaxLength(32);
+        });
+
+        builder.Entity<DeploymentHistoryRecord>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.ModelName, e.DeployedAt });
+            entity.Property(e => e.ModelName).HasMaxLength(64).IsRequired();
+            entity.Property(e => e.FromVersion).HasMaxLength(32);
+            entity.Property(e => e.ToVersion).HasMaxLength(32).IsRequired();
+            entity.Property(e => e.ToCheckpointId).HasMaxLength(128).IsRequired();
+            entity.Property(e => e.Action).HasMaxLength(32).IsRequired();
+            entity.Property(e => e.Reason).HasMaxLength(512);
+            entity.Property(e => e.DeployedByUserId).HasMaxLength(450);
         });
     }
 

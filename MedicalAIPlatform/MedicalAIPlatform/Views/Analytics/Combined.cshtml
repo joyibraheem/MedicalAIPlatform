@@ -57,18 +57,26 @@
         else
         {
             <!-- X-Ray Results -->
-            @if (StateService.CurrentResults != null && StateService.CurrentResults.ContainsKey("CheXNet"))
+            @if (StateService.CurrentResults != null
+                 && ChestXRayResultHelper.TryGetResult(
+                     StateService.CurrentResults,
+                     StateService.SelectedXRayModelId,
+                     out var xrayResult,
+                     out var xrayResultKey)
+                 && xrayResult is not null)
             {
-                var xrayResult = StateService.CurrentResults["CheXNet"];
                 var xrayProbs = xrayResult.Probabilities ?? new Dictionary<string, double>(StringComparer.Ordinal);
                 var previewUrl = !string.IsNullOrEmpty(xrayResult.PreviewImageDataUrl)
                     ? xrayResult.PreviewImageDataUrl
                     : StateService.XRayImageDataUrl;
                 var heatmapUrl = xrayResult.Heatmap?.DataUrl;
                 var heatmapClass = xrayResult.Heatmap?.ClassName;
+                var modelLabel = xrayResult.ModelUsed ?? ChestXRayModels.GetDisplayName(xrayResultKey);
                 <div class="results-card">
                     <h2 class="findings-title" data-i18n="analytics_findings_reports">Findings Reports</h2>
-                    <a class="model-link" href="#">X-Ray-CheXNet:CheXNet</a>
+                    <a class="model-link" href="#">X-Ray: @modelLabel</a>
+
+                    <partial name="_ChestXRayModelMetadata" model="xrayResult" />
 
                     <div class="row mt-4">
                         <div class="col-lg-6">
@@ -158,7 +166,7 @@
                         </div>
                     </div>
 
-                    <partial name="_ClinicalPredictionFeedback" model="ClinicalFeedbackVmBuilder.FromCheXNet(xrayResult, StateService)" />
+                    <partial name="_ClinicalPredictionFeedback" model="ClinicalFeedbackVmBuilder.FromChestXRay(xrayResult, xrayResultKey, StateService)" />
                 </div>
             }
 

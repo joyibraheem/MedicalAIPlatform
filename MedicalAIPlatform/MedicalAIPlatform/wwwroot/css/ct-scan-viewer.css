@@ -798,6 +798,41 @@ body.light-mode .ct-meta-panel__header {
     min-height: 0;
 }
 
+.ct-ai-model-select {
+    margin-bottom: 0.85rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--ct-border);
+}
+
+.ct-ai-model-select__label {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ct-muted);
+    margin-bottom: 0.35rem;
+}
+
+.ct-ai-model-select__control {
+    background: var(--ct-panel-2);
+    border-color: var(--ct-border);
+    color: var(--ct-text);
+    font-size: 0.85rem;
+}
+
+.ct-ai-model-select__control:focus {
+    border-color: var(--ct-accent);
+    box-shadow: 0 0 0 0.15rem var(--ct-accent-soft);
+}
+
+.ct-ai-model-select__hint {
+    margin: 0.4rem 0 0;
+    font-size: 0.72rem;
+    color: var(--ct-muted);
+    line-height: 1.35;
+}
+
 .ct-ai-placeholder,
 .ct-ai-analyzing {
     text-align: center;

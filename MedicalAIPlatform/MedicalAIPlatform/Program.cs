@@ -2,9 +2,11 @@ using MedicalAIPlatform.Controllers;
 using MedicalAIPlatform.Data;
 using MedicalAIPlatform.Hubs;
 using MedicalAIPlatform.Models;
+using MedicalAIPlatform.Models.TrainingCenter;
 using MedicalAIPlatform.Options;
 using MedicalAIPlatform.Services;
 using MedicalAIPlatform.Services.Dicom;
+using MedicalAIPlatform.Services.TrainingCenter;
 using MedicalAIPlatform.Authorization;
 using MedicalAIPlatform.Infrastructure;
 using FellowOakDicom;
@@ -194,6 +196,61 @@ builder.Services.AddScoped<ModelTrainingDataService>();
 builder.Services.AddScoped<TrainingAssetPersistenceService>();
 builder.Services.AddSingleton<ModelRetrainingOrchestrator>();
 builder.Services.AddScoped<FineTuningDashboardService>();
+
+builder.Services.Configure<TrainingCenterOptions>(
+    builder.Configuration.GetSection(TrainingCenterOptions.SectionName));
+builder.Services.AddSingleton<TrainingJobRuntimeStore>();
+builder.Services.AddScoped<CheXNetPathResolver>();
+builder.Services.AddScoped<PythonScriptRunner>();
+builder.Services.AddScoped<TrainingMonitorReader>();
+builder.Services.AddScoped<BraxTrainingJobExecutor>();
+builder.Services.AddScoped<BraxCheXNetTrainingPipeline>();
+builder.Services.AddScoped<TrainingCenterService>();
+builder.Services.AddScoped<TrainingNotificationService>();
+builder.Services.AddScoped<DatasetArchiveService>();
+builder.Services.AddScoped<TrainingQueueService>();
+builder.Services.AddScoped<DeploymentHistoryService>();
+builder.Services.AddScoped<TrainingExperimentService>();
+builder.Services.AddScoped<TrainingRecommendationService>();
+builder.Services.AddScoped<TrainingResourceMonitorService>();
+builder.Services.AddScoped<TrainingInferenceTestService>();
+builder.Services.AddScoped<BraxDatasetCsvService>();
+builder.Services.AddScoped<IModelPluginMetadataProvider, BraxPluginMetadataProvider>();
+builder.Services.AddScoped<IModelPluginMetadataProvider>(sp =>
+    new HitlPluginMetadataProvider(ModelTrainingNames.LungCancer, "Lung Cancer Model"));
+builder.Services.AddScoped<IModelPluginMetadataProvider>(sp =>
+    new HitlPluginMetadataProvider(ModelTrainingNames.BioBERT, "BioBERT"));
+builder.Services.AddScoped<ModelPluginMetadataRegistry>();
+builder.Services.AddScoped<TrainingCenterExtensionService>();
+builder.Services.AddScoped<TrainingThresholdAnalyzerService>();
+builder.Services.AddScoped<CheckpointMetadataService>();
+builder.Services.AddScoped<ProductionIntegrationTestService>();
+builder.Services.AddScoped<DatasetVersioningService>();
+builder.Services.AddScoped<TrainingReportPdfService>();
+builder.Services.AddSingleton<BraxTrainingQueueService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<BraxTrainingQueueService>());
+builder.Services.AddScoped<ModelTrainingPipelineRegistry>(sp =>
+{
+    var pipelines = new List<IModelTrainingPipeline>
+    {
+        sp.GetRequiredService<BraxCheXNetTrainingPipeline>(),
+        new HitlTrainingPipeline(
+            ModelTrainingNames.LungCancer,
+            "Lung Cancer Model",
+            "CT slice lung nodule classifier. Retrain from doctor Accept/Modify feedback.",
+            sp.GetRequiredService<ApplicationDbContext>(),
+            sp.GetRequiredService<ModelRetrainingOrchestrator>(),
+            sp.GetRequiredService<IOptions<ModelRetrainingOptions>>()),
+        new HitlTrainingPipeline(
+            ModelTrainingNames.BioBERT,
+            "BioBERT",
+            "Clinical NLP entity extraction. Retrain from doctor Accept/Modify feedback.",
+            sp.GetRequiredService<ApplicationDbContext>(),
+            sp.GetRequiredService<ModelRetrainingOrchestrator>(),
+            sp.GetRequiredService<IOptions<ModelRetrainingOptions>>()),
+    };
+    return new ModelTrainingPipelineRegistry(pipelines);
+});
 
 builder.Services.AddHttpClient<TrainingApiClient>((sp, client) =>
 {

@@ -68,6 +68,48 @@ public sealed class CheXNetApiClient
         };
     }
 
+    public async Task<Dictionary<string, CheXNetPredictionResponse>> PredictRaddinoAsync(
+        byte[] imageBytes,
+        string fileName,
+        string contentType,
+        CancellationToken cancellationToken = default)
+    {
+        using var form = new MultipartFormDataContent();
+
+        using var fileContent = new ByteArrayContent(imageBytes);
+        fileContent.Headers.ContentType = MediaTypeHeaderValue.Parse(
+            string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType);
+
+        form.Add(fileContent, "file", string.IsNullOrWhiteSpace(fileName) ? "xray.jpg" : fileName);
+
+        var url = $"{Base()}/predict/raddino";
+
+        using var response = await _http.PostAsync(url, form, cancellationToken);
+        var body = await response.Content.ReadAsStringAsync(cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var message = TryExtractFastApiDetail(body) ?? body;
+            throw new HttpRequestException($"BRAX RAD-DINO API error ({(int)response.StatusCode}): {message}");
+        }
+
+        var parsed = JsonSerializer.Deserialize<CheXNetPredictionResponse>(body, JsonOptions);
+        if (parsed is null)
+        {
+            throw new InvalidOperationException("BRAX RAD-DINO API returned invalid JSON.");
+        }
+
+        NormalizeCheXNetResponse(parsed);
+        parsed.ModelUsed ??= ChestXRayModels.BraxRaddinoDisplay;
+        parsed.ModelVersion ??= "v1";
+        parsed.Dataset ??= "BRAX";
+
+        return new Dictionary<string, CheXNetPredictionResponse>(StringComparer.OrdinalIgnoreCase)
+        {
+            [ChestXRayModels.BraxRaddino] = parsed
+        };
+    }
+
     private static string? TryExtractFastApiDetail(string body)
     {
         try

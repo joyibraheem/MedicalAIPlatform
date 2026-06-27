@@ -25,6 +25,7 @@ public sealed class AnalyticsController : Controller
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly DicomInferencePipelineOrchestrator _dicomPipeline;
     private readonly AnalyticsCtInferenceExecutor _ctInference;
+    private readonly AnalyticsXRayInferenceExecutor _xrayExecutor;
     private readonly TrainingAssetPersistenceService _trainingAssets;
     private readonly ILogger<AnalyticsController> _logger;
 
@@ -38,6 +39,7 @@ public sealed class AnalyticsController : Controller
         UserManager<ApplicationUser> userManager,
         DicomInferencePipelineOrchestrator dicomPipeline,
         AnalyticsCtInferenceExecutor ctInference,
+        AnalyticsXRayInferenceExecutor xrayExecutor,
         TrainingAssetPersistenceService trainingAssets,
         ILogger<AnalyticsController> logger)
     {
@@ -48,6 +50,7 @@ public sealed class AnalyticsController : Controller
         _userManager = userManager;
         _dicomPipeline = dicomPipeline;
         _ctInference = ctInference;
+        _xrayExecutor = xrayExecutor;
         _trainingAssets = trainingAssets;
         _logger = logger;
     }
@@ -76,23 +79,30 @@ public sealed class AnalyticsController : Controller
     [HttpPost]
     [RequestFormLimits(MultipartBodyLengthLimit = MaxAnalyticsUploadBytes)]
     [RequestSizeLimit(MaxAnalyticsUploadBytes)]
-    public async Task<IActionResult> AnalyzeXRay(IFormFile xrayFile, CancellationToken cancellationToken)
+    public async Task<IActionResult> AnalyzeXRay(
+        IFormFile xrayFile,
+        string? xrayModel,
+        CancellationToken cancellationToken)
     {
         if (xrayFile == null || xrayFile.Length == 0)
             return Json(new { success = false, error = "Please upload an X-Ray image." });
+
+        var modelId = ChestXRayModels.Normalize(xrayModel);
 
         try
         {
             LogUpload("AnalyzeXRay", xrayFile);
             var bytes = await ReadAllBytesAsync(xrayFile, cancellationToken).ConfigureAwait(false);
-            var outcome = await ResolveCheXNetPredictionAsync(xrayFile, bytes, cancellationToken).ConfigureAwait(false);
+            var outcome = await ResolveCheXNetPredictionAsync(xrayFile, bytes, modelId, cancellationToken)
+                .ConfigureAwait(false);
             var results = outcome.Map;
+            var resultKey = ChestXRayModels.GetResultKey(modelId);
 
             string? previewUrl = null;
             if (!AnalyticsDicomRouting.IsDicomUpload(xrayFile))
                 previewUrl = MakeDataUrl(bytes, xrayFile.ContentType);
-            else if (results.TryGetValue("CheXNet", out var chex) && !string.IsNullOrEmpty(chex.PreviewImageDataUrl))
-                previewUrl = chex.PreviewImageDataUrl;
+            else if (results.TryGetValue(resultKey, out var xrayVm) && !string.IsNullOrEmpty(xrayVm.PreviewImageDataUrl))
+                previewUrl = xrayVm.PreviewImageDataUrl;
 
             _stateService.SetResults(
                 results,
@@ -108,7 +118,8 @@ public sealed class AnalyticsController : Controller
                     SafeFileName(xrayFile),
                     xrayFile.ContentType ?? "",
                     outcome.DicomMetadata,
-                    cancellationToken).ConfigureAwait(false)).ToJson());
+                    cancellationToken).ConfigureAwait(false)).ToJson(),
+                selectedXRayModelId: modelId);
 
             return Json(new { success = true, redirect = Url.Action("XRay") });
         }
@@ -191,9 +202,12 @@ public sealed class AnalyticsController : Controller
         [FromForm(Name = "xrayFile")] IFormFile? xrayFile,
         [FromForm(Name = "clinicalText")] string? clinicalText,
         [FromForm(Name = "ctFile")] IFormFile? ctFile,
+        [FromForm(Name = "xrayModel")] string? xrayModel,
         CancellationToken cancellationToken)
     {
         clinicalText = string.IsNullOrWhiteSpace(clinicalText) ? null : clinicalText.Trim();
+        var xrayModelId = ChestXRayModels.Normalize(xrayModel);
+        var xrayResultKey = ChestXRayModels.GetResultKey(xrayModelId);
         try
         {
             Task<ChexNetResolveOutcome>? chexTask = null;
@@ -206,7 +220,7 @@ public sealed class AnalyticsController : Controller
             {
                 LogUpload("AnalyzeCombined:X-Ray slot", xrayFile);
                 xRayBytes = await ReadAllBytesAsync(xrayFile, cancellationToken).ConfigureAwait(false);
-                chexTask = ResolveCheXNetPredictionAsync(xrayFile, xRayBytes, cancellationToken);
+                chexTask = ResolveCheXNetPredictionAsync(xrayFile, xRayBytes, xrayModelId, cancellationToken);
             }
 
             if (clinicalText != null)
@@ -284,7 +298,9 @@ public sealed class AnalyticsController : Controller
             }
 
             int okBranches =
-                (chexTask is not null && chexFault is null && chexResults?.ContainsKey("CheXNet") == true ? 1 : 0)
+                (chexTask is not null && chexFault is null && chexResults is not null
+                    && ChestXRayResultHelper.TryGetResult(chexResults, xrayModelId, out _, out _)
+                    ? 1 : 0)
                 + (bertTask is not null && bertFault is null && bioResults is not null ? 1 : 0)
                 + (ctBytes is not null && lungFault is null ? 1 : 0);
 
@@ -302,8 +318,8 @@ public sealed class AnalyticsController : Controller
                 xrayDataUrl = MakeDataUrl(xRayBytes, xrayFile.ContentType);
             else if (
                 chexResults != null
-                && chexResults.TryGetValue("CheXNet", out var chexVm)
-                && !string.IsNullOrEmpty(chexVm.PreviewImageDataUrl))
+                && ChestXRayResultHelper.TryGetResult(chexResults, xrayModelId, out var chexVm, out _)
+                && !string.IsNullOrEmpty(chexVm!.PreviewImageDataUrl))
                 xrayDataUrl = chexVm.PreviewImageDataUrl;
 
             string? ctDataUrl = null;
@@ -344,7 +360,8 @@ public sealed class AnalyticsController : Controller
                 chexOutcome?.PipelineNotes ?? [],
                 chexSourceJson,
                 lungSourceJson,
-                bioSourceJson);
+                bioSourceJson,
+                selectedXRayModelId: xrayModelId);
 
             if (warnings.Count > 0)
                 TempData["CombinedWarnings"] = string.Join(" • ", warnings);
@@ -475,8 +492,24 @@ public sealed class AnalyticsController : Controller
     private async Task<ChexNetResolveOutcome> ResolveCheXNetPredictionAsync(
         IFormFile fileMeta,
         byte[] fileBytes,
+        string? xrayModelId,
         CancellationToken cancellationToken)
     {
+        var modelId = ChestXRayModels.Normalize(xrayModelId);
+
+        if (string.Equals(modelId, ChestXRayModels.BraxRaddino, StringComparison.Ordinal))
+        {
+            var (map, notes) = await _xrayExecutor
+                .PredictChestAsync(
+                    fileBytes,
+                    SafeFileName(fileMeta),
+                    string.IsNullOrWhiteSpace(fileMeta.ContentType) ? "application/octet-stream" : fileMeta.ContentType,
+                    modelId,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            return new ChexNetResolveOutcome(map, notes);
+        }
+
         if (AnalyticsDicomRouting.IsDicomUpload(fileMeta))
         {
             _logger.LogInformation(

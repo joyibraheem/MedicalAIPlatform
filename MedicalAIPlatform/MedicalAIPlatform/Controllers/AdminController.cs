@@ -1,9 +1,13 @@
+using System.Text.Json;
 using MedicalAIPlatform.Models;
+using MedicalAIPlatform.Options;
 using MedicalAIPlatform.Services;
+using MedicalAIPlatform.Services.TrainingCenter;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace MedicalAIPlatform.Controllers;
 
@@ -13,26 +17,29 @@ public sealed class AdminController : Controller
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly AdminDashboardService _adminDashboard;
     private readonly DoctorRegistrationService _registrations;
-    private readonly FineTuningDashboardService _fineTuningDashboard;
+    private readonly TrainingCenterService _trainingCenter;
+    private readonly IOptions<TrainingCenterOptions> _trainingCenterOptions;
     private readonly ModelRetrainingOrchestrator _retraining;
 
     public AdminController(
         UserManager<ApplicationUser> userManager,
         AdminDashboardService adminDashboard,
         DoctorRegistrationService registrations,
-        FineTuningDashboardService fineTuningDashboard,
+        TrainingCenterService trainingCenter,
+        IOptions<TrainingCenterOptions> trainingCenterOptions,
         ModelRetrainingOrchestrator retraining)
     {
         _userManager = userManager;
         _adminDashboard = adminDashboard;
         _registrations = registrations;
-        _fineTuningDashboard = fineTuningDashboard;
+        _trainingCenter = trainingCenter;
+        _trainingCenterOptions = trainingCenterOptions;
         _retraining = retraining;
     }
 
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(string? xrayFilter)
     {
-        var model = await _adminDashboard.BuildAsync(CancellationToken.None).ConfigureAwait(false);
+        var model = await _adminDashboard.BuildAsync(xrayFilter, CancellationToken.None).ConfigureAwait(false);
         return View(model);
     }
 
@@ -102,7 +109,17 @@ public sealed class AdminController : Controller
 
     public async Task<IActionResult> FineTuningDashboard()
     {
-        var model = await _fineTuningDashboard.BuildAsync(HttpContext.RequestAborted).ConfigureAwait(false);
+        var dashboard = await _trainingCenter.BuildDashboardAsync(HttpContext.RequestAborted).ConfigureAwait(false);
+        var model = new FineTuningDashboardViewModel
+        {
+            Dashboard = dashboard,
+            ModifiedThreshold = dashboard.ModifiedThreshold,
+            LiveRefreshSeconds = _trainingCenterOptions.Value.LiveRefreshSeconds,
+            InitialJson = JsonSerializer.Serialize(dashboard, new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            }),
+        };
         return View(model);
     }
 

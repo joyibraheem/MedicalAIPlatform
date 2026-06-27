@@ -1,7 +1,15 @@
+using MedicalAIPlatform.Models.TrainingCenter;
+
 namespace MedicalAIPlatform.Models;
 
 public sealed class FineTuningDashboardViewModel
 {
+    public TrainingCenterDashboardDto Dashboard { get; init; } = new();
+
+    public int LiveRefreshSeconds { get; init; } = 5;
+
+    public string InitialJson { get; init; } = "{}";
+
     public int ModifiedThreshold { get; init; }
 
     public List<FineTuningModelSummaryVm> Models { get; init; } = [];

@@ -8,7 +8,11 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace MedicalAIPlatform.Services;
 
-internal sealed record CtJobInputPayload(string FileName, string ContentType, string TempPath);
+internal sealed record CtJobInputPayload(
+    string FileName,
+    string ContentType,
+    string TempPath,
+    string? XRayModelId = null);
 
 /// <summary>Database-backed analytics jobs with server-side execution (survives navigation). Notifies users via SignalR.</summary>
 public sealed class AnalyticsJobQueueService
@@ -90,13 +94,23 @@ public sealed class AnalyticsJobQueueService
         return id;
     }
 
-    /// <summary>Queues CheXNet chest inference (same persistence / SignalR / chat UX as CT jobs).</summary>
-    public async Task<Guid> StartXRayJobAsync(string userId, byte[] fileBytes, string safeFileName, string contentType,
+    /// <summary>Queues chest X-ray inference (same persistence / SignalR / chat UX as CT jobs).</summary>
+    public Task<Guid> StartXRayJobAsync(string userId, byte[] fileBytes, string safeFileName, string contentType,
+        CancellationToken cancellationToken = default) =>
+        StartXRayJobAsync(userId, fileBytes, safeFileName, contentType, ChestXRayModels.CheXNet, cancellationToken);
+
+    public async Task<Guid> StartXRayJobAsync(
+        string userId,
+        byte[] fileBytes,
+        string safeFileName,
+        string contentType,
+        string xrayModelId,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(userId))
             throw new ArgumentException("User id is required.", nameof(userId));
 
+        var modelId = ChestXRayModels.Normalize(xrayModelId);
         PruneExpiredJobsFireAndForget();
 
         var id = Guid.NewGuid();
@@ -106,7 +120,7 @@ public sealed class AnalyticsJobQueueService
         await File.WriteAllBytesAsync(tempPath, fileBytes, cancellationToken).ConfigureAwait(false);
 
         var inputJson = JsonSerializer.Serialize(
-            new CtJobInputPayload(safeFileName, contentType ?? "application/octet-stream", tempPath),
+            new CtJobInputPayload(safeFileName, contentType ?? "application/octet-stream", tempPath, modelId),
             JsonOpts);
 
         await using (var scope = _scopeFactory.CreateAsyncScope())
@@ -126,8 +140,8 @@ public sealed class AnalyticsJobQueueService
             {
                 UserId = userId,
                 Role = "system",
-                Content = "📥 Scan received — processing started. File: " + safeFileName,
-                MetadataJson = JsonSerializer.Serialize(new { kind = "xray-queued" }, JsonOpts),
+                Content = $"📥 Chest X-ray received ({ChestXRayModels.GetDisplayName(modelId)}) — processing started. File: {safeFileName}",
+                MetadataJson = JsonSerializer.Serialize(new { kind = "xray-queued", xRayModelId = modelId }, JsonOpts),
                 RelatedJobId = id,
                 CreatedAt = DateTimeOffset.UtcNow
             });
@@ -137,8 +151,9 @@ public sealed class AnalyticsJobQueueService
 
         _ = Task.Run(() => RunXRayJobAsync(id, tempPath));
 
-        _logger.LogInformation("Analytics X-ray job {JobId} queued (user={User}, file={File}, bytes={Len})", id, userId,
-            safeFileName, fileBytes.Length);
+        _logger.LogInformation(
+            "Analytics X-ray job {JobId} queued (user={User}, file={File}, bytes={Len}, model={Model})",
+            id, userId, safeFileName, fileBytes.Length, modelId);
         return id;
     }
 
@@ -463,14 +478,18 @@ public sealed class AnalyticsJobQueueService
             await using var scope = _scopeFactory.CreateAsyncScope();
             var executor = scope.ServiceProvider.GetRequiredService<AnalyticsXRayInferenceExecutor>();
 
+            var modelId = ChestXRayModels.Normalize(input.XRayModelId);
+            var resultKey = ChestXRayModels.GetResultKey(modelId);
+
             using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(30));
-            var (map, notes) = await executor.PredictChestAsync(bytes, input.FileName, input.ContentType, cts.Token)
+            var (map, notes) = await executor
+                .PredictChestAsync(bytes, input.FileName, input.ContentType, modelId, cts.Token)
                 .ConfigureAwait(false);
 
-            if (!map.TryGetValue("CheXNet", out var chex))
+            if (!map.TryGetValue(resultKey, out var chex))
             {
                 await FailJobAsync(jobId, userId, ChestAiBackgroundJob.KindXRay,
-                        "CheXNet response missing from inference service.")
+                        $"{ChestXRayModels.GetDisplayName(modelId)} response missing from inference service.")
                     .ConfigureAwait(false);
                 return;
             }
@@ -482,7 +501,8 @@ public sealed class AnalyticsJobQueueService
                 previewUrl = chex.PreviewImageDataUrl;
 
             var viewState = AnalyticsSessionSnapshot.FromSetResults(
-                map, null, null, previewUrl, null, null, notes, pipelineNotesProvided: notes is not null);
+                map, null, null, previewUrl, null, null, notes, pipelineNotesProvided: notes is not null,
+                selectedXRayModelId: modelId);
             try
             {
                 var assets = scope.ServiceProvider.GetRequiredService<TrainingAssetPersistenceService>();
@@ -491,7 +511,7 @@ public sealed class AnalyticsJobQueueService
                     .ConfigureAwait(false);
                 viewState = AnalyticsSessionSnapshot.FromSetResults(
                     map, null, null, previewUrl, null, null, notes, pipelineNotesProvided: notes is not null,
-                    cheXNetSourceJson: source.ToJson(), relatedJobId: jobId);
+                    cheXNetSourceJson: source.ToJson(), relatedJobId: jobId, selectedXRayModelId: modelId);
             }
             catch (Exception ex)
             {
@@ -511,12 +531,19 @@ public sealed class AnalyticsJobQueueService
                 .Take(8)
                 .ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase);
 
+            var topConfidence = chex.Confidence
+                ?? (chex.TopK.FirstOrDefault()?.Probability
+                    ?? (chex.Probabilities.Count > 0
+                        ? chex.Probabilities.OrderByDescending(kv => kv.Value).First().Value
+                        : (double?)null));
+
             var summary =
-                $"Chest X-ray analysis finished. Top prediction: **{predicted}**."
+                $"Chest X-ray analysis finished ({ChestXRayModels.GetDisplayName(modelId)}). Top prediction: **{predicted}**."
                 + (topProbs.Count > 0
                     ? " Key scores: " + string.Join(", ", topProbs.Select(kv => $"{kv.Key} {kv.Value:P0}"))
                     : "");
 
+            var completedAt = DateTimeOffset.UtcNow;
             var dto = new AnalyticsCtJobResultDto
             {
                 Redirect = $"/Analytics/XRay?jobId={jobId:D}",
@@ -525,8 +552,18 @@ public sealed class AnalyticsJobQueueService
                 Summary = summary,
                 TopProbabilities = topProbs,
                 InferenceNote = AnalyticsDicomRouting.IsDicomUpload(input.FileName, input.ContentType)
-                    ? "CheXNet over DICOM slices (aggregated)."
-                    : null
+                    ? modelId == ChestXRayModels.CheXNet
+                        ? "CheXNet over DICOM slices (aggregated)."
+                        : "RAD-DINO over uploaded DICOM study file."
+                    : null,
+                ModelUsed = chex.ModelUsed ?? ChestXRayModels.GetDisplayName(modelId),
+                ModelVersion = chex.ModelVersion ?? (modelId == ChestXRayModels.CheXNet ? "Production" : "v1"),
+                Confidence = topConfidence,
+                InferenceMs = chex.InferenceMs > 0 ? chex.InferenceMs : null,
+                Dataset = chex.Dataset ?? (modelId == ChestXRayModels.BraxRaddino ? "BRAX" : ""),
+                TrainingDate = chex.TrainingDate ?? "",
+                PredictionTimeUtc = completedAt,
+                XRayModelId = modelId
             };
 
             var resultJson = new AnalyticsJobResultEnvelope

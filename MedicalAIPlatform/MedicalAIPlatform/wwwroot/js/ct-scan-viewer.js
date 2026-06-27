@@ -69,6 +69,9 @@
         aiRisk: document.getElementById('aiRisk'),
         aiModel: document.getElementById('aiModel'),
         aiProbList: document.getElementById('aiProbList'),
+        aiModelSelect: document.getElementById('aiModelSelect'),
+        aiAnalyzingMessage: document.getElementById('aiAnalyzingMessage'),
+        aiAnalyzingHint: document.getElementById('aiAnalyzingHint'),
         seriesDrawer: document.getElementById('seriesDrawer'),
         seriesMetaList: document.getElementById('seriesMetaList'),
         toast: document.getElementById('ctToast'),
@@ -393,10 +396,12 @@
 
     function setViewerEnabled(enabled) {
         [
-            els.btnPrev, els.btnNext, els.btnPlay, els.btnSeries, els.btnAnalyzeScan, els.btnDownloadReport
+            els.btnPrev, els.btnNext, els.btnPlay, els.btnSeries, els.btnDownloadReport
         ].forEach(function (btn) {
             if (btn) btn.disabled = !enabled;
         });
+        if (els.aiModelSelect) els.aiModelSelect.disabled = !enabled;
+        updateAnalyzeButtonState();
         setViewportToolsEnabled(enabled);
         if (!enabled && els.btnDownloadReport) els.btnDownloadReport.disabled = true;
     }
@@ -658,7 +663,7 @@
         }
         if (els.studyModality) {
             var mod = active?.modality || meta.modality;
-            els.studyModality.textContent = [mod, meta.bodyPartExamined].filter(Boolean).join(' · ') || 'CT';
+            els.studyModality.textContent = [mod, meta.bodyPartExamined].filter(Boolean).join(' · ') || 'Medical imaging';
         }
         if (els.studySliceCount) {
             var seriesPart = state.series.length > 1 ? state.series.length + ' series · ' : '';
@@ -699,11 +704,28 @@
         renderMetadataPanels();
     }
 
+    function getSelectedAiModel() {
+        return els.aiModelSelect ? (els.aiModelSelect.value || '').trim() : '';
+    }
+
+    function selectedAiModelLabel() {
+        if (!els.aiModelSelect) return 'AI model';
+        var opt = els.aiModelSelect.options[els.aiModelSelect.selectedIndex];
+        return opt && opt.value ? opt.text : 'AI model';
+    }
+
+    function updateAnalyzeButtonState() {
+        if (!els.btnAnalyzeScan) return;
+        var hasSession = !!state.sessionId;
+        var hasModel = !!getSelectedAiModel();
+        els.btnAnalyzeScan.disabled = !hasSession || !hasModel;
+    }
+
     function resetAiPlaceholder() {
         if (!els.aiPlaceholder) return;
         els.aiPlaceholder.innerHTML =
             '<i class="bi bi-lightning-charge"></i>' +
-            '<p>Click <strong>Analyze Scan</strong> to run the DICOM pipeline and LungAI inference.</p>';
+            '<p>Select an AI model, then click <strong>Analyze Scan</strong> to run inference on this study.</p>';
     }
 
     function riskClass(level) {
@@ -759,9 +781,13 @@
         if (!response.ok) throw new Error('Could not load viewer session.');
         var data = await response.json();
         applySessionSummary(data.summary || {});
+        if (data.selectedAiModel && els.aiModelSelect) {
+            els.aiModelSelect.value = data.selectedAiModel;
+        }
         if (data.analysis) renderAnalysis(data.analysis);
         else resetAiPlaceholder();
         showSessionUi();
+        updateAnalyzeButtonState();
     }
 
     async function uploadFile(file) {
@@ -783,6 +809,7 @@
         state.sessionId = data.sessionId;
         window.history.replaceState({}, '', data.redirect || (window.location.pathname + '?sessionId=' + data.sessionId));
         state.analysis = null;
+        if (els.aiModelSelect) els.aiModelSelect.value = '';
         if (els.aiResults) els.aiResults.classList.add('d-none');
         resetAiPlaceholder();
         if (els.btnDownloadReport) els.btnDownloadReport.disabled = true;
@@ -790,20 +817,37 @@
         resetViewport();
         stopPlay();
         showSessionUi();
+        updateAnalyzeButtonState();
         var total = state.series.reduce(function (n, s) { return n + (s.slices?.length || 0); }, 0);
         showToast('Study loaded — ' + state.series.length + ' series, ' + total + ' slices', true);
     }
 
     async function analyzeScan() {
         if (!state.sessionId) return;
+        var aiModel = getSelectedAiModel();
+        if (!aiModel) {
+            showToast('Select an AI model before running analysis.');
+            return;
+        }
+
         if (els.aiPlaceholder) els.aiPlaceholder.classList.add('d-none');
         if (els.aiResults) els.aiResults.classList.add('d-none');
         if (els.aiAnalyzing) els.aiAnalyzing.classList.remove('d-none');
+        if (els.aiAnalyzingMessage) {
+            els.aiAnalyzingMessage.textContent = 'Running ' + selectedAiModelLabel() + '…';
+        }
+        if (els.aiAnalyzingHint) {
+            els.aiAnalyzingHint.textContent = aiModel === 'CheXNet'
+                ? 'CheXNet processes each slice for chest pathology findings.'
+                : 'LungAI may take a minute for multi-slice CT DICOM volumes.';
+        }
         if (els.btnAnalyzeScan) els.btnAnalyzeScan.disabled = true;
+        if (els.aiModelSelect) els.aiModelSelect.disabled = true;
 
         try {
             var formData = new FormData();
             formData.append('__RequestVerificationToken', antiforgeryToken());
+            formData.append('aiModel', aiModel);
             var response = await fetch(cfg.analyzeUrl + '?sessionId=' + encodeURIComponent(state.sessionId), {
                 method: 'POST',
                 body: formData,
@@ -824,7 +868,8 @@
             }
             showToast(err.message || 'Analysis failed.');
         } finally {
-            if (els.btnAnalyzeScan) els.btnAnalyzeScan.disabled = false;
+            if (els.aiModelSelect) els.aiModelSelect.disabled = false;
+            updateAnalyzeButtonState();
         }
     }
 
@@ -959,6 +1004,10 @@
 
         if (els.btnAnalyzeScan) els.btnAnalyzeScan.addEventListener('click', analyzeScan);
 
+        if (els.aiModelSelect) {
+            els.aiModelSelect.addEventListener('change', updateAnalyzeButtonState);
+        }
+
         if (els.btnDownloadReport) {
             els.btnDownloadReport.addEventListener('click', function () {
                 if (!state.sessionId) return;
@@ -1060,6 +1109,7 @@
 
     bindUploadInputs();
     bindControls();
+    updateAnalyzeButtonState();
 
     if (cfg.hasSession && cfg.sessionId) {
         fetchSession().catch(function (err) { showToast(err.message); });

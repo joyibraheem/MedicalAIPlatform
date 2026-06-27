@@ -35,6 +35,14 @@ public static class ClinicalFeedbackVmBuilder
         CheXNetPredictionResponse r,
         AnalyticsStateService? state = null,
         string modality = "XR",
+        Guid? relatedJobId = null) =>
+        FromChestXRay(r, ChestXRayModels.CheXNet, state, modality, relatedJobId);
+
+    public static ClinicalFeedbackPanelVm FromChestXRay(
+        CheXNetPredictionResponse r,
+        string modelKey,
+        AnalyticsStateService? state = null,
+        string modality = "XR",
         Guid? relatedJobId = null)
     {
         var probs = r.Probabilities ?? new Dictionary<string, double>(StringComparer.Ordinal);
@@ -48,11 +56,16 @@ public static class ClinicalFeedbackVmBuilder
             topClass = topKv?.Key,
             topProb = topKv?.Value,
             r.InferenceMs,
+            r.ModelUsed,
+            r.ModelVersion,
+            r.Dataset,
+            r.TrainingDate,
             heatmapClassName = r.Heatmap?.ClassName
         };
         var keys = probs.Keys.ToList();
         var sourceObj = TrainingSourceData.FromJson(state?.CheXNetSourceJson);
-        return BuildPanel("CheXNet", modality, snap, keys, state?.CheXNetSourceJson, sourceObj, relatedJobId ?? state?.RelatedJobId);
+        var normalizedKey = ChestXRayModels.Normalize(modelKey);
+        return BuildPanel(normalizedKey, modality, snap, keys, state?.CheXNetSourceJson, sourceObj, relatedJobId ?? state?.RelatedJobId);
     }
 
     public static ClinicalFeedbackPanelVm FromBio(

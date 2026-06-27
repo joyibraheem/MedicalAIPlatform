@@ -1,0 +1,516 @@
+/* AI Model Management & Fine-Tuning Center */
+
+.ftc-root {
+    --ftc-accent: #0ea5e9;
+    --ftc-accent-soft: rgba(14, 165, 233, 0.12);
+    --ftc-success: #22c55e;
+    --ftc-warning: #f59e0b;
+    --ftc-danger: #ef4444;
+    --ftc-live: #a855f7;
+}
+
+.ftc-header {
+    margin-bottom: 1.5rem;
+}
+
+.ftc-section {
+    margin-bottom: 1rem;
+    border: 1px solid var(--adm-card-border);
+    border-radius: 14px;
+    background: var(--adm-card-bg);
+    box-shadow: var(--adm-shadow);
+    overflow: hidden;
+}
+
+.ftc-section-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.85rem 1.15rem;
+    border: 0;
+    background: transparent;
+    color: var(--adm-text);
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-align: left;
+}
+
+.ftc-section-toggle span:first-child {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.ftc-section-toggle:hover {
+    background: var(--ftc-accent-soft);
+}
+
+.ftc-section-body {
+    padding: 0 1.15rem 1.15rem;
+    border-top: 1px solid var(--adm-card-border);
+}
+
+.ftc-panel {
+    border: 1px solid var(--adm-card-border);
+    border-radius: 10px;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.35);
+    height: 100%;
+}
+
+html[data-theme="dark"] .ftc-panel,
+body.dark-mode .ftc-panel {
+    background: rgba(15, 23, 42, 0.45);
+}
+
+.ftc-panel-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    margin: 0 0 0.75rem;
+    color: var(--adm-text);
+}
+
+.ftc-model-card {
+    border: 2px solid var(--adm-card-border);
+    border-radius: 12px;
+    padding: 1rem;
+    cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+    background: rgba(255, 255, 255, 0.4);
+    height: 100%;
+}
+
+html[data-theme="dark"] .ftc-model-card,
+body.dark-mode .ftc-model-card {
+    background: rgba(15, 23, 42, 0.5);
+}
+
+.ftc-model-card:hover {
+    border-color: var(--ftc-accent);
+    transform: translateY(-2px);
+}
+
+.ftc-model-card.selected {
+    border-color: var(--ftc-accent);
+    box-shadow: 0 0 0 3px var(--ftc-accent-soft);
+}
+
+.ftc-model-card h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    margin: 0 0 0.25rem;
+}
+
+.ftc-model-card .ftc-pipeline-kind {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--adm-muted);
+}
+
+.ftc-model-metrics {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.35rem 0.75rem;
+    font-size: 0.78rem;
+    margin-top: 0.75rem;
+}
+
+.ftc-model-metrics dt {
+    color: var(--adm-muted);
+    margin: 0;
+}
+
+.ftc-model-metrics dd {
+    margin: 0;
+    text-align: right;
+    font-weight: 600;
+}
+
+.ftc-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.ftc-badge-idle { background: rgba(100, 116, 139, 0.2); color: var(--adm-muted); }
+.ftc-badge-running { background: rgba(168, 85, 247, 0.2); color: var(--ftc-live); }
+.ftc-badge-production { background: rgba(34, 197, 94, 0.2); color: #15803d; }
+.ftc-badge-live { margin-left: auto; margin-right: 0.5rem; }
+
+html[data-theme="dark"] .ftc-badge-production,
+body.dark-mode .ftc-badge-production {
+    color: #86efac;
+}
+
+.ftc-start-btn {
+    background: linear-gradient(135deg, #0ea5e9, #6366f1);
+    border: 0;
+    color: #fff;
+    padding: 0.85rem 2.5rem;
+    font-weight: 700;
+    border-radius: 999px;
+    box-shadow: 0 8px 24px rgba(14, 165, 233, 0.35);
+}
+
+.ftc-start-btn:hover {
+    filter: brightness(1.08);
+    color: #fff;
+}
+
+.ftc-start-btn:disabled {
+    opacity: 0.5;
+    filter: grayscale(0.3);
+}
+
+.ftc-progress-wrap {
+    margin: 1rem 0;
+}
+
+.ftc-progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.78rem;
+    color: var(--adm-muted);
+    margin-bottom: 0.35rem;
+}
+
+.ftc-monitor-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 0.65rem;
+}
+
+.ftc-monitor-stat {
+    border: 1px solid var(--adm-card-border);
+    border-radius: 8px;
+    padding: 0.55rem 0.65rem;
+    text-align: center;
+}
+
+.ftc-monitor-stat .label {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--adm-muted);
+}
+
+.ftc-monitor-stat .value {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--adm-text);
+}
+
+.ftc-chart-wrap {
+    border: 1px solid var(--adm-card-border);
+    border-radius: 10px;
+    padding: 0.75rem;
+    min-height: 220px;
+    background: rgba(255, 255, 255, 0.3);
+}
+
+html[data-theme="dark"] .ftc-chart-wrap,
+body.dark-mode .ftc-chart-wrap {
+    background: rgba(15, 23, 42, 0.4);
+}
+
+.ftc-table th {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--adm-muted);
+    white-space: nowrap;
+}
+
+.ftc-table td {
+    font-size: 0.82rem;
+    vertical-align: middle;
+}
+
+.ftc-table .best-cell {
+    background: rgba(34, 197, 94, 0.15);
+    font-weight: 700;
+}
+
+.ftc-warn-list {
+    list-style: none;
+    padding: 0;
+    margin: 0.5rem 0 0;
+}
+
+.ftc-warn-list li {
+    color: var(--ftc-danger);
+    font-size: 0.82rem;
+    padding: 0.25rem 0;
+}
+
+.ftc-dataset-ok {
+    color: var(--ftc-success);
+    font-weight: 600;
+}
+
+.ftc-timeline {
+    position: relative;
+    padding-left: 1.25rem;
+    border-left: 2px solid var(--adm-card-border);
+}
+
+.ftc-timeline-item {
+    position: relative;
+    padding-bottom: 1.25rem;
+    padding-left: 0.75rem;
+}
+
+.ftc-timeline-item::before {
+    content: "";
+    position: absolute;
+    left: -1.38rem;
+    top: 0.35rem;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--ftc-accent);
+    border: 2px solid var(--adm-card-bg);
+}
+
+.ftc-timeline-item.failed::before {
+    background: var(--ftc-danger);
+}
+
+.ftc-timeline-item.completed::before {
+    background: var(--ftc-success);
+}
+
+.ftc-system-card {
+    border: 1px solid var(--adm-card-border);
+    border-radius: 10px;
+    padding: 0.85rem;
+    text-align: center;
+}
+
+.ftc-system-card .val {
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.ftc-system-card .lbl {
+    font-size: 0.72rem;
+    color: var(--adm-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.ftc-log-tail {
+    font-family: ui-monospace, monospace;
+    font-size: 0.72rem;
+    max-height: 120px;
+    overflow: auto;
+    background: rgba(15, 23, 42, 0.06);
+    padding: 0.5rem;
+    border-radius: 6px;
+    margin-top: 0.75rem;
+    white-space: pre-wrap;
+}
+
+html[data-theme="dark"] .ftc-log-tail,
+body.dark-mode .ftc-log-tail {
+    background: rgba(0, 0, 0, 0.25);
+}
+
+@media (max-width: 768px) {
+    .ftc-model-metrics {
+        grid-template-columns: 1fr;
+    }
+}
+
+.ftc-main-tabs {
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    border-bottom: 1px solid var(--adm-card-border);
+    padding-bottom: 0.5rem;
+}
+
+.ftc-main-tabs .nav-link {
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--adm-muted);
+    padding: 0.45rem 0.9rem;
+    transition: background 0.2s, color 0.2s, transform 0.15s;
+}
+
+.ftc-main-tabs .nav-link.active {
+    background: var(--ftc-accent-soft);
+    color: var(--ftc-accent);
+}
+
+.ftc-main-tabs .nav-link:hover {
+    transform: translateY(-1px);
+}
+
+.ftc-tab-badge {
+    display: inline-flex;
+    min-width: 1.1rem;
+    height: 1.1rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: var(--ftc-danger);
+    color: #fff;
+    font-size: 0.65rem;
+    margin-left: 0.25rem;
+}
+
+.ftc-preset-card {
+    border: 1px solid var(--adm-card-border);
+    border-radius: 10px;
+    padding: 0.75rem;
+    cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.ftc-preset-card:hover, .ftc-preset-card.selected {
+    border-color: var(--ftc-accent);
+    box-shadow: 0 0 0 2px var(--ftc-accent-soft);
+}
+
+.ftc-notification-item {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.65rem 0;
+    border-bottom: 1px solid var(--adm-card-border);
+    animation: ftcFadeIn 0.3s ease;
+}
+
+.ftc-notification-item.unread {
+    background: var(--ftc-accent-soft);
+    border-radius: 8px;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+}
+
+@keyframes ftcFadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.ftc-recommendation-card {
+    border: 1px solid var(--adm-card-border);
+    border-radius: 12px;
+    padding: 1rem;
+    background: linear-gradient(135deg, var(--ftc-accent-soft), transparent);
+}
+
+.ftc-home-summary .ftc-section-body {
+    padding: 0.75rem 1rem 1rem;
+}
+
+.ftc-home-card {
+    border: 1px solid var(--adm-card-border);
+    border-radius: 10px;
+    padding: 0.65rem 0.75rem;
+    background: var(--adm-card-bg);
+    min-height: 4.5rem;
+}
+
+.ftc-home-card-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--adm-muted, #64748b);
+}
+
+.ftc-home-card-value {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-top: 0.25rem;
+    word-break: break-word;
+}
+
+.ftc-workflow-rail,
+.ftc-wizard-steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.ftc-workflow-step,
+.ftc-wizard-step {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.65rem;
+    border-radius: 999px;
+    border: 1px solid var(--adm-card-border);
+    font-size: 0.82rem;
+    background: var(--adm-card-bg);
+}
+
+.ftc-workflow-step.completed,
+.ftc-wizard-step.completed {
+    border-color: var(--ftc-success);
+    background: rgba(34, 197, 94, 0.08);
+}
+
+.ftc-workflow-step.current,
+.ftc-wizard-step.current {
+    border-color: var(--ftc-accent);
+    background: var(--ftc-accent-soft);
+}
+
+.ftc-workflow-arrow {
+    margin-left: 0.25rem;
+    opacity: 0.5;
+}
+
+.ftc-wizard-num {
+    display: inline-flex;
+    width: 1.25rem;
+    height: 1.25rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--ftc-accent-soft);
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.ftc-wizard-status {
+    font-size: 0.72rem;
+    opacity: 0.7;
+    text-transform: capitalize;
+}
+
+.ftc-console-output {
+    background: #0f172a;
+    color: #e2e8f0;
+    border-radius: 10px;
+    padding: 0.85rem;
+    max-height: 320px;
+    overflow: auto;
+    font-size: 0.78rem;
+    line-height: 1.4;
+    margin: 0;
+    white-space: pre-wrap;
+}
+
+.ftc-arch-diagram {
+    border: 1px dashed var(--adm-card-border);
+    border-radius: 10px;
+    padding: 1rem;
+    text-align: center;
+    font-weight: 600;
+    line-height: 1.8;
+}
+
+.ftc-plugin-card {
+    min-height: 100%;
+}

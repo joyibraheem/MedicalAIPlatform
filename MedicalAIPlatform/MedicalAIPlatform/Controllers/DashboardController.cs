@@ -35,7 +35,7 @@ namespace MedicalAIPlatform.Controllers
             // Check for Admin Role
             if (await _userManager.IsInRoleAsync(user, "Admin"))
             {
-                var adminModel = await _adminDashboard.BuildAsync(CancellationToken.None).ConfigureAwait(false);
+                var adminModel = await _adminDashboard.BuildAsync(cancellationToken: CancellationToken.None).ConfigureAwait(false);
                 return View("~/Views/Admin/Index.cshtml", adminModel);
             }
 

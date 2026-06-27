@@ -40,6 +40,9 @@ public sealed class AnalyticsSessionSnapshot
     [JsonPropertyName("relatedJobId")]
     public Guid? RelatedJobId { get; init; }
 
+    [JsonPropertyName("selectedXRayModelId")]
+    public string SelectedXRayModelId { get; init; } = ChestXRayModels.CheXNet;
+
     /// <summary>Merges <paramref name="patch"/> into <paramref name="existing"/>; non-null patch fields win.</summary>
     public static AnalyticsSessionSnapshot Merge(AnalyticsSessionSnapshot existing, AnalyticsSessionSnapshot patch)
     {
@@ -55,6 +58,9 @@ public sealed class AnalyticsSessionSnapshot
             LungCancerSourceJson = patch.LungCancerSourceJson ?? existing.LungCancerSourceJson,
             BioBertSourceJson = patch.BioBertSourceJson ?? existing.BioBertSourceJson,
             RelatedJobId = patch.RelatedJobId ?? existing.RelatedJobId,
+            SelectedXRayModelId = !string.IsNullOrWhiteSpace(patch.SelectedXRayModelId)
+                ? patch.SelectedXRayModelId
+                : existing.SelectedXRayModelId,
             PipelineNotes = patch._pipelineNotesProvided
                 ? patch.PipelineNotes
                 : existing.PipelineNotes
@@ -76,7 +82,8 @@ public sealed class AnalyticsSessionSnapshot
         string? cheXNetSourceJson = null,
         string? lungCancerSourceJson = null,
         string? bioBertSourceJson = null,
-        Guid? relatedJobId = null)
+        Guid? relatedJobId = null,
+        string? selectedXRayModelId = null)
     {
         return new AnalyticsSessionSnapshot
         {
@@ -90,6 +97,7 @@ public sealed class AnalyticsSessionSnapshot
             LungCancerSourceJson = lungCancerSourceJson,
             BioBertSourceJson = bioBertSourceJson,
             RelatedJobId = relatedJobId,
+            SelectedXRayModelId = ChestXRayModels.Normalize(selectedXRayModelId),
             PipelineNotes = pipelineNotes ?? [],
             _pipelineNotesProvided = pipelineNotesProvided
         };

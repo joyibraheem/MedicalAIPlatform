@@ -29,6 +29,9 @@ public static class TrainingJobStatuses
     public const string Running = "Running";
     public const string Completed = "Completed";
     public const string Failed = "Failed";
+    public const string Queued = "Queued";
+    public const string Preparing = "Preparing";
+    public const string Cancelled = "Cancelled";
 }
 
 /// <summary>Shared columns for model-specific accepted-data tables.</summary>
@@ -101,6 +104,13 @@ public sealed class TrainingJob
     public string? ErrorMessage { get; set; }
     public Guid TrainingBatchId { get; set; }
     public string? TrainingLogPath { get; set; }
+    public string? RequestedByUserId { get; set; }
+    public int? QueuePosition { get; set; }
+    public string? HyperparametersJson { get; set; }
+    public int? EpochsConfigured { get; set; }
+    public double? LearningRate { get; set; }
+    public int? BatchSizeConfigured { get; set; }
+    public string? ExperimentName { get; set; }
 }
 
 public sealed class ModelVersion
@@ -117,4 +127,13 @@ public sealed class ModelVersion
     public bool IsProduction { get; set; }
     public bool IsDeployable { get; set; }
     public Guid? TrainingJobId { get; set; }
+    public string? Notes { get; set; }
+    public bool IsFavorite { get; set; }
+    public bool IsPinned { get; set; }
+    public bool IsProductionCandidate { get; set; }
+    public bool IsRecommended { get; set; }
+    public string? DatasetVersion { get; set; }
+    public string? DatasetHash { get; set; }
+    public string? ValidationStatus { get; set; }
+    public string? TrainingReportPath { get; set; }
 }

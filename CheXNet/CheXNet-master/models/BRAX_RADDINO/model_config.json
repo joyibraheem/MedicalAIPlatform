@@ -1,0 +1,12 @@
+{
+  "model_id": "BRAX_RADDINO",
+  "display_name": "BRAX Fine-Tuned (RAD-DINO)",
+  "version": "v2",
+  "status": "Research / Fine-Tuned",
+  "backbone": "microsoft/rad-dino",
+  "dataset": "BRAX",
+  "training_date": "2026-06-27",
+  "weights_file": "best_model.pth",
+  "input_size": [224, 224],
+  "num_labels": 14
+}

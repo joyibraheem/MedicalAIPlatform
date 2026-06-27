@@ -1,143 +1,697 @@
 @model MedicalAIPlatform.Models.FineTuningDashboardViewModel
 @{
-    ViewData["Title"] = "Fine-Tuning Dashboard";
+    ViewData["Title"] = "AI Model Management & Fine-Tuning Center";
     Layout = "_DoctorLayout";
 }
 
 <link rel="stylesheet" href="~/css/admin-dashboard.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/css/admin-finetuning-center.css" asp-append-version="true" />
 
-<div class="admin-dash-root">
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+@Html.AntiForgeryToken()
+
+<div class="ftc-root admin-dash-root" id="ftc-root" data-refresh="@Model.LiveRefreshSeconds">
+    <header class="admin-dash-header ftc-header">
         <div>
-            <h1 class="h3 mb-1">Fine-Tuning Dashboard</h1>
-            <p class="text-muted mb-0">
-                Human-in-the-loop learning — retraining triggers automatically after @Model.ModifiedThreshold doctor modifications per model.
+            <p class="admin-dash-kicker">Admin · Model Operations</p>
+            <h1 class="admin-dash-title">AI Model Management &amp; Fine-Tuning Center</h1>
+            <p class="admin-dash-lead">
+                Manage CheXNet, Lung Cancer, and BioBERT training pipelines. BRAX dataset fine-tuning runs locally;
+                HITL models retrain from doctor feedback. Production deployment is manual only.
             </p>
         </div>
-        <a asp-controller="Dashboard" asp-action="Index" class="btn btn-sm admin-btn-outline">← Admin dashboard</a>
-    </div>
+        <div class="admin-dash-header-meta">
+            <span class="admin-pill" id="ftc-system-pill"><i class="bi bi-hdd-network"></i> System OK</span>
+            <a asp-controller="Admin" asp-action="Index" class="btn btn-sm admin-btn-outline">← Admin dashboard</a>
+        </div>
+    </header>
 
     @if (TempData["AdminError"] is string err)
     {
         <div class="alert alert-danger">@err</div>
     }
-    @if (TempData["AdminSuccess"] is string ok)
+    @if (TempData["AdminSuccess"] is string okMsg)
     {
-        <div class="alert alert-success">@ok</div>
+        <div class="alert alert-success">@okMsg</div>
     }
 
-    <div class="row g-4 mb-4">
-        @foreach (var m in Model.Models)
-        {
-            <div class="col-lg-4">
-                <div class="admin-card h-100">
-                    <div class="d-flex justify-content-between align-items-start mb-3">
-                        <h2 class="h5 mb-0">@m.ModelName</h2>
-                        @if (m.RetrainingReady)
-                        {
-                            <span class="badge bg-warning text-dark">Ready</span>
-                        }
+    <section class="ftc-section ftc-home-summary" id="ftc-section-home">
+        <div class="ftc-section-body">
+            <div class="row g-2" id="ftc-home-cards"></div>
+        </div>
+    </section>
+
+    <section class="ftc-section" id="ftc-section-workflow-global">
+        <button class="ftc-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#ftc-collapse-workflow-global" aria-expanded="true">
+            <span><i class="bi bi-diagram-2"></i> Workflow Timeline</span>
+            <i class="bi bi-chevron-down"></i>
+        </button>
+        <div class="collapse show" id="ftc-collapse-workflow-global">
+            <div class="ftc-section-body"><div class="ftc-workflow-rail" id="ftc-workflow-rail"></div></div>
+        </div>
+    </section>
+
+    <ul class="nav nav-pills ftc-main-tabs mb-4" id="ftc-main-tabs" role="tablist">
+        <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#ftc-tab-models" type="button">Models</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#ftc-tab-datasets" type="button">Datasets</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#ftc-tab-training" type="button">Training</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#ftc-tab-experiments" type="button">Experiments</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#ftc-tab-deployment" type="button">Deployment</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#ftc-tab-history" type="button">History</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#ftc-tab-system" type="button">System Monitor</button></li>
+        <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#ftc-tab-notifications" type="button">
+                Notifications <span class="ftc-tab-badge" id="ftc-notif-badge">0</span>
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content ftc-tab-content">
+        <div class="tab-pane fade show active" id="ftc-tab-models">
+    <section class="ftc-section" id="ftc-section-models">
+        <button class="ftc-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#ftc-collapse-models" aria-expanded="true">
+            <span><i class="bi bi-grid-3x3-gap"></i> Model Selection</span>
+            <i class="bi bi-chevron-down"></i>
+        </button>
+        <div class="collapse show" id="ftc-collapse-models">
+            <div class="ftc-section-body">
+                <div class="row g-3" id="ftc-model-cards"></div>
+            </div>
+        </div>
+    </section>
+            <section class="ftc-section" id="ftc-section-future">
+                <button class="ftc-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#ftc-collapse-future">
+                    <span><i class="bi bi-plug"></i> Extensible Pipeline Architecture</span>
+                    <i class="bi bi-chevron-down"></i>
+                </button>
+                <div class="collapse" id="ftc-collapse-future">
+                    <div class="ftc-section-body">
+                        <p class="mb-2">Each AI model registers an <code>IModelTrainingPipeline</code> plugin. Add Model 4+ in DI without UI changes.</p>
+                        <div id="ftc-plugin-registry" class="row g-2"></div>
                     </div>
-                    <dl class="row mb-3 small">
-                        <dt class="col-7">Production version</dt>
-                        <dd class="col-5 text-end"><code>@m.CurrentVersion</code></dd>
-                        <dt class="col-7">Accepted samples</dt>
-                        <dd class="col-5 text-end">@m.AcceptedCount</dd>
-                        <dt class="col-7">Modified samples</dt>
-                        <dd class="col-5 text-end">@m.ModifiedCount</dd>
-                        <dt class="col-7">Pending export</dt>
-                        <dd class="col-5 text-end">@m.UnprocessedModifiedCount / @Model.ModifiedThreshold</dd>
-                        <dt class="col-7">Production accuracy</dt>
-                        <dd class="col-5 text-end">@(m.ProductionAccuracy?.ToString("P1") ?? "—")</dd>
-                        <dt class="col-7">Production F1</dt>
-                        <dd class="col-5 text-end">@(m.ProductionF1Score?.ToString("P1") ?? "—")</dd>
-                        <dt class="col-7">Last training</dt>
-                        <dd class="col-5 text-end">@(m.LastTrainingDate?.ToString("yyyy-MM-dd") ?? "—")</dd>
-                        <dt class="col-7">Last dataset size</dt>
-                        <dd class="col-5 text-end">@(m.LastDatasetSize?.ToString() ?? "—")</dd>
-                        <dt class="col-7">Deployable versions</dt>
-                        <dd class="col-5 text-end">@m.DeployableVersionsCount</dd>
-                    </dl>
-                    @if (m.RetrainingReady)
-                    {
-                        <form asp-action="TriggerRetraining" method="post" class="m-0">
-                            @Html.AntiForgeryToken()
-                            <input type="hidden" name="modelName" value="@m.ModelName" />
-                            <button type="submit" class="btn btn-sm btn-primary w-100">Run retraining batch</button>
-                        </form>
-                    }
-                    else
-                    {
-                        <p class="small text-muted mb-0">Collect @(m.ModifiedThreshold - m.UnprocessedModifiedCount) more modification(s) to auto-trigger.</p>
-                    }
+                </div>
+            </section>
+            <section class="ftc-section" id="ftc-section-architecture">
+                <button class="ftc-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#ftc-collapse-architecture">
+                    <span><i class="bi bi-diagram-3-fill"></i> Architecture Viewer</span>
+                    <i class="bi bi-chevron-down"></i>
+                </button>
+                <div class="collapse" id="ftc-collapse-architecture">
+                    <div class="ftc-section-body" id="ftc-architecture-panel">
+                        <p class="text-muted small mb-0">Select a model to view architecture details.</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div class="tab-pane fade" id="ftc-tab-datasets">
+    <section class="ftc-section" id="ftc-section-dataset">
+        <button class="ftc-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#ftc-collapse-dataset" aria-expanded="true">
+            <span><i class="bi bi-database"></i> Dataset Management</span>
+            <i class="bi bi-chevron-down"></i>
+        </button>
+        <div class="collapse show" id="ftc-collapse-dataset">
+            <div class="ftc-section-body">
+                <div class="row g-4">
+                    <div class="col-lg-5">
+                        <div class="ftc-panel">
+                            <h3 class="ftc-panel-title">Prepare dataset</h3>
+                            <div class="mb-3">
+                                <label class="form-label">Upload ZIP</label>
+                                <input type="file" class="form-control form-control-sm" id="ftc-dataset-zip" accept=".zip" />
+                                <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="ftc-upload-btn">Upload &amp; extract</button>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Or choose stored dataset</label>
+                                <select class="form-select form-select-sm" id="ftc-dataset-select"></select>
+                            </div>
+                            <button type="button" class="btn btn-primary btn-sm" id="ftc-validate-btn">
+                                <i class="bi bi-check2-circle"></i> Validate Dataset
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-lg-7">
+                        <div class="ftc-panel" id="ftc-dataset-report">
+                            <h3 class="ftc-panel-title">Dataset report</h3>
+                            <p class="text-muted small mb-0">Run validation to inspect dataset health before training.</p>
+                        </div>
+                    </div>
                 </div>
             </div>
-        }
-    </div>
-
-    <div class="row g-4">
-        <div class="col-lg-6">
-            <div class="admin-card">
-                <h3 class="h6 fw-semibold mb-3">Pending / running jobs</h3>
-                @if (Model.PendingJobs.Any())
-                {
-                    <div class="table-responsive">
-                        <table class="table table-sm align-middle mb-0">
-                            <thead><tr><th>Model</th><th>Status</th><th>Started</th><th>Size</th></tr></thead>
-                            <tbody>
-                            @foreach (var j in Model.PendingJobs)
-                            {
-                                <tr>
-                                    <td>@j.ModelName</td>
-                                    <td><span class="badge bg-secondary">@j.Status</span></td>
-                                    <td>@j.StartedAt.ToString("yyyy-MM-dd HH:mm")</td>
-                                    <td>@j.DatasetSize</td>
-                                </tr>
-                            }
-                            </tbody>
-                        </table>
+        </div>
+    </section>
+            <section class="ftc-section" id="ftc-section-archive">
+                <button class="ftc-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#ftc-collapse-archive" aria-expanded="true">
+                    <span><i class="bi bi-archive"></i> Dataset Archive</span>
+                    <i class="bi bi-chevron-down"></i>
+                </button>
+                <div class="collapse show" id="ftc-collapse-archive">
+                    <div class="ftc-section-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm ftc-table" id="ftc-archive-table">
+                                <thead><tr><th>Name</th><th>Uploaded</th><th>Size</th><th>Images</th><th>Patients</th><th>Runs</th><th>Actions</th></tr></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
                     </div>
-                }
-                else
-                {
-                    <p class="text-muted small mb-0">No active training jobs.</p>
-                }
+                </div>
+            </section>
+            <section class="ftc-section" id="ftc-section-dataset-preview">
+                <button class="ftc-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#ftc-collapse-dataset-preview" aria-expanded="true">
+                    <span><i class="bi bi-eye"></i> Dataset Preview &amp; Statistics</span>
+                    <i class="bi bi-chevron-down"></i>
+                </button>
+                <div class="collapse show" id="ftc-collapse-dataset-preview">
+                    <div class="ftc-section-body">
+                        <div class="d-flex gap-2 mb-3 flex-wrap">
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="ftc-preview-load">Load preview</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="ftc-stats-load">Generate statistics</button>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-lg-5"><div id="ftc-dataset-preview-panel" class="ftc-panel"></div></div>
+                            <div class="col-lg-7">
+                                <div id="ftc-dataset-stats-cards" class="row g-2 mb-3"></div>
+                                <div class="row g-2">
+                                    <div class="col-md-6"><div class="ftc-chart-wrap"><canvas id="chart-disease-dist"></canvas></div></div>
+                                    <div class="col-md-6"><div class="ftc-chart-wrap"><canvas id="chart-normal-positive"></canvas></div></div>
+                                    <div class="col-md-6"><div class="ftc-chart-wrap"><canvas id="chart-label-freq"></canvas></div></div>
+                                    <div class="col-md-6"><div class="ftc-chart-wrap"><canvas id="chart-train-val"></canvas></div></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <section class="ftc-section" id="ftc-section-dataset-explorer">
+                <button class="ftc-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#ftc-collapse-dataset-explorer">
+                    <span><i class="bi bi-search"></i> Dataset Explorer</span>
+                    <i class="bi bi-chevron-down"></i>
+                </button>
+                <div class="collapse" id="ftc-collapse-dataset-explorer">
+                    <div class="ftc-section-body">
+                        <div class="row g-2 mb-2">
+                            <div class="col-md-2"><input class="form-control form-control-sm" id="ftc-exp-patient" placeholder="Patient ID" /></div>
+                            <div class="col-md-2"><input class="form-control form-control-sm" id="ftc-exp-study" placeholder="Study" /></div>
+                            <div class="col-md-2"><input class="form-control form-control-sm" id="ftc-exp-disease" placeholder="Disease" /></div>
+                            <div class="col-md-2"><input class="form-control form-control-sm" id="ftc-exp-image" placeholder="Image" /></div>
+                            <div class="col-md-2"><input class="form-control form-control-sm" id="ftc-exp-label" placeholder="Label" /></div>
+                            <div class="col-md-2"><button type="button" class="btn btn-sm btn-primary w-100" id="ftc-exp-search">Search</button></div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm ftc-table" id="ftc-explorer-table">
+                                <thead><tr><th>Patient</th><th>Study</th><th>Image</th><th>Labels</th><th>View</th><th>DICOM</th><th>PNG</th></tr></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <section class="ftc-section" id="ftc-section-dataset-versions">
+                <button class="ftc-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#ftc-collapse-dataset-versions">
+                    <span><i class="bi bi-tags"></i> Dataset Versioning</span>
+                    <i class="bi bi-chevron-down"></i>
+                </button>
+                <div class="collapse" id="ftc-collapse-dataset-versions">
+                    <div class="ftc-section-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm ftc-table" id="ftc-dataset-versions-table">
+                                <thead><tr><th>Version</th><th>Hash</th><th>Created</th><th>Validation</th><th>Path</th></tr></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div class="tab-pane fade" id="ftc-tab-training">
+            <section class="ftc-section" id="ftc-section-wizard">
+                <button class="ftc-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#ftc-collapse-wizard" aria-expanded="true">
+                    <span><i class="bi bi-signpost-split"></i> Training Wizard (Optional)</span>
+                    <i class="bi bi-chevron-down"></i>
+                </button>
+                <div class="collapse show" id="ftc-collapse-wizard">
+                    <div class="ftc-section-body">
+                        <div class="ftc-wizard-steps" id="ftc-wizard-steps"></div>
+                        <p class="text-muted small mt-2 mb-0">Follow the guided workflow or use the sections below directly.</p>
+                    </div>
+                </div>
+            </section>
+            <section class="ftc-section" id="ftc-section-presets">
+                <button class="ftc-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#ftc-collapse-presets" aria-expanded="true">
+                    <span><i class="bi bi-lightning"></i> Hyperparameter Presets</span>
+                    <i class="bi bi-chevron-down"></i>
+                </button>
+                <div class="collapse show" id="ftc-collapse-presets">
+                    <div class="ftc-section-body"><div class="row g-2" id="ftc-preset-cards"></div></div>
+                </div>
+            </section>
+    <section class="ftc-section" id="ftc-section-config">
+        <button class="ftc-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#ftc-collapse-config" aria-expanded="true">
+            <span><i class="bi bi-sliders"></i> Fine-Tuning Configuration</span>
+            <i class="bi bi-chevron-down"></i>
+        </button>
+        <div class="collapse show" id="ftc-collapse-config">
+            <div class="ftc-section-body">
+                <form id="ftc-config-form" class="row g-3">
+                    <div class="col-md-3 col-sm-6">
+                        <label class="form-label">Subset size</label>
+                        <select class="form-select form-select-sm" id="cfg-subset-size"></select>
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <label class="form-label">Epochs</label>
+                        <input type="number" class="form-control form-control-sm" id="cfg-epochs" min="1" max="200" />
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <label class="form-label">Learning rate</label>
+                        <input type="number" class="form-control form-control-sm" id="cfg-lr" step="0.00001" />
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <label class="form-label">Batch size</label>
+                        <input type="number" class="form-control form-control-sm" id="cfg-batch" min="1" max="128" />
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <label class="form-label">Val ratio</label>
+                        <input type="number" class="form-control form-control-sm" id="cfg-val-ratio" step="0.05" min="0.05" max="0.5" />
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <label class="form-label">Early stopping patience</label>
+                        <input type="number" class="form-control form-control-sm" id="cfg-patience" min="0" max="50" />
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <label class="form-label">CPU workers</label>
+                        <input type="number" class="form-control form-control-sm" id="cfg-workers" min="0" max="16" />
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <label class="form-label">Random seed</label>
+                        <input type="number" class="form-control form-control-sm" id="cfg-seed" />
+                    </div>
+                    <div class="col-md-4 col-sm-6">
+                        <label class="form-label">Resume checkpoint</label>
+                        <input type="text" class="form-control form-control-sm" id="cfg-resume" placeholder="Optional path" />
+                    </div>
+                    <div class="col-md-4 col-sm-6">
+                        <label class="form-label">Finetune from checkpoint</label>
+                        <input type="text" class="form-control form-control-sm" id="cfg-finetune" placeholder="Optional path" />
+                    </div>
+                    <div class="col-md-4 col-sm-6 d-flex align-items-end gap-3 flex-wrap">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="cfg-freeze" checked />
+                            <label class="form-check-label" for="cfg-freeze">Freeze backbone</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="cfg-unfreeze-block" />
+                            <label class="form-check-label" for="cfg-unfreeze-block">Unfreeze last block</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="cfg-save-best" checked disabled />
+                            <label class="form-check-label" for="cfg-save-best">Save best model</label>
+                        </div>
+                    </div>
+                </form>
             </div>
         </div>
-        <div class="col-lg-6">
-            <div class="admin-card">
-                <h3 class="h6 fw-semibold mb-3">Completed training jobs</h3>
-                @if (Model.RecentJobs.Any())
-                {
-                    <div class="table-responsive">
-                        <table class="table table-sm align-middle mb-0">
-                            <thead><tr><th>Model</th><th>Version</th><th>Acc</th><th>F1</th><th>Status</th></tr></thead>
-                            <tbody>
-                            @foreach (var j in Model.RecentJobs)
-                            {
-                                <tr>
-                                    <td>@j.ModelName</td>
-                                    <td><code>@(j.NewModelVersion ?? "—")</code></td>
-                                    <td>@(j.Accuracy?.ToString("P1") ?? "—")</td>
-                                    <td>@(j.F1Score?.ToString("P1") ?? "—")</td>
-                                    <td>
-                                        <span class="badge @(j.Status == "Completed" ? "bg-success" : "bg-danger")">@j.Status</span>
-                                    </td>
-                                </tr>
-                            }
-                            </tbody>
-                        </table>
-                    </div>
-                }
-                else
-                {
-                    <p class="text-muted small mb-0">No completed jobs yet.</p>
-                }
+    </section>
+
+    <!-- Section 4: Start Training -->
+    <section class="ftc-section" id="ftc-section-start">
+        <button class="ftc-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#ftc-collapse-start" aria-expanded="true">
+            <span><i class="bi bi-play-circle"></i> Start Fine-Tuning</span>
+            <i class="bi bi-chevron-down"></i>
+        </button>
+        <div class="collapse show" id="ftc-collapse-start">
+            <div class="ftc-section-body text-center py-3">
+                <button type="button" class="btn btn-lg ftc-start-btn" id="ftc-start-btn">
+                    <i class="bi bi-lightning-charge"></i> Start Fine-Tuning
+                </button>
+                <p class="text-muted small mt-2 mb-0" id="ftc-selected-model-label">Select a model above to configure training.</p>
             </div>
         </div>
-    </div>
+    </section>
 
-    <div class="alert alert-info mt-4 mb-0 small">
-        New models are <strong>not</strong> deployed to production automatically. After training, better-performing checkpoints are marked <em>Deployable</em> for manual promotion.
+            <section class="ftc-section" id="ftc-section-queue">
+                <button class="ftc-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#ftc-collapse-queue" aria-expanded="true">
+                    <span><i class="bi bi-list-ol"></i> Training Queue</span>
+                    <i class="bi bi-chevron-down"></i>
+                </button>
+                <div class="collapse show" id="ftc-collapse-queue">
+                    <div class="ftc-section-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm ftc-table" id="ftc-queue-table">
+                                <thead><tr><th>#</th><th>Model</th><th>Dataset</th><th>Requested By</th><th>Time</th><th>Status</th><th></th></tr></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+    <section class="ftc-section" id="ftc-section-monitor">
+        <button class="ftc-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#ftc-collapse-monitor" aria-expanded="true">
+            <span><i class="bi bi-activity"></i> Live Training Monitor</span>
+            <span class="ftc-badge ftc-badge-live" id="ftc-monitor-badge">Idle</span>
+            <i class="bi bi-chevron-down"></i>
+        </button>
+        <div class="collapse show" id="ftc-collapse-monitor">
+            <div class="ftc-section-body" id="ftc-monitor-panel">
+                <p class="text-muted small">No active training job. Auto-refreshes every @Model.LiveRefreshSeconds seconds when running.</p>
+            </div>
+        </div>
+    </section>
+
+            <section class="ftc-section" id="ftc-section-console">
+                <button class="ftc-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#ftc-collapse-console" aria-expanded="true">
+                    <span><i class="bi bi-terminal"></i> Training Console</span>
+                    <i class="bi bi-chevron-down"></i>
+                </button>
+                <div class="collapse show" id="ftc-collapse-console">
+                    <div class="ftc-section-body">
+                        <pre class="ftc-console-output" id="ftc-console-output">No active training output.</pre>
+                    </div>
+                </div>
+            </section>
+
+    <!-- Section 6: Training Charts -->
+    <section class="ftc-section" id="ftc-section-charts">
+        <button class="ftc-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#ftc-collapse-charts">
+            <span><i class="bi bi-graph-up"></i> Training Charts</span>
+            <i class="bi bi-chevron-down"></i>
+        </button>
+        <div class="collapse" id="ftc-collapse-charts">
+            <div class="ftc-section-body">
+                <div class="row g-3">
+                    <div class="col-lg-6"><div class="ftc-chart-wrap"><canvas id="chart-train-loss"></canvas></div></div>
+                    <div class="col-lg-6"><div class="ftc-chart-wrap"><canvas id="chart-val-loss"></canvas></div></div>
+                    <div class="col-lg-6"><div class="ftc-chart-wrap"><canvas id="chart-f1"></canvas></div></div>
+                    <div class="col-lg-6"><div class="ftc-chart-wrap"><canvas id="chart-roc"></canvas></div></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+            <section class="ftc-section" id="ftc-section-inference-test">
+                <button class="ftc-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#ftc-collapse-inference">
+                    <span><i class="bi bi-eye"></i> Inference Test (Pre-Deployment)</span>
+                    <i class="bi bi-chevron-down"></i>
+                </button>
+                <div class="collapse" id="ftc-collapse-inference">
+                    <div class="ftc-section-body">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <input type="file" class="form-control form-control-sm" id="ftc-infer-image" accept="image/*,.dcm" />
+                                <select class="form-select form-select-sm mt-2" id="ftc-infer-mode">
+                                    <option value="compare">Compare Production vs Candidate</option>
+                                    <option value="production">Production only</option>
+                                    <option value="candidate">Candidate only</option>
+                                </select>
+                                <input type="text" class="form-control form-control-sm mt-2" id="ftc-infer-checkpoint" placeholder="Candidate checkpoint path" />
+                                <button type="button" class="btn btn-sm btn-primary mt-2" id="ftc-infer-run">Run inference test</button>
+                            </div>
+                            <div class="col-md-8"><div class="row g-2" id="ftc-infer-results"></div></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="ftc-section" id="ftc-section-recommendation">
+                <button class="ftc-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#ftc-collapse-recommendation">
+                    <span><i class="bi bi-stars"></i> AI Recommendation</span>
+                    <i class="bi bi-chevron-down"></i>
+                </button>
+                <div class="collapse" id="ftc-collapse-recommendation">
+                    <div class="ftc-section-body" id="ftc-recommendation-panel"></div>
+                </div>
+            </section>
+        </div>
+
+        <div class="tab-pane fade" id="ftc-tab-experiments">
+            <section class="ftc-section" id="ftc-section-experiments">
+                <button class="ftc-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#ftc-collapse-experiments" aria-expanded="true">
+                    <span><i class="bi bi-bezier2"></i> Experiment Comparison Center</span>
+                    <i class="bi bi-chevron-down"></i>
+                </button>
+                <div class="collapse show" id="ftc-collapse-experiments">
+                    <div class="ftc-section-body">
+                        <div class="table-responsive mb-3">
+                            <table class="table table-sm ftc-table" id="ftc-experiments-table">
+                                <thead><tr><th></th><th>Experiment</th><th>Model</th><th>Epochs</th><th>LR</th><th>F1</th><th>ROC-AUC</th><th>Val Loss</th></tr></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="ftc-compare-experiments">Compare selected experiments</button>
+                        <div id="ftc-experiment-compare" class="mt-3"></div>
+                    </div>
+                </div>
+            </section>
+            <section class="ftc-section" id="ftc-section-threshold">
+                <button class="ftc-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#ftc-collapse-threshold" aria-expanded="true">
+                    <span><i class="bi bi-sliders2"></i> Threshold Analyzer</span>
+                    <i class="bi bi-chevron-down"></i>
+                </button>
+                <div class="collapse show" id="ftc-collapse-threshold">
+                    <div class="ftc-section-body">
+                        <div class="row g-3 align-items-center mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Checkpoint</label>
+                                <select class="form-select form-select-sm" id="ftc-threshold-checkpoint"></select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Threshold: <span id="ftc-threshold-value">0.50</span></label>
+                                <input type="range" class="form-range" id="ftc-threshold-slider" min="1" max="90" value="50" />
+                            </div>
+                        </div>
+                        <div class="row g-2 mb-3" id="ftc-threshold-metrics"></div>
+                        <div class="ftc-chart-wrap"><canvas id="chart-threshold-f1"></canvas></div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div class="tab-pane fade" id="ftc-tab-deployment">
+            <section class="ftc-section" id="ftc-section-checkpoints">
+                <button class="ftc-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#ftc-collapse-checkpoints" aria-expanded="true">
+                    <span><i class="bi bi-archive"></i> Checkpoint Management</span>
+                    <i class="bi bi-chevron-down"></i>
+                </button>
+                <div class="collapse show" id="ftc-collapse-checkpoints">
+                    <div class="ftc-section-body">
+                        <div class="d-flex gap-2 mb-2 flex-wrap">
+                            <select class="form-select form-select-sm w-auto" id="ftc-deploy-metric">
+                                <option value="ROC-AUC">Deploy best by ROC-AUC</option>
+                                <option value="F1">Deploy best by F1</option>
+                                <option value="Accuracy">Deploy best by Accuracy</option>
+                                <option value="Validation Loss">Deploy best by Val Loss</option>
+                            </select>
+                            <button type="button" class="btn btn-sm btn-success" id="ftc-deploy-best">Deploy Best Model</button>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm ftc-table" id="ftc-checkpoints-table">
+                                <thead>
+                                    <tr>
+                                        <th><input type="checkbox" id="ftc-compare-all" title="Compare" /></th>
+                                        <th>Version</th><th>Model</th><th>Date</th><th>Dataset</th><th>Subset</th>
+                                        <th>Acc</th><th>F1</th><th>ROC-AUC</th><th>Val Loss</th><th>Status</th><th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+    <section class="ftc-section" id="ftc-section-deploy">
+        <button class="ftc-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#ftc-collapse-deploy">
+            <span><i class="bi bi-rocket-takeoff"></i> Deployment</span>
+            <i class="bi bi-chevron-down"></i>
+        </button>
+        <div class="collapse" id="ftc-collapse-deploy">
+            <div class="ftc-section-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="ftc-panel" id="ftc-deploy-current">
+                            <h3 class="ftc-panel-title">Current production</h3>
+                            <p class="text-muted small mb-0">Select a checkpoint and click Deploy.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="ftc-panel" id="ftc-deploy-candidate">
+                            <h3 class="ftc-panel-title">Candidate</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-3 d-flex gap-2 flex-wrap">
+                    <button type="button" class="btn btn-sm btn-success" id="ftc-deploy-btn" disabled>Deploy to production</button>
+                    <button type="button" class="btn btn-sm btn-outline-warning" id="ftc-rollback-btn">Rollback</button>
+                </div>
+                <div class="alert alert-info small mt-3 mb-0">
+                    Manual deployment only updates the <strong>ModelVersions</strong> registry. Inference API weights are unchanged until you copy checkpoints manually.
+                </div>
+            </div>
+        </div>
+    </section>
+
+            <section class="ftc-section" id="ftc-section-compare">
+                <button class="ftc-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#ftc-collapse-compare">
+                    <span><i class="bi bi-bar-chart-line"></i> Checkpoint Comparison</span>
+                    <i class="bi bi-chevron-down"></i>
+                </button>
+                <div class="collapse" id="ftc-collapse-compare">
+                    <div class="ftc-section-body">
+                        <button type="button" class="btn btn-sm btn-outline-primary mb-3" id="ftc-run-compare">Compare selected checkpoints</button>
+                        <div id="ftc-compare-table"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="ftc-section" id="ftc-section-rollback-center">
+                <button class="ftc-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#ftc-collapse-rollback" aria-expanded="true">
+                    <span><i class="bi bi-arrow-counterclockwise"></i> Rollback Center</span>
+                    <i class="bi bi-chevron-down"></i>
+                </button>
+                <div class="collapse show" id="ftc-collapse-rollback">
+                    <div class="ftc-section-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm ftc-table" id="ftc-deployment-history-table">
+                                <thead><tr><th>Action</th><th>From</th><th>To</th><th>Date</th><th>Reason</th><th>Current</th></tr></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <section class="ftc-section" id="ftc-section-production-test">
+                <button class="ftc-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#ftc-collapse-production-test" aria-expanded="true">
+                    <span><i class="bi bi-shield-check"></i> Test Production Model</span>
+                    <i class="bi bi-chevron-down"></i>
+                </button>
+                <div class="collapse show" id="ftc-collapse-production-test">
+                    <div class="ftc-section-body">
+                        <p class="text-muted small">Uses the existing production CheXNet inference API (not candidate checkpoints).</p>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <input type="file" class="form-control form-control-sm" id="ftc-prod-test-image" accept="image/*,.dcm" />
+                                <button type="button" class="btn btn-sm btn-primary mt-2" id="ftc-prod-test-run">Run production inference</button>
+                            </div>
+                            <div class="col-md-8"><div class="ftc-panel" id="ftc-prod-test-result"></div></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    <section class="ftc-section" id="ftc-section-history">
+        <button class="ftc-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#ftc-collapse-history">
+            <span><i class="bi bi-clock-history"></i> Training History</span>
+            <i class="bi bi-chevron-down"></i>
+        </button>
+        <div class="collapse" id="ftc-collapse-history">
+            <div class="ftc-section-body">
+                <div class="ftc-timeline" id="ftc-history-timeline"></div>
+            </div>
+        </div>
+    </section>
+
+            <section class="ftc-section" id="ftc-section-timeline">
+                <button class="ftc-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#ftc-collapse-timeline" aria-expanded="true">
+                    <span><i class="bi bi-diagram-3"></i> Model Version Timeline</span>
+                    <i class="bi bi-chevron-down"></i>
+                </button>
+                <div class="collapse show" id="ftc-collapse-timeline">
+                    <div class="ftc-section-body">
+                        <div class="row g-2 mb-3">
+                            <div class="col-auto"><select class="form-select form-select-sm" id="ftc-timeline-model-filter"><option value="">All models</option></select></div>
+                            <div class="col-auto"><select class="form-select form-select-sm" id="ftc-timeline-status-filter">
+                                <option value="">All statuses</option><option value="Production">Production</option><option value="Deployable">Deployable</option>
+                            </select></div>
+                        </div>
+                        <div id="ftc-version-timeline"></div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div class="tab-pane fade" id="ftc-tab-system">
+    <section class="ftc-section" id="ftc-section-system">
+        <button class="ftc-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#ftc-collapse-system">
+            <span><i class="bi bi-pc-display"></i> System Status</span>
+            <i class="bi bi-chevron-down"></i>
+        </button>
+        <div class="collapse" id="ftc-collapse-system">
+            <div class="ftc-section-body">
+                <div class="row g-3" id="ftc-system-grid"></div>
+            </div>
+        </div>
+    </section>
+
+            <section class="ftc-section" id="ftc-section-live-resources">
+                <button class="ftc-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#ftc-collapse-live-resources" aria-expanded="true">
+                    <span><i class="bi bi-speedometer2"></i> Live Resource Monitor</span>
+                    <i class="bi bi-chevron-down"></i>
+                </button>
+                <div class="collapse show" id="ftc-collapse-live-resources">
+                    <div class="ftc-section-body">
+                        <div class="row g-3 mb-3" id="ftc-live-resource-stats"></div>
+                        <div class="row g-3">
+                            <div class="col-md-4"><div class="ftc-chart-wrap"><canvas id="chart-cpu-live"></canvas></div></div>
+                            <div class="col-md-4"><div class="ftc-chart-wrap"><canvas id="chart-ram-live"></canvas></div></div>
+                            <div class="col-md-4"><div class="ftc-chart-wrap"><canvas id="chart-gpu-live"></canvas></div></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div class="tab-pane fade" id="ftc-tab-notifications">
+            <section class="ftc-section">
+                <div class="ftc-section-body">
+                    <div class="d-flex justify-content-between mb-3">
+                        <h3 class="ftc-panel-title mb-0">Notification Center</h3>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="ftc-notif-read-all">Mark all read</button>
+                            <button type="button" class="btn btn-sm btn-outline-danger" id="ftc-notif-clear">Clear</button>
+                        </div>
+                    </div>
+                    <div id="ftc-notifications-list"></div>
+                </div>
+            </section>
+        </div>
     </div>
 </div>
+
+<div class="modal fade" id="ftc-checkpoint-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Checkpoint Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="ftc-checkpoint-modal-body"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="ftc-checkpoint-download-report">Download PDF report</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Confirmation modal -->
+<div class="modal fade" id="ftc-confirm-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm fine-tuning</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="ftc-confirm-body"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="ftc-confirm-start">Start training</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    window.trainingCenterInitial = @Html.Raw(Model.InitialJson);
+    window.trainingCenterRefreshSec = @Model.LiveRefreshSeconds;
+</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js" crossorigin="anonymous"></script>
+<script src="~/js/admin-finetuning-center.js" asp-append-version="true"></script>
+<script src="~/js/admin-finetuning-extensions.js" asp-append-version="true"></script>
